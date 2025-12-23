@@ -1,0 +1,10 @@
+[project]
+name = "virsh-sandbox-agent"
+version = "0.1.0"
+description = "AI Agent for working on sys-admin tasks"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openai>=2.14.0",
+    "requests>=2.32.5",
+]

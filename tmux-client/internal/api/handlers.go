@@ -78,7 +78,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 			r.Post("/panes/send-keys", h.handleSendKeys)
 			r.Post("/sessions/create", h.handleCreateSession)
 			r.Delete("/panes/{paneID}", h.handleKillPane)
-			r.Delete("/sessions/{sessionName}", h.handleKillSession)
+			r.Post("/sessions/{sessionId}/release", h.handleReleaseSession)
 		})
 
 		// File endpoints
