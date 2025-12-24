@@ -3,7 +3,7 @@
  * Do not edit manually.
  * virsh-sandbox API
  * API for managing virtual machine sandboxes using libvirt
- * OpenAPI spec version: 0.1-beta
+ * OpenAPI spec version: 0.0.1-beta
  */
 
 export interface InternalRestStartSandboxRequest {

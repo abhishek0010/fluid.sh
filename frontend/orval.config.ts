@@ -18,7 +18,7 @@ export default defineConfig({
       client: "zod",
       mode: "tags-split",
       target: "./src/virsh-sandbox-client",
-      fileExtension: "zod.ts",
+      fileExtension: ".zod.ts",
     },
     input: {
       target: "../api/docs/swagger.yaml",
@@ -41,7 +41,7 @@ export default defineConfig({
       client: "zod",
       mode: "tags-split",
       target: "./src/tmux-client",
-      fileExtension: "zod.ts",
+      fileExtension: ".zod.ts",
     },
     input: {
       target: "../tmux-client/docs/swagger.yaml",
