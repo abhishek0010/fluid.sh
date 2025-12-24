@@ -12,7 +12,6 @@ import (
 
 // Config describes database-related configuration for a Store implementation.
 type Config struct {
-
 	// DatabaseURL is the DSN/URL used to connect to the database.
 	// Examples:
 	// - Postgres: postgres://user:pass@host:5432/dbname?sslmode=disable

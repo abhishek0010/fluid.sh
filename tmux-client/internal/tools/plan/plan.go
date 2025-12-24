@@ -32,7 +32,7 @@ func NewTool(cfg *config.PlanConfig) (*Tool, error) {
 
 	// Create plan directory if persistence is enabled
 	if cfg.PersistPlans && cfg.PlanDirectory != "" {
-		if err := os.MkdirAll(cfg.PlanDirectory, 0750); err != nil {
+		if err := os.MkdirAll(cfg.PlanDirectory, 0o750); err != nil {
 			return nil, fmt.Errorf("failed to create plan directory: %w", err)
 		}
 
@@ -439,7 +439,7 @@ func (t *Tool) savePlan(plan *types.Plan) error {
 		return fmt.Errorf("failed to marshal plan: %w", err)
 	}
 
-	if err := os.WriteFile(planFile, data, 0600); err != nil {
+	if err := os.WriteFile(planFile, data, 0o600); err != nil {
 		return fmt.Errorf("failed to write plan file: %w", err)
 	}
 

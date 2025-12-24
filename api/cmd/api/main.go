@@ -20,10 +20,10 @@ import (
 )
 
 // @title virsh-sandbox API
-// @version 0.1-beta
+// @version 0.0.1-beta
 // @description API for managing virtual machine sandboxes using libvirt
 // @host localhost:8080
-// @BasePath /api/v1
+// @BasePath /v1
 func main() {
 	// Context with OS signal cancellation
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

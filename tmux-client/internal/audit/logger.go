@@ -37,13 +37,13 @@ func NewLogger(cfg *config.AuditConfig) (*Logger, error) {
 	// Ensure directory exists
 	dir := filepath.Dir(cfg.LogFile)
 	if dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0750); err != nil {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
 			return nil, fmt.Errorf("failed to create audit log directory: %w", err)
 		}
 	}
 
 	// Open file in append-only mode
-	file, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	file, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open audit log file: %w", err)
 	}
@@ -315,7 +315,7 @@ func (l *Logger) Rotate() error {
 	}
 
 	// Open new file
-	file, err := os.OpenFile(l.config.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	file, err := os.OpenFile(l.config.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to open new audit log: %w", err)
 	}
@@ -470,5 +470,7 @@ type AuditLogger interface {
 }
 
 // Ensure Logger implements AuditLogger
-var _ AuditLogger = (*Logger)(nil)
-var _ AuditLogger = (*NullLogger)(nil)
+var (
+	_ AuditLogger = (*Logger)(nil)
+	_ AuditLogger = (*NullLogger)(nil)
+)

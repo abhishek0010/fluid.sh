@@ -4,10 +4,10 @@
         "description": "API for managing virtual machine sandboxes using libvirt",
         "title": "virsh-sandbox API",
         "contact": {},
-        "version": "0.1-beta"
+        "version": "0.0.1-beta"
     },
     "host": "localhost:8080",
-    "basePath": "/api/v1",
+    "basePath": "/v1",
     "paths": {
         "/api/v1/sandbox/create": {
             "post": {

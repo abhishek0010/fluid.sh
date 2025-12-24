@@ -627,6 +627,9 @@ definitions:
         type: boolean
     type: object
 info:
+  title: tmux-client API
+  version: "0.1-beta"
+  description: API for interacting with tmux sessions, panes, and windows
   contact: {}
 paths:
   /api/v1/audit/query:

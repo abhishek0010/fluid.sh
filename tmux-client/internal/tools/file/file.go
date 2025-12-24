@@ -47,7 +47,7 @@ func NewTool(cfg *config.FileConfig) (*Tool, error) {
 
 	// Ensure backup directory exists if specified and backup is enabled
 	if cfg.BackupOnEdit && cfg.BackupDirectory != "" {
-		if err := os.MkdirAll(cfg.BackupDirectory, 0750); err != nil {
+		if err := os.MkdirAll(cfg.BackupDirectory, 0o750); err != nil {
 			return nil, fmt.Errorf("failed to create backup directory: %w", err)
 		}
 	}
@@ -272,7 +272,7 @@ func (t *Tool) WriteFile(req types.WriteFileRequest) (*types.WriteFileResponse, 
 	}
 
 	// Determine file mode
-	var mode os.FileMode = 0644
+	var mode os.FileMode = 0o644
 	if req.Mode != "" {
 		parsed, err := parseFileMode(req.Mode)
 		if err != nil {
@@ -284,7 +284,7 @@ func (t *Tool) WriteFile(req types.WriteFileRequest) (*types.WriteFileResponse, 
 	// Create parent directory if needed
 	if req.CreateDir {
 		dir := filepath.Dir(absPath)
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, fmt.Errorf("failed to create parent directory: %w", err)
 		}
 	}
@@ -673,7 +673,7 @@ func (t *Tool) createBackup(absPath string) error {
 	}
 
 	// Ensure backup directory exists
-	if err := os.MkdirAll(backupDir, 0750); err != nil {
+	if err := os.MkdirAll(backupDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create backup directory: %w", err)
 	}
 

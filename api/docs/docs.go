@@ -1161,9 +1161,9 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.1-beta",
+	Version:          "0.0.1-beta",
 	Host:             "localhost:8080",
-	BasePath:         "/api/v1",
+	BasePath:         "/v1",
 	Schemes:          []string{},
 	Title:            "virsh-sandbox API",
 	Description:      "API for managing virtual machine sandboxes using libvirt",

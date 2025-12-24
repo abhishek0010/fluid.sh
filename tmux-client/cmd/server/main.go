@@ -25,8 +25,13 @@ import (
 )
 
 // Version is set at build time.
-var Version = "0.1.0"
+var Version = "0.0.1-beta"
 
+// @title tmux-client API
+// @version 0.0.1-beta
+// @description API for managing tmux sessions and windows
+// @host localhost:8080
+// @BasePath /v1
 func main() {
 	// Parse command line flags
 	configPath := flag.String("config", "", "Path to configuration file")

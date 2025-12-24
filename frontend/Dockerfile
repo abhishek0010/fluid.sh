@@ -13,7 +13,7 @@ RUN bun install
 COPY . .
 
 # Expose the port Vite uses (default 5173)
-EXPOSE 4173
+EXPOSE 5173
 
 # Run the start command (adjust if you add a start script)
-CMD ["bun", "run", "preview"]
+CMD ["bun", "run", "start"]

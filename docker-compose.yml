@@ -127,7 +127,7 @@ services:
       - api
       - tmux-client
     ports:
-      - "4173:4173"
+      - "5173:5173"
 
   # mcp:
   #   container_name: virsh-sandbox-mcp
