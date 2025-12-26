@@ -37,6 +37,7 @@ func main() {
 	apiAddr := getenv("API_HTTP_ADDR", ":8080")
 	dbURL := getenv("DATABASE_URL", "file:/var/lib/virsh-sandbox.db?_busy_timeout=10000&_fk=1")
 	network := getenv("LIBVIRT_NETWORK", "default")
+	libvirtURI := getenv("LIBVIRT_URI", "qemu:///system")
 
 	defaultVCPUs := atoiDefault(getenv("DEFAULT_VCPUS", "2"), 2)
 	defaultMemMB := atoiDefault(getenv("DEFAULT_MEMORY_MB", "2048"), 2048)
@@ -74,6 +75,9 @@ func main() {
 	// Initialize libvirt manager from environment
 	lvMgr := libvirt.NewFromEnv()
 
+	// Initialize domain manager for direct libvirt queries
+	domainMgr := libvirt.NewDomainManager(libvirtURI)
+
 	// Initialize VM service
 	vmSvc := vm.NewService(lvMgr, st, vm.Config{
 		Network:            network,
@@ -84,7 +88,7 @@ func main() {
 	})
 
 	// REST server setup
-	restSrv := rest.NewServer(vmSvc)
+	restSrv := rest.NewServer(vmSvc, domainMgr)
 
 	// Build http.Server so we can gracefully shutdown
 	httpSrv := &http.Server{

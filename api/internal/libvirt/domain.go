@@ -377,6 +377,65 @@ func (m *DomainManager) BlockCommit(ctx context.Context, domainName, diskTarget 
 	return nil
 }
 
+// ListDomains returns information about all domains (VMs) in libvirt.
+// It lists both running and stopped persistent domains.
+func (m *DomainManager) ListDomains(ctx context.Context) ([]*DomainInfo, error) {
+	if err := m.ensureConnected(); err != nil {
+		return nil, err
+	}
+
+	m.mu.Lock()
+	// List all persistent domains (both active and inactive)
+	domains, err := m.conn.ListAllDomains(libvirtgo.ConnectListAllDomainsFlags(libvirtgo.CONNECT_LIST_DOMAINS_PERSISTENT))
+	m.mu.Unlock()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to list domains: %w", err)
+	}
+
+	var result []*DomainInfo
+	for _, dom := range domains {
+		name, err := dom.GetName()
+		if err != nil {
+			dom.Free()
+			continue
+		}
+
+		uuid, err := dom.GetUUIDString()
+		if err != nil {
+			dom.Free()
+			continue
+		}
+
+		state, _, err := dom.GetState()
+		if err != nil {
+			dom.Free()
+			continue
+		}
+
+		persistent, _ := dom.IsPersistent()
+
+		// Get disk path from domain XML
+		var diskPath string
+		xmlDesc, err := dom.GetXMLDesc(0)
+		if err == nil {
+			diskPath, _ = extractDiskPath(xmlDesc)
+		}
+
+		result = append(result, &DomainInfo{
+			Name:       name,
+			UUID:       uuid,
+			State:      mapLibvirtState(state),
+			Persistent: persistent,
+			DiskPath:   diskPath,
+		})
+
+		dom.Free()
+	}
+
+	return result, nil
+}
+
 // GetDiskPath returns the primary disk path for a domain.
 func (m *DomainManager) GetDiskPath(ctx context.Context, domainName string) (string, error) {
 	if err := m.ensureConnected(); err != nil {

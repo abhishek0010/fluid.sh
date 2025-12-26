@@ -130,6 +130,10 @@ func (s *Service) CreateSandbox(ctx context.Context, baseImage, agentID, vmName 
 	return sb, nil
 }
 
+func (s *Service) GetSandboxes(ctx context.Context, filter store.SandboxFilter, opts *store.ListOptions) ([]*store.Sandbox, error) {
+	return s.store.ListSandboxes(ctx, filter, opts)
+}
+
 // InjectSSHKey injects a public key for a user into the VM disk prior to boot.
 func (s *Service) InjectSSHKey(ctx context.Context, sandboxID, username, publicKey string) error {
 	if strings.TrimSpace(sandboxID) == "" {

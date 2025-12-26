@@ -20,5 +20,5 @@ pre-commit:
       glob: "*.go"
       run: swag init --dir ./tmux-client,./internal/ansible,./internal/diff,./internal/error,./internal/rest,./internal/vm,./internal/workflow --generalInfo cmd/api/main.go --parseDependency --parseInternal
     generate-orval-clients:
-      glob: "*.ts"
+      glob: "*.go"
       run: cd frontend && bun run generate-api

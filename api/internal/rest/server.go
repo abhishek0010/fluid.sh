@@ -12,26 +12,29 @@ import (
 
 	serverError "virsh-sandbox/internal/error"
 	serverJSON "virsh-sandbox/internal/json"
+	"virsh-sandbox/internal/libvirt"
 	"virsh-sandbox/internal/store"
 	"virsh-sandbox/internal/vm"
 )
 
 // Server wires the HTTP layer to application services.
 type Server struct {
-	Router chi.Router
-	vmSvc  *vm.Service
+	Router    chi.Router
+	vmSvc     *vm.Service
+	domainMgr *libvirt.DomainManager
 }
 
 // NewServer constructs a REST server with routes registered.
-func NewServer(vmSvc *vm.Service) *Server {
+func NewServer(vmSvc *vm.Service, domainMgr *libvirt.DomainManager) *Server {
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
 	s := &Server{
-		Router: router,
-		vmSvc:  vmSvc,
+		Router:    router,
+		vmSvc:     vmSvc,
+		domainMgr: domainMgr,
 	}
 	s.routes()
 	return s
@@ -61,6 +64,16 @@ func (s *Server) routes() {
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		_ = serverJSON.RespondJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 	})
+
+	// @Summary List all VMs
+	// @Description Returns a list of all virtual machines from the libvirt instance
+	// @Tags vms
+	// @Accept json
+	// @Produce json
+	// @Success 200 {object} listVMsResponse
+	// @Failure 500 {object} ErrorResponse
+	// @Router /api/v1/vms [get]
+	r.Get("/vms", s.handleListVMs)
 
 	// @Summary API reference
 	// @Description Returns HTML API reference documentation
@@ -181,6 +194,18 @@ type ErrorResponse struct {
 	Error   string `json:"error"`
 	Code    int    `json:"code"`
 	Details string `json:"details,omitempty"`
+}
+
+type vmInfo struct {
+	Name       string `json:"name"`
+	UUID       string `json:"uuid"`
+	State      string `json:"state"`
+	Persistent bool   `json:"persistent"`
+	DiskPath   string `json:"disk_path,omitempty"`
+}
+
+type listVMsResponse struct {
+	VMs []vmInfo `json:"vms"`
 }
 
 // --- Handlers ---
@@ -420,6 +445,35 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request) {
 		Message: "publish not implemented yet",
 		Note:    "job_id=" + req.JobID,
 	})
+}
+
+// @Summary List all VMs
+// @Description Returns a list of all virtual machines from the libvirt instance
+// @Tags vms
+// @Accept json
+// @Produce json
+// @Success 200 {object} listVMsResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/vms [get]
+func (s *Server) handleListVMs(w http.ResponseWriter, r *http.Request) {
+	domains, err := s.domainMgr.ListDomains(r.Context())
+	if err != nil {
+		serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("list vms: %w", err))
+		return
+	}
+
+	vms := make([]vmInfo, 0, len(domains))
+	for _, d := range domains {
+		vms = append(vms, vmInfo{
+			Name:       d.Name,
+			UUID:       d.UUID,
+			State:      d.State.String(),
+			Persistent: d.Persistent,
+			DiskPath:   d.DiskPath,
+		})
+	}
+
+	_ = serverJSON.RespondJSON(w, http.StatusOK, listVMsResponse{VMs: vms})
 }
 
 // @Summary Destroy sandbox
