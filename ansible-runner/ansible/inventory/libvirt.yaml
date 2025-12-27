@@ -1,0 +1,9 @@
+plugin: community.libvirt.libvirt
+uri: qemu:///system
+
+compose:
+  ansible_host: "{{ interfaces[0].addresses[0] }}"
+  ansible_user: "ubuntu"
+
+groups:
+  sandbox: "'sandbox' in name"

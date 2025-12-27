@@ -1,31 +1,29 @@
 pre-commit:
-  parallel: false
+  parallel: true
   commands:
-    0-go-vet-tmux-client:
+    vet-tmux-client:
       glob: "*.go"
-      run: cd tmux-client && go vet ./...
-    1-go-vet-tmux-client:
+      root: "tmux-client"
+      run: make vet
+    vet-api:
       glob: "*.go"
-      run: cd api && go vet ./...
-    1-generate-tmux-client-openapi:
+      root: "api"
+      run: make vet
+    fmt-tmux-client:
       glob: "*.go"
-      run: cd tmux-client && swag init --dir .,./internal/api,./internal/audit,./internal/config,./internal/store,./internal/tools,./internal/types --generalInfo ./cmd/server/main.go --parseDependency --parseInternal
+      root: "tmux-client"
+      run: make fmt
       stage_fixed: true
-    2-generate-virsh-sandbox-openapi:
+    fmt-api:
       glob: "*.go"
-      run: cd api && swag init --dir .,./internal/ansible,./internal/diff,./internal/error,./internal/rest,./internal/vm,./internal/workflow --generalInfo ./cmd/api/main.go --parseDependency --parseInternal
+      root: "api"
+      run: make fmt
       stage_fixed: true
-    3-go-fmt:
-      glob: "*.go"
-      run: gofumpt -l -w api tmux-client
-      stage_fixed: true
-    4-generate-orval-clients:
-      glob: "*.go"
-      run: cd frontend && bun run generate-api
-      stage_fixed: true
-    # go-lint-virsh-sandbox:
+    # lint-api:
     #   glob: "*.go"
-    #   run: cd api && golangci-lint run
-    # go-lint-tmux:
+    #   root: "api"
+    #   run: make lint
+    # lint-tmux-client:
     #   glob: "*.go"
-    #   run: cd tmux-client && golangci-lint run
+    #   root: "tmux-client"
+    #   run: make lint

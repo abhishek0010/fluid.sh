@@ -1,0 +1,7 @@
+- name: Ping all sandbox VMs
+  hosts: sandbox
+  gather_facts: false
+
+  tasks:
+    - name: Ping
+      ansible.builtin.ping:
