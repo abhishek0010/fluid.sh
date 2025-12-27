@@ -19,11 +19,20 @@ pre-commit:
       root: "api"
       run: make fmt
       stage_fixed: true
-    # lint-api:
-    #   glob: "*.go"
-    #   root: "api"
-    #   run: make lint
-    # lint-tmux-client:
-    #   glob: "*.go"
-    #   root: "tmux-client"
-    #   run: make lint
+    lint-api:
+      glob: "*.go"
+      root: "api"
+      run: make lint
+    lint-tmux-client:
+      glob: "*.go"
+      root: "tmux-client"
+      run: make lint
+    fmt-ansible-runner:
+      glob: "*.py"
+      root: "ansible-runner"
+      run: uvx ruff format
+      stage_fixed: true
+    lint-ansible-runner:
+      glob: "*.py"
+      root: "ansible-runner"
+      run: uvx ruff check --fix

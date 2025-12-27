@@ -2,16 +2,16 @@ from fastapi import FastAPI, WebSocket, HTTPException
 from scalar_fastapi import get_scalar_api_reference
 import asyncio
 from pydantic import BaseModel
-import subprocess
 import uuid
-import os
 
 app = FastAPI(docs_url=None, redoc_url=None)
+
 
 class AnsibleJobRequest(BaseModel):
     vm_name: str
     playbook: str
     check: bool = False
+
 
 ALLOWED_PLAYBOOKS = {
     "ping.yml",
@@ -19,11 +19,13 @@ ALLOWED_PLAYBOOKS = {
 
 INVENTORY_PATH = "/ansible/inventory"
 
-JOBS={}
+JOBS = {}
+
 
 @app.get("/healthz")
 async def health_check():
     return {"status": "ok"}
+
 
 @app.get("/docs", include_in_schema=False)
 async def scalar_html():
@@ -31,6 +33,7 @@ async def scalar_html():
         openapi_url=app.openapi_url,
         title=app.title,
     )
+
 
 @app.post("/jobs")
 def create_job(req: AnsibleJobRequest):
@@ -47,12 +50,11 @@ def create_job(req: AnsibleJobRequest):
         "status": "pending",
     }
 
-    return {
-        "job_id": job_id,
-        "ws_url": f"/ws/jobs/{job_id}"
-    }
+    return {"job_id": job_id, "ws_url": f"/ws/jobs/{job_id}"}
+
 
 ANSIBLE_IMAGE = "ansible-sandbox"
+
 
 @app.websocket("/ws/jobs/{job_id}")
 async def run_job(ws: WebSocket, job_id: str):
@@ -69,10 +71,7 @@ async def run_job(ws: WebSocket, job_id: str):
     check = job["check"]
 
     ansible_cmd = (
-        f"ansible-playbook "
-        f"-i {INVENTORY_PATH} "
-        f"playbooks/{playbook} "
-        f"--limit {vm}"
+        f"ansible-playbook -i {INVENTORY_PATH} playbooks/{playbook} --limit {vm}"
     )
 
     if check:
@@ -81,17 +80,24 @@ async def run_job(ws: WebSocket, job_id: str):
     await ws.send_text(f"Running: {ansible_cmd}\n")
 
     docker_cmd = [
-        "docker", "run", "--rm",
-        "--network", "host",
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        "host",
         "--read-only",
-        "--pids-limit", "128",
-        "--memory", "512m",
-        "-e", f"ANSIBLE_CMD={ansible_cmd}",
-        "-v", "/ansible:/runner:ro",
-        "-v", "/var/run/libvirt:/var/run/libvirt",
-        ANSIBLE_IMAGE
+        "--pids-limit",
+        "128",
+        "--memory",
+        "512m",
+        "-e",
+        f"ANSIBLE_CMD={ansible_cmd}",
+        "-v",
+        "/ansible:/runner:ro",
+        "-v",
+        "/var/run/libvirt:/var/run/libvirt",
+        ANSIBLE_IMAGE,
     ]
-
 
     process = await asyncio.create_subprocess_exec(
         *docker_cmd,
