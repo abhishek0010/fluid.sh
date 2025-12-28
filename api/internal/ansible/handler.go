@@ -107,6 +107,9 @@ func (h *Handler) HandleGetJob(w http.ResponseWriter, r *http.Request) {
 // @Description Connects via WebSocket to run an Ansible job and stream output
 // @Tags Ansible
 // @Param job_id path string true "Job ID"
+// @Success 101 {string} string "Switching Protocols - WebSocket connection established"
+// @Failure 404 {string} string "Invalid job ID"
+// @Failure 409 {string} string "Job already started or finished"
 // @Router /v1/ansible/jobs/{job_id}/stream [get]
 func (h *Handler) HandleJobWebSocket(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "job_id")
