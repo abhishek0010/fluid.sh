@@ -72,6 +72,12 @@ RUN mkdir -p /var/lib/libvirt/images/base /var/lib/libvirt/images/jobs /var/lib/
 # Copy compiled binary
 COPY --from=builder /out/api /usr/local/bin/api
 
+# Copy API documentation
+COPY ./docs /usr/local/bin/docs
+
+# Set working directory to where your binary and docs are
+WORKDIR /usr/local/bin
+
 # Environment defaults (override in compose or runtime as needed)
 ENV API_HTTP_ADDR=:8080 \
     LOG_FORMAT=text \

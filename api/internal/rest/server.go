@@ -101,7 +101,7 @@ func (s *Server) routes() {
 			// SpecURL: "https://generator3.swagger.io/openapi.json",// allow external URL or local path file
 			SpecURL: "./docs/swagger.json",
 			CustomOptions: scalar.CustomOptions{
-				PageTitle: "Simple API",
+				PageTitle: "Virsh Sandbox API",
 			},
 			DarkMode: true,
 		})

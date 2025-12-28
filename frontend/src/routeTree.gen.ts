@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TmuxPageRouteImport } from './routes/tmux/page'
+import { Route as TmuxIdPageRouteImport } from './routes/tmux/[id]/page'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TmuxPageRoute = TmuxPageRouteImport.update({
+  id: '/tmux/page',
+  path: '/tmux/page',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TmuxIdPageRoute = TmuxIdPageRouteImport.update({
+  id: '/tmux/id/page',
+  path: '/tmux/id/page',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/tmux/page': typeof TmuxPageRoute
+  '/tmux/id/page': typeof TmuxIdPageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/tmux/page': typeof TmuxPageRoute
+  '/tmux/id/page': typeof TmuxIdPageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/tmux/page': typeof TmuxPageRoute
+  '/tmux/id/page': typeof TmuxIdPageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/tmux/page' | '/tmux/id/page'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/tmux/page' | '/tmux/id/page'
+  id: '__root__' | '/' | '/tmux/page' | '/tmux/id/page'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  TmuxPageRoute: typeof TmuxPageRoute
+  TmuxIdPageRoute: typeof TmuxIdPageRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tmux/page': {
+      id: '/tmux/page'
+      path: '/tmux/page'
+      fullPath: '/tmux/page'
+      preLoaderRoute: typeof TmuxPageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tmux/id/page': {
+      id: '/tmux/id/page'
+      path: '/tmux/id/page'
+      fullPath: '/tmux/id/page'
+      preLoaderRoute: typeof TmuxIdPageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  TmuxPageRoute: TmuxPageRoute,
+  TmuxIdPageRoute: TmuxIdPageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -18,7 +18,7 @@ services:
     container_name: virsh-sandbox-api
     build:
       context: ./api
-      dockerfile: api.Dockerfile
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       - postgres
@@ -94,25 +94,6 @@ services:
       - "8081:8081"
     healthcheck:
       test: ["CMD", "curl", "-fsSL", "http://127.0.0.1:8081/healthz"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-
-  ansible-runner:
-    container_name: virsh-sandbox-ansible-runner
-    build:
-      context: ./ansible-runner
-      dockerfile: Dockerfile
-    depends_on:
-      - postgres
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./ansible:/ansible:ro
-    healthcheck:
-      test: ["CMD", "curl", "-fsSL", "http://127.0.0.1:8000/healthz"]
       interval: 30s
       timeout: 5s
       retries: 5

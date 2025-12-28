@@ -5,8 +5,8 @@ procs:
     stop: "SIGTERM"
 
   api:
-    cwd: "api"
-    shell: "go run ./cmd/api"
+    cwd: "."
+    shell: "docker-compose up api --build"
     env:
       LOG_FORMAT: "text"
       LOG_LEVEL: "debug"
@@ -22,12 +22,8 @@ procs:
       IP_DISCOVERY_TIMEOUT_SEC: "120"
 
   tmux-client:
-    cwd: "tmux-client"
-    shell: "go run ./cmd/server"
-
-  ansible-runner:
-    cwd: "ansible-runner"
-    shell: "uv run fastapi dev api/main.py --port 8000"
+    cwd: "."
+    shell: "docker-compose up tmux-client --build"
 
   frontend:
     cwd: "frontend"
