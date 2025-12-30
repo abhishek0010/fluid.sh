@@ -1,0 +1,17 @@
+{
+  "inputs": [
+    {
+      "inputFile": "../../virsh-sandbox/docs/openapi.yaml",
+      "pathModification": {
+        "prepend": "/virsh-sandbox"
+      }
+    },
+    {
+      "inputFile": "../../tmux-client/docs/openapi.yaml",
+      "pathModification": {
+        "prepend": "/tmux-client"
+      }
+    }
+  ],
+  "output": "./combined.yaml"
+}

@@ -1,0 +1,3551 @@
+openapi: 3.0.3
+info:
+  contact: {}
+  description: API for managing virtual machine sandboxes using libvirt
+  title: virsh-sandbox API
+  version: 0.0.1-beta
+servers:
+  - url: '//localhost:8080/'
+tags:
+  - description: >-
+      Sandbox lifecycle management - create, start, run commands, snapshot, and
+      destroy sandboxes
+    name: Sandbox
+  - description: Virtual machine listing and information
+    name: VMs
+  - description: Ansible playbook job management
+    name: Ansible
+  - description: Health check endpoints
+    name: Health
+paths:
+  /virsh-sandbox/v1/ansible/jobs:
+    post:
+      description: Creates a new Ansible playbook execution job
+      operationId: createAnsibleJob
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/internal_ansible.JobRequest'
+        description: Job creation parameters
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_ansible.JobResponse'
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/virsh-sandbox_internal_error.ErrorResponse
+          description: Bad Request
+      summary: Create Ansible job
+      tags:
+        - Ansible
+      x-codegen-request-body-name: request
+  '/virsh-sandbox/v1/ansible/jobs/{job_id}':
+    get:
+      description: Gets the status of an Ansible job
+      operationId: getAnsibleJob
+      parameters:
+        - description: Job ID
+          in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_ansible.Job'
+          description: OK
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/virsh-sandbox_internal_error.ErrorResponse
+          description: Not Found
+      summary: Get Ansible job
+      tags:
+        - Ansible
+  '/virsh-sandbox/v1/ansible/jobs/{job_id}/stream':
+    get:
+      description: Connects via WebSocket to run an Ansible job and stream output
+      operationId: streamAnsibleJobOutput
+      parameters:
+        - description: Job ID
+          in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '101':
+          content:
+            '*/*':
+              schema:
+                type: string
+          description: Switching Protocols - WebSocket connection established
+        '404':
+          content:
+            '*/*':
+              schema:
+                type: string
+          description: Invalid job ID
+        '409':
+          content:
+            '*/*':
+              schema:
+                type: string
+          description: Job already started or finished
+      summary: Stream Ansible job output
+      tags:
+        - Ansible
+  /virsh-sandbox/v1/health:
+    get:
+      description: Returns service health status
+      operationId: getHealth
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+      summary: Health check
+      tags:
+        - Health
+  '/virsh-sandbox/v1/sandbox/{id}':
+    delete:
+      description: Destroys the sandbox and cleans up resources
+      operationId: destroySandbox
+      parameters:
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          content: {}
+          description: No Content
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Internal Server Error
+      summary: Destroy sandbox
+      tags:
+        - Sandbox
+  '/virsh-sandbox/v1/sandbox/{id}/diff':
+    post:
+      description: Computes differences between two snapshots
+      operationId: diffSnapshots
+      parameters:
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/internal_rest.diffRequest'
+        description: Diff parameters
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.diffResponse'
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Internal Server Error
+      summary: Diff snapshots
+      tags:
+        - Sandbox
+      x-codegen-request-body-name: request
+  '/virsh-sandbox/v1/sandbox/{id}/generate/{tool}':
+    post:
+      description: Generates Ansible or Puppet configuration from sandbox changes
+      operationId: generateConfiguration
+      parameters:
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: Tool type (ansible or puppet)
+          in: path
+          name: tool
+          required: true
+          schema:
+            type: string
+      responses:
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Bad Request
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.generateResponse'
+          description: Not Implemented
+      summary: Generate configuration
+      tags:
+        - Sandbox
+  '/virsh-sandbox/v1/sandbox/{id}/publish':
+    post:
+      description: Publishes sandbox changes to GitOps repository
+      operationId: publishChanges
+      parameters:
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/internal_rest.publishRequest'
+        description: Publish parameters
+        required: true
+      responses:
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Bad Request
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.publishResponse'
+          description: Not Implemented
+      summary: Publish changes
+      tags:
+        - Sandbox
+      x-codegen-request-body-name: request
+  '/virsh-sandbox/v1/sandbox/{id}/run':
+    post:
+      description: Executes a command inside the sandbox via SSH
+      operationId: runSandboxCommand
+      parameters:
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/internal_rest.runCommandRequest'
+        description: Command execution parameters
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.runCommandResponse'
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Internal Server Error
+      summary: Run command in sandbox
+      tags:
+        - Sandbox
+      x-codegen-request-body-name: request
+  '/virsh-sandbox/v1/sandbox/{id}/snapshot':
+    post:
+      description: Creates a snapshot of the sandbox
+      operationId: createSnapshot
+      parameters:
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/internal_rest.snapshotRequest'
+        description: Snapshot parameters
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.snapshotResponse'
+          description: Created
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Internal Server Error
+      summary: Create snapshot
+      tags:
+        - Sandbox
+      x-codegen-request-body-name: request
+  '/virsh-sandbox/v1/sandbox/{id}/sshkey':
+    post:
+      description: Injects a public SSH key for a user in the sandbox
+      operationId: injectSshKey
+      parameters:
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/internal_rest.injectSSHKeyRequest'
+        description: SSH key injection parameters
+        required: true
+      responses:
+        '204':
+          content: {}
+          description: No Content
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Internal Server Error
+      summary: Inject SSH key into sandbox
+      tags:
+        - Sandbox
+      x-codegen-request-body-name: request
+  '/virsh-sandbox/v1/sandbox/{id}/start':
+    post:
+      description: Starts the virtual machine sandbox
+      operationId: startSandbox
+      parameters:
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/internal_rest.startSandboxRequest'
+        description: Start parameters
+        required: false
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.startSandboxResponse'
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Internal Server Error
+      summary: Start sandbox
+      tags:
+        - Sandbox
+      x-codegen-request-body-name: request
+  /virsh-sandbox/v1/sandbox/create:
+    post:
+      description: Creates a new virtual machine sandbox by cloning from an existing VM
+      operationId: createSandbox
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/internal_rest.createSandboxRequest'
+        description: Sandbox creation parameters
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.createSandboxResponse'
+          description: Created
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Internal Server Error
+      summary: Create a new sandbox
+      tags:
+        - Sandbox
+      x-codegen-request-body-name: request
+  /virsh-sandbox/v1/vms:
+    get:
+      description: Returns a list of all virtual machines from the libvirt instance
+      operationId: listVirtualMachines
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.listVMsResponse'
+          description: OK
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Internal Server Error
+      summary: List all VMs
+      tags:
+        - VMs
+  /tmux-client/v1/audit/query:
+    post:
+      description: Queries the audit log for entries
+      operationId: queryAuditLog
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tmux-client_internal_types.AuditQuery'
+        description: Audit query
+        required: false
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.AuditQueryResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Query audit log
+      tags:
+        - Audit
+      x-codegen-request-body-name: request
+  /tmux-client/v1/audit/stats:
+    get:
+      description: Retrieves audit log statistics
+      operationId: getAuditStats
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+      summary: Get audit stats
+      tags:
+        - Audit
+  /tmux-client/v1/command/allowed:
+    get:
+      description: Retrieves the list of allowed and denied commands
+      operationId: getAllowedCommands
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+      summary: Get allowed commands
+      tags:
+        - Command
+  /tmux-client/v1/command/run:
+    post:
+      description: Executes a shell command
+      operationId: runCommand
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/tmux-client_internal_types.RunCommandRequest
+        description: Run command request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.RunCommandResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Forbidden
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Run command
+      tags:
+        - Command
+      x-codegen-request-body-name: request
+  /tmux-client/v1/file/copy:
+    post:
+      description: Copies a file from source to destination
+      operationId: copyFile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tmux-client_internal_types.CopyFileRequest'
+        description: Copy file request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.CopyFileResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Copy file
+      tags:
+        - File
+      x-codegen-request-body-name: request
+  /tmux-client/v1/file/delete:
+    post:
+      description: Deletes a file or directory
+      operationId: deleteFile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/tmux-client_internal_types.DeleteFileRequest
+        description: Delete file request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.DeleteFileResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Forbidden
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Delete file
+      tags:
+        - File
+      x-codegen-request-body-name: request
+  /tmux-client/v1/file/edit:
+    post:
+      description: Edits the content of a file
+      operationId: editFile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tmux-client_internal_types.EditFileRequest'
+        description: Edit file request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.EditFileResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Not Found
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Edit file
+      tags:
+        - File
+      x-codegen-request-body-name: request
+  /tmux-client/v1/file/exists:
+    post:
+      description: Checks if a file or directory exists
+      operationId: checkFileExists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        description: File exists request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Check if file exists
+      tags:
+        - File
+      x-codegen-request-body-name: request
+  /tmux-client/v1/file/hash:
+    post:
+      description: Computes the SHA256 hash of a file
+      operationId: getFileHash
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        description: File hash request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Get file hash
+      tags:
+        - File
+      x-codegen-request-body-name: request
+  /tmux-client/v1/file/list:
+    post:
+      description: Lists the contents of a directory
+      operationId: listDirectory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tmux-client_internal_types.ListDirRequest'
+        description: List directory request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.ListDirResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Not Found
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: List directory contents
+      tags:
+        - File
+      x-codegen-request-body-name: request
+  /tmux-client/v1/file/read:
+    post:
+      description: Reads the content of a file
+      operationId: readFile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tmux-client_internal_types.ReadFileRequest'
+        description: Read file request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.ReadFileResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Not Found
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Read file
+      tags:
+        - File
+      x-codegen-request-body-name: request
+  /tmux-client/v1/file/write:
+    post:
+      description: Writes content to a file
+      operationId: writeFile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tmux-client_internal_types.WriteFileRequest'
+        description: Write file request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.WriteFileResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Forbidden
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Write file
+      tags:
+        - File
+      x-codegen-request-body-name: request
+  /tmux-client/v1/health:
+    get:
+      description: Retrieves the health status of the API server and its components
+      operationId: getHealth1
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.HealthResponse'
+          description: OK
+      summary: Get health status
+      tags:
+        - Health
+  /tmux-client/v1/human/ask:
+    post:
+      description: Requests approval from a human for an action
+      operationId: askHuman
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tmux-client_internal_types.AskHumanRequest'
+        description: Ask human request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.AskHumanResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Request human approval
+      tags:
+        - Human
+      x-codegen-request-body-name: request
+  /tmux-client/v1/human/ask-async:
+    post:
+      description: Requests approval from a human asynchronously
+      operationId: askHumanAsync
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tmux-client_internal_types.AskHumanRequest'
+        description: Ask human async request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Request human approval asynchronously
+      tags:
+        - Human
+      x-codegen-request-body-name: request
+  /tmux-client/v1/human/pending:
+    get:
+      description: Lists all pending human approval requests
+      operationId: listPendingApprovals
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.ListApprovalsResponse
+          description: OK
+      summary: List pending approvals
+      tags:
+        - Human
+  '/tmux-client/v1/human/pending/{requestID}':
+    delete:
+      description: Cancels a pending approval request
+      operationId: cancelApproval
+      parameters:
+        - description: Request ID
+          in: path
+          name: requestID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Not Found
+      summary: Cancel approval
+      tags:
+        - Human
+    get:
+      description: Retrieves a specific pending approval request
+      operationId: getPendingApproval
+      parameters:
+        - description: Request ID
+          in: path
+          name: requestID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.PendingApproval
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Not Found
+      summary: Get pending approval
+      tags:
+        - Human
+  /tmux-client/v1/human/respond:
+    post:
+      description: Responds to a pending approval request
+      operationId: respondToApproval
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tmux-client_internal_types.ApproveRequest'
+        description: Approve request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.AskHumanResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Not Found
+      summary: Respond to approval
+      tags:
+        - Human
+      x-codegen-request-body-name: request
+  /tmux-client/v1/plan/:
+    get:
+      description: Lists all execution plans
+      operationId: listPlans
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.ListPlansResponse
+          description: OK
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: List plans
+      tags:
+        - Plan
+  '/tmux-client/v1/plan/{planID}':
+    delete:
+      description: Deletes an execution plan
+      operationId: deletePlan
+      parameters:
+        - description: Plan ID
+          in: path
+          name: planID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Not Found
+      summary: Delete plan
+      tags:
+        - Plan
+    get:
+      description: Retrieves a specific execution plan
+      operationId: getPlan
+      parameters:
+        - description: Plan ID
+          in: path
+          name: planID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.GetPlanResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Not Found
+      summary: Get plan
+      tags:
+        - Plan
+  '/tmux-client/v1/plan/{planID}/abort':
+    post:
+      description: Aborts an execution plan
+      operationId: abortPlan
+      parameters:
+        - description: Plan ID
+          in: path
+          name: planID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        description: Abort plan request
+        required: false
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Not Found
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Abort plan
+      tags:
+        - Plan
+      x-codegen-request-body-name: request
+  '/tmux-client/v1/plan/{planID}/advance':
+    post:
+      description: Advances to the next step in a plan
+      operationId: advancePlanStep
+      parameters:
+        - description: Plan ID
+          in: path
+          name: planID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        description: Advance step request
+        required: false
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Not Found
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Advance plan step
+      tags:
+        - Plan
+      x-codegen-request-body-name: request
+  /tmux-client/v1/plan/create:
+    post:
+      description: Creates a new execution plan
+      operationId: createPlan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/tmux-client_internal_types.CreatePlanRequest
+        description: Create plan request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.CreatePlanResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Create plan
+      tags:
+        - Plan
+      x-codegen-request-body-name: request
+  /tmux-client/v1/plan/update:
+    post:
+      description: Updates an execution plan
+      operationId: updatePlan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/tmux-client_internal_types.UpdatePlanRequest
+        description: Update plan request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.UpdatePlanResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Not Found
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Update plan
+      tags:
+        - Plan
+      x-codegen-request-body-name: request
+  /tmux-client/v1/tmux/panes:
+    get:
+      description: Get a list of panes in a tmux session
+      operationId: listTmuxPanes
+      parameters:
+        - description: Session name
+          in: query
+          name: session
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.ListPanesResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: List tmux panes
+      tags:
+        - Tmux
+  '/tmux-client/v1/tmux/panes/{paneID}':
+    delete:
+      description: Kills a tmux pane
+      operationId: killTmuxPane
+      parameters:
+        - description: Pane ID
+          in: path
+          name: paneID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Kill tmux pane
+      tags:
+        - Tmux
+  /tmux-client/v1/tmux/panes/create:
+    post:
+      description: Creates a new tmux pane
+      operationId: createTmuxPane
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/tmux-client_internal_types.CreatePaneRequest
+        description: Create pane request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.CreatePaneResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Create tmux pane
+      tags:
+        - Tmux
+      x-codegen-request-body-name: request
+  /tmux-client/v1/tmux/panes/read:
+    post:
+      description: Reads the content of a tmux pane
+      operationId: readTmuxPane
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tmux-client_internal_types.ReadPaneRequest'
+        description: Read pane request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.ReadPaneResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Read tmux pane
+      tags:
+        - Tmux
+      x-codegen-request-body-name: request
+  /tmux-client/v1/tmux/panes/send-keys:
+    post:
+      description: Sends keystrokes to a tmux pane
+      operationId: sendKeysToPane
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tmux-client_internal_types.SendKeysRequest'
+        description: Send keys request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.SendKeysResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Forbidden
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Send keys to tmux pane
+      tags:
+        - Tmux
+      x-codegen-request-body-name: request
+  /tmux-client/v1/tmux/panes/switch:
+    post:
+      description: Switches to a specific tmux pane
+      operationId: switchTmuxPane
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/tmux-client_internal_types.SwitchPaneRequest
+        description: Switch pane request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.SwitchPaneResponse
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Switch tmux pane
+      tags:
+        - Tmux
+      x-codegen-request-body-name: request
+  /tmux-client/v1/tmux/sessions:
+    get:
+      description: Get a list of all active tmux sessions
+      operationId: listTmuxSessions
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/tmux-client_internal_types.SessionInfo'
+                type: array
+          description: OK
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: List tmux sessions
+      tags:
+        - Tmux
+  '/tmux-client/v1/tmux/sessions/{sessionId}/release':
+    post:
+      description: Releases (kills) a tmux session by ID
+      operationId: releaseTmuxSession
+      parameters:
+        - description: Session ID
+          in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/tmux-client_internal_types.KillSessionResponse
+          description: OK
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Release tmux session
+      tags:
+        - Tmux
+  '/tmux-client/v1/tmux/sessions/{sessionName}':
+    delete:
+      description: Kills a tmux session
+      operationId: killTmuxSession
+      parameters:
+        - description: Session name
+          in: path
+          name: sessionName
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Kill tmux session
+      tags:
+        - Tmux
+  /tmux-client/v1/tmux/sessions/create:
+    post:
+      description: Creates a new tmux session
+      operationId: createTmuxSession
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        description: Create session request
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Bad Request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: Create tmux session
+      tags:
+        - Tmux
+      x-codegen-request-body-name: request
+  /tmux-client/v1/tmux/windows:
+    get:
+      description: Get a list of windows in a tmux session
+      operationId: listTmuxWindows
+      parameters:
+        - description: Session name
+          in: query
+          name: session
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/tmux-client_internal_types.WindowInfo'
+                type: array
+          description: OK
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+          description: Internal Server Error
+      summary: List tmux windows
+      tags:
+        - Tmux
+components:
+  schemas:
+    internal_ansible.Job:
+      example:
+        check: true
+        id: id
+        vm_name: vm_name
+        playbook: playbook
+        status: pending
+      properties:
+        check:
+          type: boolean
+        id:
+          type: string
+        playbook:
+          type: string
+        status:
+          $ref: '#/components/schemas/internal_ansible.JobStatus'
+        vm_name:
+          type: string
+      type: object
+    internal_ansible.JobRequest:
+      properties:
+        check:
+          type: boolean
+        playbook:
+          type: string
+        vm_name:
+          type: string
+      type: object
+    internal_ansible.JobResponse:
+      example:
+        job_id: job_id
+        ws_url: ws_url
+      properties:
+        job_id:
+          type: string
+        ws_url:
+          type: string
+      type: object
+    internal_ansible.JobStatus:
+      enum:
+        - pending
+        - running
+        - finished
+        - failed
+      type: string
+      x-enum-varnames:
+        - JobStatusPending
+        - JobStatusRunning
+        - JobStatusFinished
+        - JobStatusFailed
+    internal_rest.ErrorResponse:
+      example:
+        code: 0
+        details: details
+        error: error
+      properties:
+        code:
+          type: integer
+        details:
+          type: string
+        error:
+          type: string
+      type: object
+    internal_rest.createSandboxRequest:
+      properties:
+        agent_id:
+          description: required
+          type: string
+        cpu:
+          description: optional; default from service config if <=0
+          type: integer
+        memory_mb:
+          description: optional; default from service config if <=0
+          type: integer
+        source_vm_name:
+          description: required; name of existing VM in libvirt to clone from
+          type: string
+        vm_name:
+          description: optional; generated if empty
+          type: string
+      type: object
+    internal_rest.createSandboxResponse:
+      example:
+        sandbox:
+          base_image: base_image
+          agent_id: agent_id
+          updated_at: updated_at
+          job_id: job_id
+          ttl_seconds: 0
+          created_at: created_at
+          sandbox_name: sandbox_name
+          id: id
+          ip_address: ip_address
+          state: CREATED
+          deleted_at: deleted_at
+          network: network
+      properties:
+        sandbox:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Sandbox'
+      type: object
+    internal_rest.diffRequest:
+      properties:
+        from_snapshot:
+          description: required
+          type: string
+        to_snapshot:
+          description: required
+          type: string
+      type: object
+    internal_rest.diffResponse:
+      example:
+        diff:
+          to_snapshot: to_snapshot
+          from_snapshot: from_snapshot
+          sandbox_id: sandbox_id
+          created_at: created_at
+          id: id
+          diff_json: '{}'
+      properties:
+        diff:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Diff'
+      type: object
+    internal_rest.generateResponse:
+      example:
+        note: note
+        message: message
+      properties:
+        message:
+          type: string
+        note:
+          type: string
+      type: object
+    internal_rest.injectSSHKeyRequest:
+      properties:
+        public_key:
+          description: required
+          type: string
+        username:
+          description: 'required (explicit); typical: "ubuntu" or "centos"'
+          type: string
+      type: object
+    internal_rest.listVMsResponse:
+      example:
+        vms:
+          - name: name
+            state: state
+            persistent: true
+            uuid: uuid
+            disk_path: disk_path
+          - name: name
+            state: state
+            persistent: true
+            uuid: uuid
+            disk_path: disk_path
+      properties:
+        vms:
+          items:
+            $ref: '#/components/schemas/internal_rest.vmInfo'
+          type: array
+      type: object
+    internal_rest.publishRequest:
+      properties:
+        job_id:
+          description: required
+          type: string
+        message:
+          description: optional commit/PR message
+          type: string
+        reviewers:
+          description: optional
+          items:
+            type: string
+          type: array
+      type: object
+    internal_rest.publishResponse:
+      example:
+        note: note
+        message: message
+      properties:
+        message:
+          type: string
+        note:
+          type: string
+      type: object
+    internal_rest.runCommandRequest:
+      properties:
+        command:
+          description: required
+          type: string
+        env:
+          additionalProperties:
+            type: string
+          description: optional
+          type: object
+        private_key_path:
+          description: required; path on API host
+          type: string
+        timeout_sec:
+          description: optional; default from service config
+          type: integer
+        username:
+          description: required
+          type: string
+      type: object
+    internal_rest.runCommandResponse:
+      example:
+        command:
+          metadata:
+            redacted:
+              key: redacted
+            work_dir: work_dir
+            user: user
+            timeout: 6
+          stdout: stdout
+          env_json: env_json
+          exit_code: 0
+          sandbox_id: sandbox_id
+          started_at: started_at
+          id: id
+          stderr: stderr
+          command: command
+          ended_at: ended_at
+      properties:
+        command:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Command'
+      type: object
+    internal_rest.snapshotRequest:
+      properties:
+        external:
+          description: optional; default false (internal snapshot)
+          type: boolean
+        name:
+          description: required
+          type: string
+      type: object
+    internal_rest.snapshotResponse:
+      example:
+        snapshot:
+          ref: ref
+          kind: INTERNAL
+          name: name
+          sandbox_id: sandbox_id
+          created_at: created_at
+          id: id
+          meta_json: meta_json
+      properties:
+        snapshot:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Snapshot'
+      type: object
+    internal_rest.startSandboxRequest:
+      properties:
+        wait_for_ip:
+          description: optional; default false
+          type: boolean
+      type: object
+    internal_rest.startSandboxResponse:
+      example:
+        ip_address: ip_address
+      properties:
+        ip_address:
+          type: string
+      type: object
+    internal_rest.vmInfo:
+      example:
+        name: name
+        state: state
+        persistent: true
+        uuid: uuid
+        disk_path: disk_path
+      properties:
+        disk_path:
+          type: string
+        name:
+          type: string
+        persistent:
+          type: boolean
+        state:
+          type: string
+        uuid:
+          type: string
+      type: object
+    time.Duration:
+      enum:
+        - -9223372036854776000
+        - 9223372036854776000
+        - 1
+        - 1000
+        - 1000000
+        - 1000000000
+        - 60000000000
+        - 3600000000000
+      format: int64
+      type: integer
+      x-enum-varnames:
+        - minDuration
+        - maxDuration
+        - Nanosecond
+        - Microsecond
+        - Millisecond
+        - Second
+        - Minute
+        - Hour
+    virsh-sandbox_internal_ansible.Job:
+      properties:
+        check:
+          type: boolean
+        id:
+          type: string
+        playbook:
+          type: string
+        status:
+          $ref: '#/components/schemas/virsh-sandbox_internal_ansible.JobStatus'
+        vm_name:
+          type: string
+      type: object
+    virsh-sandbox_internal_ansible.JobRequest:
+      properties:
+        check:
+          type: boolean
+        playbook:
+          type: string
+        vm_name:
+          type: string
+      type: object
+    virsh-sandbox_internal_ansible.JobResponse:
+      properties:
+        job_id:
+          type: string
+        ws_url:
+          type: string
+      type: object
+    virsh-sandbox_internal_ansible.JobStatus:
+      enum:
+        - pending
+        - running
+        - finished
+        - failed
+      type: string
+      x-enum-varnames:
+        - JobStatusPending
+        - JobStatusRunning
+        - JobStatusFinished
+        - JobStatusFailed
+    virsh-sandbox_internal_error.ErrorResponse:
+      example:
+        code: 0
+        details: details
+        error: error
+      properties:
+        code:
+          type: integer
+        details:
+          type: string
+        error:
+          type: string
+      type: object
+    virsh-sandbox_internal_rest.ErrorResponse:
+      properties:
+        code:
+          type: integer
+        details:
+          type: string
+        error:
+          type: string
+      type: object
+    virsh-sandbox_internal_rest.createSandboxRequest:
+      properties:
+        agent_id:
+          description: required
+          type: string
+        cpu:
+          description: optional; default from service config if <=0
+          type: integer
+        memory_mb:
+          description: optional; default from service config if <=0
+          type: integer
+        source_vm_name:
+          description: required; name of existing VM in libvirt to clone from
+          type: string
+        vm_name:
+          description: optional; generated if empty
+          type: string
+      type: object
+    virsh-sandbox_internal_rest.createSandboxResponse:
+      properties:
+        sandbox:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Sandbox'
+      type: object
+    virsh-sandbox_internal_rest.diffRequest:
+      properties:
+        from_snapshot:
+          description: required
+          type: string
+        to_snapshot:
+          description: required
+          type: string
+      type: object
+    virsh-sandbox_internal_rest.diffResponse:
+      properties:
+        diff:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Diff'
+      type: object
+    virsh-sandbox_internal_rest.generateResponse:
+      properties:
+        message:
+          type: string
+        note:
+          type: string
+      type: object
+    virsh-sandbox_internal_rest.injectSSHKeyRequest:
+      properties:
+        public_key:
+          description: required
+          type: string
+        username:
+          description: 'required (explicit); typical: "ubuntu" or "centos"'
+          type: string
+      type: object
+    virsh-sandbox_internal_rest.listVMsResponse:
+      properties:
+        vms:
+          items:
+            $ref: '#/components/schemas/virsh-sandbox_internal_rest.vmInfo'
+          type: array
+      type: object
+    virsh-sandbox_internal_rest.publishRequest:
+      properties:
+        job_id:
+          description: required
+          type: string
+        message:
+          description: optional commit/PR message
+          type: string
+        reviewers:
+          description: optional
+          items:
+            type: string
+          type: array
+      type: object
+    virsh-sandbox_internal_rest.publishResponse:
+      properties:
+        message:
+          type: string
+        note:
+          type: string
+      type: object
+    virsh-sandbox_internal_rest.runCommandRequest:
+      properties:
+        command:
+          description: required
+          type: string
+        env:
+          additionalProperties:
+            type: string
+          description: optional
+          type: object
+        private_key_path:
+          description: required; path on API host
+          type: string
+        timeout_sec:
+          description: optional; default from service config
+          type: integer
+        username:
+          description: required
+          type: string
+      type: object
+    virsh-sandbox_internal_rest.runCommandResponse:
+      properties:
+        command:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Command'
+      type: object
+    virsh-sandbox_internal_rest.snapshotRequest:
+      properties:
+        external:
+          description: optional; default false (internal snapshot)
+          type: boolean
+        name:
+          description: required
+          type: string
+      type: object
+    virsh-sandbox_internal_rest.snapshotResponse:
+      properties:
+        snapshot:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Snapshot'
+      type: object
+    virsh-sandbox_internal_rest.startSandboxRequest:
+      properties:
+        wait_for_ip:
+          description: optional; default false
+          type: boolean
+      type: object
+    virsh-sandbox_internal_rest.startSandboxResponse:
+      properties:
+        ip_address:
+          type: string
+      type: object
+    virsh-sandbox_internal_rest.vmInfo:
+      properties:
+        disk_path:
+          type: string
+        name:
+          type: string
+        persistent:
+          type: boolean
+        state:
+          type: string
+        uuid:
+          type: string
+      type: object
+    virsh-sandbox_internal_store.ChangeDiff:
+      properties:
+        commands_run:
+          items:
+            $ref: '#/components/schemas/virsh-sandbox_internal_store.CommandSummary'
+          type: array
+        files_added:
+          items:
+            type: string
+          type: array
+        files_modified:
+          items:
+            type: string
+          type: array
+        files_removed:
+          items:
+            type: string
+          type: array
+        packages_added:
+          items:
+            $ref: '#/components/schemas/virsh-sandbox_internal_store.PackageInfo'
+          type: array
+        packages_removed:
+          items:
+            $ref: '#/components/schemas/virsh-sandbox_internal_store.PackageInfo'
+          type: array
+        services_changed:
+          items:
+            $ref: '#/components/schemas/virsh-sandbox_internal_store.ServiceChange'
+          type: array
+      type: object
+    virsh-sandbox_internal_store.Command:
+      example:
+        metadata:
+          redacted:
+            key: redacted
+          work_dir: work_dir
+          user: user
+          timeout: 6
+        stdout: stdout
+        env_json: env_json
+        exit_code: 0
+        sandbox_id: sandbox_id
+        started_at: started_at
+        id: id
+        stderr: stderr
+        command: command
+        ended_at: ended_at
+      properties:
+        command:
+          type: string
+        ended_at:
+          type: string
+        env_json:
+          description: JSON-encoded env map
+          type: string
+        exit_code:
+          type: integer
+        id:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.CommandExecRecord'
+        sandbox_id:
+          type: string
+        started_at:
+          type: string
+        stderr:
+          type: string
+        stdout:
+          type: string
+      type: object
+    virsh-sandbox_internal_store.CommandExecRecord:
+      example:
+        redacted:
+          key: redacted
+        work_dir: work_dir
+        user: user
+        timeout: 6
+      properties:
+        redacted:
+          additionalProperties:
+            type: string
+          description: placeholders for secrets redaction
+          type: object
+        timeout:
+          $ref: '#/components/schemas/time.Duration'
+        user:
+          type: string
+        work_dir:
+          type: string
+      type: object
+    virsh-sandbox_internal_store.CommandSummary:
+      properties:
+        at:
+          type: string
+        cmd:
+          type: string
+        exit_code:
+          type: integer
+      type: object
+    virsh-sandbox_internal_store.Diff:
+      example:
+        to_snapshot: to_snapshot
+        from_snapshot: from_snapshot
+        sandbox_id: sandbox_id
+        created_at: created_at
+        id: id
+        diff_json: '{}'
+      properties:
+        created_at:
+          type: string
+        diff_json:
+          allOf:
+            - $ref: '#/components/schemas/virsh-sandbox_internal_store.ChangeDiff'
+          description: JSON-encoded change diff
+          type: object
+        from_snapshot:
+          type: string
+        id:
+          type: string
+        sandbox_id:
+          type: string
+        to_snapshot:
+          type: string
+      type: object
+    virsh-sandbox_internal_store.PackageInfo:
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+      type: object
+    virsh-sandbox_internal_store.Sandbox:
+      example:
+        base_image: base_image
+        agent_id: agent_id
+        updated_at: updated_at
+        job_id: job_id
+        ttl_seconds: 0
+        created_at: created_at
+        sandbox_name: sandbox_name
+        id: id
+        ip_address: ip_address
+        state: CREATED
+        deleted_at: deleted_at
+        network: network
+      properties:
+        agent_id:
+          description: requesting agent identity
+          type: string
+        base_image:
+          description: base qcow2 filename
+          type: string
+        created_at:
+          description: Metadata
+          type: string
+        deleted_at:
+          type: string
+        id:
+          description: 'e.g., "SBX-0001"'
+          type: string
+        ip_address:
+          description: discovered IP (if any)
+          type: string
+        job_id:
+          description: correlation id for the end-to-end change set
+          type: string
+        network:
+          description: libvirt network name
+          type: string
+        sandbox_name:
+          description: libvirt domain name
+          type: string
+        state:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.SandboxState'
+        ttl_seconds:
+          description: optional TTL for auto GC
+          type: integer
+        updated_at:
+          type: string
+      type: object
+    virsh-sandbox_internal_store.SandboxState:
+      enum:
+        - CREATED
+        - STARTING
+        - RUNNING
+        - STOPPED
+        - DESTROYED
+        - ERROR
+      type: string
+      x-enum-varnames:
+        - SandboxStateCreated
+        - SandboxStateStarting
+        - SandboxStateRunning
+        - SandboxStateStopped
+        - SandboxStateDestroyed
+        - SandboxStateError
+    virsh-sandbox_internal_store.ServiceChange:
+      properties:
+        enabled:
+          type: boolean
+        name:
+          type: string
+        state:
+          description: started|stopped|restarted|reloaded
+          type: string
+      type: object
+    virsh-sandbox_internal_store.Snapshot:
+      example:
+        ref: ref
+        kind: INTERNAL
+        name: name
+        sandbox_id: sandbox_id
+        created_at: created_at
+        id: id
+        meta_json: meta_json
+      properties:
+        created_at:
+          type: string
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.SnapshotKind'
+        meta_json:
+          description: optional JSON metadata
+          type: string
+        name:
+          description: logical name (unique per sandbox)
+          type: string
+        ref:
+          description: >-
+            Ref is a backend-specific reference: for internal snapshots this
+            could be a UUID or name,
+
+            for external snapshots it could be a file path to the overlay qcow2.
+          type: string
+        sandbox_id:
+          type: string
+      type: object
+    virsh-sandbox_internal_store.SnapshotKind:
+      enum:
+        - INTERNAL
+        - EXTERNAL
+      type: string
+      x-enum-varnames:
+        - SnapshotKindInternal
+        - SnapshotKindExternal
+    tmux-client_internal_types.APIError:
+      example:
+        code: code
+        details: details
+        message: message
+      properties:
+        code:
+          type: string
+        details:
+          type: string
+        message:
+          type: string
+      type: object
+    tmux-client_internal_types.ApprovalStatus:
+      enum:
+        - pending
+        - approved
+        - rejected
+        - expired
+      type: string
+      x-enum-varnames:
+        - ApprovalPending
+        - ApprovalApproved
+        - ApprovalRejected
+        - ApprovalExpired
+    tmux-client_internal_types.ApproveRequest:
+      properties:
+        approved:
+          type: boolean
+        approved_by:
+          type: string
+        comment:
+          type: string
+        request_id:
+          type: string
+      type: object
+    tmux-client_internal_types.AskHumanRequest:
+      properties:
+        action_type:
+          description: 'Category: "destructive", "sensitive", "irreversible"'
+          type: string
+        alternatives:
+          description: Suggested alternative actions
+          items:
+            type: string
+          type: array
+        context:
+          description: Additional context
+          type: string
+        prompt:
+          description: Human-readable description
+          type: string
+        timeout_secs:
+          description: 'Auto-reject after timeout, 0 = no timeout'
+          type: integer
+        urgency:
+          description: '"low", "medium", "high"'
+          type: string
+      type: object
+    tmux-client_internal_types.AskHumanResponse:
+      example:
+        approved: true
+        approved_by: approved_by
+        expires_at: expires_at
+        approved_at: approved_at
+        comment: comment
+        request_id: request_id
+        status: pending
+      properties:
+        approved:
+          type: boolean
+        approved_at:
+          type: string
+        approved_by:
+          type: string
+        comment:
+          type: string
+        expires_at:
+          type: string
+        request_id:
+          type: string
+        status:
+          $ref: '#/components/schemas/tmux-client_internal_types.ApprovalStatus'
+      type: object
+    tmux-client_internal_types.AuditEntry:
+      example:
+        duration_ms: 6
+        result:
+          - 1
+          - 1
+        action: action
+        arguments:
+          - 0
+          - 0
+        client_ip: client_ip
+        error:
+          code: code
+          details: details
+          message: message
+        request_id: request_id
+        tool: tool
+        user_agent: user_agent
+        timestamp: timestamp
+      properties:
+        action:
+          type: string
+        arguments:
+          items:
+            type: integer
+          type: array
+        client_ip:
+          type: string
+        duration_ms:
+          type: integer
+        error:
+          $ref: '#/components/schemas/tmux-client_internal_types.APIError'
+        request_id:
+          type: string
+        result:
+          items:
+            type: integer
+          type: array
+        timestamp:
+          type: string
+        tool:
+          type: string
+        user_agent:
+          type: string
+      type: object
+    tmux-client_internal_types.AuditQuery:
+      properties:
+        action:
+          type: string
+        limit:
+          type: integer
+        request_id:
+          type: string
+        since:
+          type: string
+        tool:
+          type: string
+        until:
+          type: string
+      type: object
+    tmux-client_internal_types.AuditQueryResponse:
+      example:
+        entries:
+          - duration_ms: 6
+            result:
+              - 1
+              - 1
+            action: action
+            arguments:
+              - 0
+              - 0
+            client_ip: client_ip
+            error:
+              code: code
+              details: details
+              message: message
+            request_id: request_id
+            tool: tool
+            user_agent: user_agent
+            timestamp: timestamp
+          - duration_ms: 6
+            result:
+              - 1
+              - 1
+            action: action
+            arguments:
+              - 0
+              - 0
+            client_ip: client_ip
+            error:
+              code: code
+              details: details
+              message: message
+            request_id: request_id
+            tool: tool
+            user_agent: user_agent
+            timestamp: timestamp
+        total_count: 5
+        has_more: true
+      properties:
+        entries:
+          items:
+            $ref: '#/components/schemas/tmux-client_internal_types.AuditEntry'
+          type: array
+        has_more:
+          type: boolean
+        total_count:
+          type: integer
+      type: object
+    tmux-client_internal_types.ComponentHealth:
+      example:
+        name: name
+        message: message
+        status: healthy
+      properties:
+        message:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/tmux-client_internal_types.HealthStatus'
+      type: object
+    tmux-client_internal_types.CopyFileRequest:
+      properties:
+        destination:
+          type: string
+        overwrite:
+          type: boolean
+        source:
+          type: string
+      type: object
+    tmux-client_internal_types.CopyFileResponse:
+      example:
+        bytes_copied: 0
+        copied: true
+        destination: destination
+        source: source
+      properties:
+        bytes_copied:
+          type: integer
+        copied:
+          type: boolean
+        destination:
+          type: string
+        source:
+          type: string
+      type: object
+    tmux-client_internal_types.CreatePaneRequest:
+      properties:
+        command:
+          type: string
+        horizontal:
+          description: false = vertical split
+          type: boolean
+        new_window:
+          description: true = create new window instead of split
+          type: boolean
+        session_name:
+          type: string
+        window_name:
+          type: string
+      type: object
+    tmux-client_internal_types.CreatePaneResponse:
+      example:
+        session_name: session_name
+        pane_index: 0
+        window_index: 6
+        pane_id: pane_id
+      properties:
+        pane_id:
+          type: string
+        pane_index:
+          type: integer
+        session_name:
+          type: string
+        window_index:
+          type: integer
+      type: object
+    tmux-client_internal_types.CreatePlanRequest:
+      properties:
+        description:
+          type: string
+        name:
+          type: string
+        steps:
+          description: Step descriptions
+          items:
+            type: string
+          type: array
+      type: object
+    tmux-client_internal_types.CreatePlanResponse:
+      example:
+        plan:
+          completed_at: completed_at
+          updated_at: updated_at
+          name: name
+          created_at: created_at
+          description: description
+          id: id
+          steps:
+            - result: result
+              completed_at: completed_at
+              description: description
+              index: 6
+              started_at: started_at
+              error: error
+              status: pending
+            - result: result
+              completed_at: completed_at
+              description: description
+              index: 6
+              started_at: started_at
+              error: error
+              status: pending
+          current_step: 0
+          status: pending
+        plan_id: plan_id
+      properties:
+        plan:
+          $ref: '#/components/schemas/tmux-client_internal_types.Plan'
+        plan_id:
+          type: string
+      type: object
+    tmux-client_internal_types.DeleteFileRequest:
+      properties:
+        path:
+          type: string
+        recursive:
+          description: For directories
+          type: boolean
+      type: object
+    tmux-client_internal_types.DeleteFileResponse:
+      example:
+        path: path
+        deleted: true
+        was_dir: true
+      properties:
+        deleted:
+          type: boolean
+        path:
+          type: string
+        was_dir:
+          type: boolean
+      type: object
+    tmux-client_internal_types.EditFileRequest:
+      properties:
+        all:
+          description: 'Replace all occurrences (default: first only)'
+          type: boolean
+        new_text:
+          description: Replacement text
+          type: string
+        old_text:
+          description: Text to find and replace
+          type: string
+        path:
+          type: string
+      type: object
+    tmux-client_internal_types.EditFileResponse:
+      example:
+        path: path
+        content_after: content_after
+        edited: true
+        diff: diff
+        content_before: content_before
+        replacements: 0
+      properties:
+        content_after:
+          description: For audit trail
+          type: string
+        content_before:
+          description: For audit trail
+          type: string
+        diff:
+          description: Unified diff format
+          type: string
+        edited:
+          type: boolean
+        path:
+          type: string
+        replacements:
+          type: integer
+      type: object
+    tmux-client_internal_types.FileInfo:
+      example:
+        mode: mode
+        path: path
+        mod_time: mod_time
+        size: 0
+        is_dir: true
+        name: name
+      properties:
+        is_dir:
+          type: boolean
+        mod_time:
+          type: string
+        mode:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+        size:
+          type: integer
+      type: object
+    tmux-client_internal_types.GetPlanResponse:
+      example:
+        plan:
+          completed_at: completed_at
+          updated_at: updated_at
+          name: name
+          created_at: created_at
+          description: description
+          id: id
+          steps:
+            - result: result
+              completed_at: completed_at
+              description: description
+              index: 6
+              started_at: started_at
+              error: error
+              status: pending
+            - result: result
+              completed_at: completed_at
+              description: description
+              index: 6
+              started_at: started_at
+              error: error
+              status: pending
+          current_step: 0
+          status: pending
+      properties:
+        plan:
+          $ref: '#/components/schemas/tmux-client_internal_types.Plan'
+      type: object
+    tmux-client_internal_types.HealthResponse:
+      example:
+        components:
+          - name: name
+            message: message
+            status: healthy
+          - name: name
+            message: message
+            status: healthy
+        version: version
+        status: null
+        uptime: uptime
+      properties:
+        components:
+          items:
+            $ref: '#/components/schemas/tmux-client_internal_types.ComponentHealth'
+          type: array
+        status:
+          $ref: '#/components/schemas/tmux-client_internal_types.HealthStatus'
+        uptime:
+          type: string
+        version:
+          type: string
+      type: object
+    tmux-client_internal_types.HealthStatus:
+      enum:
+        - healthy
+        - degraded
+        - unhealthy
+      type: string
+      x-enum-varnames:
+        - HealthStatusHealthy
+        - HealthStatusDegraded
+        - HealthStatusUnhealthy
+    tmux-client_internal_types.KillSessionResponse:
+      example:
+        session_name: session_name
+        success: true
+      properties:
+        session_name:
+          type: string
+        success:
+          type: boolean
+      type: object
+    tmux-client_internal_types.ListApprovalsResponse:
+      example:
+        pending:
+          - expires_at: expires_at
+            action_type: action_type
+            urgency: urgency
+            context: context
+            created_at: created_at
+            prompt: prompt
+            request_id: request_id
+            status: pending
+          - expires_at: expires_at
+            action_type: action_type
+            urgency: urgency
+            context: context
+            created_at: created_at
+            prompt: prompt
+            request_id: request_id
+            status: pending
+      properties:
+        pending:
+          items:
+            $ref: '#/components/schemas/tmux-client_internal_types.PendingApproval'
+          type: array
+      type: object
+    tmux-client_internal_types.ListDirRequest:
+      properties:
+        max_depth:
+          type: integer
+        path:
+          type: string
+        recursive:
+          type: boolean
+      type: object
+    tmux-client_internal_types.ListDirResponse:
+      example:
+        path: path
+        files:
+          - mode: mode
+            path: path
+            mod_time: mod_time
+            size: 0
+            is_dir: true
+            name: name
+          - mode: mode
+            path: path
+            mod_time: mod_time
+            size: 0
+            is_dir: true
+            name: name
+      properties:
+        files:
+          items:
+            $ref: '#/components/schemas/tmux-client_internal_types.FileInfo'
+          type: array
+        path:
+          type: string
+      type: object
+    tmux-client_internal_types.ListPanesResponse:
+      example:
+        panes:
+          - current_path: current_path
+            session_name: session_name
+            window_name: window_name
+            pane_pid: 1
+            pane_index: 6
+            pane_height: 0
+            pane_title: pane_title
+            active: true
+            window_index: 5
+            pane_id: pane_id
+            pane_width: 5
+          - current_path: current_path
+            session_name: session_name
+            window_name: window_name
+            pane_pid: 1
+            pane_index: 6
+            pane_height: 0
+            pane_title: pane_title
+            active: true
+            window_index: 5
+            pane_id: pane_id
+            pane_width: 5
+      properties:
+        panes:
+          items:
+            $ref: '#/components/schemas/tmux-client_internal_types.PaneInfo'
+          type: array
+      type: object
+    tmux-client_internal_types.ListPlansResponse:
+      example:
+        plans:
+          - completed_at: completed_at
+            updated_at: updated_at
+            name: name
+            created_at: created_at
+            description: description
+            id: id
+            steps:
+              - result: result
+                completed_at: completed_at
+                description: description
+                index: 6
+                started_at: started_at
+                error: error
+                status: pending
+              - result: result
+                completed_at: completed_at
+                description: description
+                index: 6
+                started_at: started_at
+                error: error
+                status: pending
+            current_step: 0
+            status: pending
+          - completed_at: completed_at
+            updated_at: updated_at
+            name: name
+            created_at: created_at
+            description: description
+            id: id
+            steps:
+              - result: result
+                completed_at: completed_at
+                description: description
+                index: 6
+                started_at: started_at
+                error: error
+                status: pending
+              - result: result
+                completed_at: completed_at
+                description: description
+                index: 6
+                started_at: started_at
+                error: error
+                status: pending
+            current_step: 0
+            status: pending
+      properties:
+        plans:
+          items:
+            $ref: '#/components/schemas/tmux-client_internal_types.Plan'
+          type: array
+      type: object
+    tmux-client_internal_types.PaneInfo:
+      example:
+        current_path: current_path
+        session_name: session_name
+        window_name: window_name
+        pane_pid: 1
+        pane_index: 6
+        pane_height: 0
+        pane_title: pane_title
+        active: true
+        window_index: 5
+        pane_id: pane_id
+        pane_width: 5
+      properties:
+        active:
+          type: boolean
+        current_path:
+          type: string
+        pane_height:
+          type: integer
+        pane_id:
+          type: string
+        pane_index:
+          type: integer
+        pane_pid:
+          type: integer
+        pane_title:
+          type: string
+        pane_width:
+          type: integer
+        session_name:
+          type: string
+        window_index:
+          type: integer
+        window_name:
+          type: string
+      type: object
+    tmux-client_internal_types.PendingApproval:
+      example:
+        expires_at: expires_at
+        action_type: action_type
+        urgency: urgency
+        context: context
+        created_at: created_at
+        prompt: prompt
+        request_id: request_id
+        status: pending
+      properties:
+        action_type:
+          type: string
+        context:
+          type: string
+        created_at:
+          type: string
+        expires_at:
+          type: string
+        prompt:
+          type: string
+        request_id:
+          type: string
+        status:
+          $ref: '#/components/schemas/tmux-client_internal_types.ApprovalStatus'
+        urgency:
+          type: string
+      type: object
+    tmux-client_internal_types.Plan:
+      example:
+        completed_at: completed_at
+        updated_at: updated_at
+        name: name
+        created_at: created_at
+        description: description
+        id: id
+        steps:
+          - result: result
+            completed_at: completed_at
+            description: description
+            index: 6
+            started_at: started_at
+            error: error
+            status: pending
+          - result: result
+            completed_at: completed_at
+            description: description
+            index: 6
+            started_at: started_at
+            error: error
+            status: pending
+        current_step: 0
+        status: pending
+      properties:
+        completed_at:
+          type: string
+        created_at:
+          type: string
+        current_step:
+          description: '-1 if not started'
+          type: integer
+        description:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/tmux-client_internal_types.PlanStatus'
+        steps:
+          items:
+            $ref: '#/components/schemas/tmux-client_internal_types.PlanStep'
+          type: array
+        updated_at:
+          type: string
+      type: object
+    tmux-client_internal_types.PlanStatus:
+      enum:
+        - pending
+        - in_progress
+        - completed
+        - failed
+        - aborted
+      type: string
+      x-enum-varnames:
+        - PlanStatusPending
+        - PlanStatusInProgress
+        - PlanStatusCompleted
+        - PlanStatusFailed
+        - PlanStatusAborted
+    tmux-client_internal_types.PlanStep:
+      example:
+        result: result
+        completed_at: completed_at
+        description: description
+        index: 6
+        started_at: started_at
+        error: error
+        status: pending
+      properties:
+        completed_at:
+          type: string
+        description:
+          type: string
+        error:
+          type: string
+        index:
+          type: integer
+        result:
+          type: string
+        started_at:
+          type: string
+        status:
+          $ref: '#/components/schemas/tmux-client_internal_types.StepStatus'
+      type: object
+    tmux-client_internal_types.ReadFileRequest:
+      properties:
+        from_line:
+          description: '1-indexed, 0 = start'
+          type: integer
+        max_lines:
+          description: 0 = no limit
+          type: integer
+        path:
+          type: string
+        to_line:
+          description: '1-indexed, 0 = end'
+          type: integer
+      type: object
+    tmux-client_internal_types.ReadFileResponse:
+      example:
+        mode: mode
+        path: path
+        from_line: 0
+        to_line: 1
+        mod_time: mod_time
+        size: 6
+        truncated: true
+        total_lines: 5
+        content: content
+      properties:
+        content:
+          type: string
+        from_line:
+          type: integer
+        mod_time:
+          type: string
+        mode:
+          type: string
+        path:
+          type: string
+        size:
+          type: integer
+        to_line:
+          type: integer
+        total_lines:
+          type: integer
+        truncated:
+          type: boolean
+      type: object
+    tmux-client_internal_types.ReadPaneRequest:
+      properties:
+        last_n_lines:
+          description: 0 means all visible content
+          type: integer
+        pane_id:
+          type: string
+      type: object
+    tmux-client_internal_types.ReadPaneResponse:
+      example:
+        lines: 0
+        content: content
+        pane_id: pane_id
+      properties:
+        content:
+          type: string
+        lines:
+          type: integer
+        pane_id:
+          type: string
+      type: object
+    tmux-client_internal_types.RunCommandRequest:
+      properties:
+        args:
+          description: Arguments as separate items
+          items:
+            type: string
+          type: array
+        command:
+          description: Executable name only
+          type: string
+        dry_run:
+          description: 'If true, don''t actually run'
+          type: boolean
+        env:
+          description: Additional env vars (KEY=VALUE)
+          items:
+            type: string
+          type: array
+        timeout:
+          description: 'Seconds, 0 = default (30s)'
+          type: integer
+        work_dir:
+          description: Working directory
+          type: string
+      type: object
+    tmux-client_internal_types.RunCommandResponse:
+      example:
+        args:
+          - args
+          - args
+        duration_ms: 0
+        stdout: stdout
+        exit_code: 6
+        dry_run: true
+        timed_out: true
+        stderr: stderr
+        command: command
+      properties:
+        args:
+          items:
+            type: string
+          type: array
+        command:
+          type: string
+        dry_run:
+          type: boolean
+        duration_ms:
+          type: integer
+        exit_code:
+          type: integer
+        stderr:
+          type: string
+        stdout:
+          type: string
+        timed_out:
+          type: boolean
+      type: object
+    tmux-client_internal_types.SendKeysRequest:
+      properties:
+        key:
+          description: 'Must be from approved list: "Enter", "C-c", "C-d", "Escape"'
+          type: string
+        pane_id:
+          type: string
+      type: object
+    tmux-client_internal_types.SendKeysResponse:
+      example:
+        sent: true
+        pane_id: pane_id
+      properties:
+        pane_id:
+          type: string
+        sent:
+          type: boolean
+      type: object
+    tmux-client_internal_types.SessionInfo:
+      example:
+        last_pane_x: 0
+        last_pane_y: 6
+        created: created
+        attached: true
+        name: name
+        id: id
+        windows: 1
+      properties:
+        attached:
+          type: boolean
+        created:
+          type: string
+        id:
+          type: string
+        last_pane_x:
+          type: integer
+        last_pane_y:
+          type: integer
+        name:
+          type: string
+        windows:
+          type: integer
+      type: object
+    tmux-client_internal_types.StepStatus:
+      enum:
+        - pending
+        - active
+        - completed
+        - failed
+        - skipped
+      type: string
+      x-enum-varnames:
+        - StepStatusPending
+        - StepStatusActive
+        - StepStatusCompleted
+        - StepStatusFailed
+        - StepStatusSkipped
+    tmux-client_internal_types.SwitchPaneRequest:
+      properties:
+        pane_id:
+          type: string
+      type: object
+    tmux-client_internal_types.SwitchPaneResponse:
+      example:
+        switched: true
+        pane_id: pane_id
+      properties:
+        pane_id:
+          type: string
+        switched:
+          type: boolean
+      type: object
+    tmux-client_internal_types.UpdatePlanRequest:
+      properties:
+        error:
+          type: string
+        plan_id:
+          type: string
+        result:
+          type: string
+        status:
+          $ref: '#/components/schemas/tmux-client_internal_types.StepStatus'
+        step_index:
+          type: integer
+      type: object
+    tmux-client_internal_types.UpdatePlanResponse:
+      example:
+        plan:
+          completed_at: completed_at
+          updated_at: updated_at
+          name: name
+          created_at: created_at
+          description: description
+          id: id
+          steps:
+            - result: result
+              completed_at: completed_at
+              description: description
+              index: 6
+              started_at: started_at
+              error: error
+              status: pending
+            - result: result
+              completed_at: completed_at
+              description: description
+              index: 6
+              started_at: started_at
+              error: error
+              status: pending
+          current_step: 0
+          status: pending
+        updated: true
+        plan_id: plan_id
+      properties:
+        plan:
+          $ref: '#/components/schemas/tmux-client_internal_types.Plan'
+        plan_id:
+          type: string
+        updated:
+          type: boolean
+      type: object
+    tmux-client_internal_types.WindowInfo:
+      example:
+        session_name: session_name
+        panes: 1
+        name: name
+        width: 5
+        active: true
+        index: 6
+        height: 0
+      properties:
+        active:
+          type: boolean
+        height:
+          type: integer
+        index:
+          type: integer
+        name:
+          type: string
+        panes:
+          type: integer
+        session_name:
+          type: string
+        width:
+          type: integer
+      type: object
+    tmux-client_internal_types.WriteFileRequest:
+      properties:
+        content:
+          type: string
+        create_dir:
+          description: Create parent directories if needed
+          type: boolean
+        mode:
+          description: 'e.g., "0644"'
+          type: string
+        overwrite:
+          description: Must be true to overwrite existing
+          type: boolean
+        path:
+          type: string
+      type: object
+    tmux-client_internal_types.WriteFileResponse:
+      example:
+        bytes_written: 0
+        path: path
+        created: true
+        written: true
+      properties:
+        bytes_written:
+          type: integer
+        created:
+          description: 'true if file was created, false if overwritten'
+          type: boolean
+        path:
+          type: string
+        written:
+          type: boolean
+      type: object
+x-original-swagger-version: '2.0'

@@ -1,0 +1,66 @@
+# coding: utf-8
+
+"""
+{{#appName}}
+    {{appName}}
+{{/appName}}
+{{#appDescription}}
+    {{{appDescription}}}
+{{/appDescription}}
+"""
+
+from typing import Optional, Dict, Any, List
+{{#asyncio}}
+import asyncio
+{{/asyncio}}
+
+from {{packageName}}.api_client import ApiClient
+from {{packageName}}.exceptions import ApiException
+{{#imports}}
+{{{.}}}
+{{/imports}}
+
+
+class {{classname}}:
+    """{{classname}} service
+
+    {{#description}}
+    {{{description}}}
+    {{/description}}
+    """
+
+    def __init__(self, api_client: Optional[ApiClient] = None):
+        if api_client is None:
+            api_client = ApiClient.get_default()
+        self.api_client = api_client
+
+    {{#operations}}
+    {{#operation}}
+    def {{operationId}}(
+        self,
+        {{#allParams}}
+        {{paramName}}: {{#required}}{{dataType}}{{/required}}{{^required}}Optional[{{dataType}}] = None{{/required}},
+        {{/allParams}}
+        **kwargs
+    ) -> {{#returnType}}{{returnType}}{{/returnType}}{{^returnType}}None{{/returnType}}:
+        """{{summary}}
+
+        {{#notes}}
+        {{{notes}}}
+        {{/notes}}
+
+        Args:
+        {{#allParams}}
+            {{paramName}}: {{{description}}}
+        {{/allParams}}
+
+        Returns:
+            {{#returnType}}{{returnType}}: {{{returnTypeDescription}}}{{/returnType}}{{^returnType}}None{{/returnType}}
+
+        Raises:
+            ApiException: If the API call fails
+        """
+        return self.{{operationId}}_with_http_info({{#allParams}}{{paramName}}={{paramName}}, {{/allParams}}**kwargs)[0]
+
+    {{/operation}}
+    {{/operations}}

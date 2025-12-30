@@ -1,0 +1,47 @@
+"""
+{{projectName}}
+
+{{#appDescription}}
+{{{appDescription}}}
+{{/appDescription}}
+
+Installation:
+    pip install {{packageName}}
+
+Quick Start:
+    >>> from {{packageName}} import Configuration, ServiceA, ServiceB
+    >>> config = Configuration(api_key="your-key")
+    >>> service_a = ServiceA(config)
+    >>> service_a.users.list()
+"""
+
+__version__ = "{{packageVersion}}"
+
+from {{packageName}}.configuration import Configuration
+from {{packageName}}.api_client import ApiClient
+from {{packageName}}.exceptions import ApiException
+
+# Import all API classes
+{{#apiInfo}}
+{{#apis}}
+from {{packageName}}.api.{{classFilename}} import {{classname}}
+{{/apis}}
+{{/apiInfo}}
+
+# Import all models
+{{#models}}
+{{#model}}
+from {{packageName}}.models.{{classFilename}} import {{classname}}
+{{/model}}
+{{/models}}
+
+__all__ = [
+    "Configuration",
+    "ApiClient",
+    "ApiException",
+    {{#apiInfo}}
+    {{#apis}}
+    "{{classname}}",
+    {{/apis}}
+    {{/apiInfo}}
+]
