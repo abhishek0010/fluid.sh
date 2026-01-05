@@ -16,10 +16,9 @@ from __future__ import annotations
 
 import json
 import pprint
-import re  # noqa: F401
 from typing import Any, ClassVar, Dict, List, Optional, Set
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing_extensions import Self
 
 from virsh_sandbox.models.virsh_sandbox_internal_store_sandbox import \
@@ -32,7 +31,10 @@ class VirshSandboxInternalRestCreateSandboxResponse(BaseModel):
     """  # noqa: E501
 
     sandbox: Optional[VirshSandboxInternalStoreSandbox] = None
-    __properties: ClassVar[List[str]] = ["sandbox"]
+    ip_address: Optional[StrictStr] = Field(
+        default=None, description="populated when auto_start and wait_for_ip are true"
+    )
+    __properties: ClassVar[List[str]] = ["sandbox", "ip_address"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -89,7 +91,8 @@ class VirshSandboxInternalRestCreateSandboxResponse(BaseModel):
             {
                 "sandbox": VirshSandboxInternalStoreSandbox.from_dict(obj["sandbox"])
                 if obj.get("sandbox") is not None
-                else None
+                else None,
+                "ip_address": obj.get("ip_address"),
             }
         )
         return _obj

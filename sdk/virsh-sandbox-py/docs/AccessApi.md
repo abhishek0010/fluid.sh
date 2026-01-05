@@ -15,7 +15,7 @@ Method | HTTP request | Description
 
 
 # **v1_access_ca_pubkey_get**
-> VirshSandboxInternalRestCaPublicKeyResponse v1_access_ca_pubkey_get()
+> InternalRestCaPublicKeyResponse v1_access_ca_pubkey_get()
 
 Get the SSH CA public key
 
@@ -26,7 +26,7 @@ Returns the CA public key that should be trusted by VMs
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.virsh_sandbox_internal_rest_ca_public_key_response import VirshSandboxInternalRestCaPublicKeyResponse
+from virsh_sandbox.models.internal_rest_ca_public_key_response import InternalRestCaPublicKeyResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -59,7 +59,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**VirshSandboxInternalRestCaPublicKeyResponse**](VirshSandboxInternalRestCaPublicKeyResponse.md)
+[**InternalRestCaPublicKeyResponse**](InternalRestCaPublicKeyResponse.md)
 
 ### Authorization
 
@@ -91,7 +91,7 @@ Immediately revokes a certificate, terminating any active sessions
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.virsh_sandbox_internal_rest_revoke_certificate_request import VirshSandboxInternalRestRevokeCertificateRequest
+from virsh_sandbox.models.internal_rest_revoke_certificate_request import InternalRestRevokeCertificateRequest
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -107,7 +107,7 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AccessApi(api_client)
     cert_id = 'cert_id_example' # str | Certificate ID
-    request = virsh_sandbox.VirshSandboxInternalRestRevokeCertificateRequest() # VirshSandboxInternalRestRevokeCertificateRequest | Revocation reason (optional)
+    request = virsh_sandbox.InternalRestRevokeCertificateRequest() # InternalRestRevokeCertificateRequest | Revocation reason (optional)
 
     try:
         # Revoke a certificate
@@ -126,7 +126,7 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **cert_id** | **str**| Certificate ID | 
- **request** | [**VirshSandboxInternalRestRevokeCertificateRequest**](VirshSandboxInternalRestRevokeCertificateRequest.md)| Revocation reason | [optional] 
+ **request** | [**InternalRestRevokeCertificateRequest**](InternalRestRevokeCertificateRequest.md)| Revocation reason | [optional] 
 
 ### Return type
 
@@ -153,7 +153,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **v1_access_certificate_cert_id_get**
-> VirshSandboxInternalRestCertificateResponse v1_access_certificate_cert_id_get(cert_id)
+> InternalRestCertificateResponse v1_access_certificate_cert_id_get(cert_id)
 
 Get certificate details
 
@@ -164,7 +164,7 @@ Returns details about an issued certificate
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.virsh_sandbox_internal_rest_certificate_response import VirshSandboxInternalRestCertificateResponse
+from virsh_sandbox.models.internal_rest_certificate_response import InternalRestCertificateResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -201,7 +201,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**VirshSandboxInternalRestCertificateResponse**](VirshSandboxInternalRestCertificateResponse.md)
+[**InternalRestCertificateResponse**](InternalRestCertificateResponse.md)
 
 ### Authorization
 
@@ -223,7 +223,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **v1_access_certificates_get**
-> VirshSandboxInternalRestListCertificatesResponse v1_access_certificates_get(sandbox_id=sandbox_id, user_id=user_id, status=status, active_only=active_only, limit=limit, offset=offset)
+> InternalRestListCertificatesResponse v1_access_certificates_get(sandbox_id=sandbox_id, user_id=user_id, status=status, active_only=active_only, limit=limit, offset=offset)
 
 List certificates
 
@@ -234,7 +234,7 @@ Lists issued certificates with optional filtering
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.virsh_sandbox_internal_rest_list_certificates_response import VirshSandboxInternalRestListCertificatesResponse
+from virsh_sandbox.models.internal_rest_list_certificates_response import InternalRestListCertificatesResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -281,7 +281,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**VirshSandboxInternalRestListCertificatesResponse**](VirshSandboxInternalRestListCertificatesResponse.md)
+[**InternalRestListCertificatesResponse**](InternalRestListCertificatesResponse.md)
 
 ### Authorization
 
@@ -302,7 +302,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **v1_access_request_post**
-> VirshSandboxInternalRestRequestAccessResponse v1_access_request_post(request)
+> InternalRestRequestAccessResponse v1_access_request_post(request)
 
 Request SSH access to a sandbox
 
@@ -313,8 +313,8 @@ Issues a short-lived SSH certificate for accessing a sandbox via tmux
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.virsh_sandbox_internal_rest_request_access_request import VirshSandboxInternalRestRequestAccessRequest
-from virsh_sandbox.models.virsh_sandbox_internal_rest_request_access_response import VirshSandboxInternalRestRequestAccessResponse
+from virsh_sandbox.models.internal_rest_request_access_request import InternalRestRequestAccessRequest
+from virsh_sandbox.models.internal_rest_request_access_response import InternalRestRequestAccessResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -329,7 +329,7 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AccessApi(api_client)
-    request = virsh_sandbox.VirshSandboxInternalRestRequestAccessRequest() # VirshSandboxInternalRestRequestAccessRequest | Access request
+    request = virsh_sandbox.InternalRestRequestAccessRequest() # InternalRestRequestAccessRequest | Access request
 
     try:
         # Request SSH access to a sandbox
@@ -347,11 +347,11 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request** | [**VirshSandboxInternalRestRequestAccessRequest**](VirshSandboxInternalRestRequestAccessRequest.md)| Access request | 
+ **request** | [**InternalRestRequestAccessRequest**](InternalRestRequestAccessRequest.md)| Access request | 
 
 ### Return type
 
-[**VirshSandboxInternalRestRequestAccessResponse**](VirshSandboxInternalRestRequestAccessResponse.md)
+[**InternalRestRequestAccessResponse**](InternalRestRequestAccessResponse.md)
 
 ### Authorization
 
@@ -385,7 +385,7 @@ Records the end of an SSH session
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.virsh_sandbox_internal_rest_session_end_request import VirshSandboxInternalRestSessionEndRequest
+from virsh_sandbox.models.internal_rest_session_end_request import InternalRestSessionEndRequest
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -400,7 +400,7 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AccessApi(api_client)
-    request = virsh_sandbox.VirshSandboxInternalRestSessionEndRequest() # VirshSandboxInternalRestSessionEndRequest | Session end request
+    request = virsh_sandbox.InternalRestSessionEndRequest() # InternalRestSessionEndRequest | Session end request
 
     try:
         # Record session end
@@ -418,7 +418,7 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request** | [**VirshSandboxInternalRestSessionEndRequest**](VirshSandboxInternalRestSessionEndRequest.md)| Session end request | 
+ **request** | [**InternalRestSessionEndRequest**](InternalRestSessionEndRequest.md)| Session end request | 
 
 ### Return type
 
@@ -444,7 +444,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **v1_access_session_start_post**
-> VirshSandboxInternalRestSessionStartResponse v1_access_session_start_post(request)
+> InternalRestSessionStartResponse v1_access_session_start_post(request)
 
 Record session start
 
@@ -455,8 +455,8 @@ Records the start of an SSH session (called by VM or auth service)
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.virsh_sandbox_internal_rest_session_start_request import VirshSandboxInternalRestSessionStartRequest
-from virsh_sandbox.models.virsh_sandbox_internal_rest_session_start_response import VirshSandboxInternalRestSessionStartResponse
+from virsh_sandbox.models.internal_rest_session_start_request import InternalRestSessionStartRequest
+from virsh_sandbox.models.internal_rest_session_start_response import InternalRestSessionStartResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -471,7 +471,7 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AccessApi(api_client)
-    request = virsh_sandbox.VirshSandboxInternalRestSessionStartRequest() # VirshSandboxInternalRestSessionStartRequest | Session start request
+    request = virsh_sandbox.InternalRestSessionStartRequest() # InternalRestSessionStartRequest | Session start request
 
     try:
         # Record session start
@@ -489,11 +489,11 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request** | [**VirshSandboxInternalRestSessionStartRequest**](VirshSandboxInternalRestSessionStartRequest.md)| Session start request | 
+ **request** | [**InternalRestSessionStartRequest**](InternalRestSessionStartRequest.md)| Session start request | 
 
 ### Return type
 
-[**VirshSandboxInternalRestSessionStartResponse**](VirshSandboxInternalRestSessionStartResponse.md)
+[**InternalRestSessionStartResponse**](InternalRestSessionStartResponse.md)
 
 ### Authorization
 
@@ -515,7 +515,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **v1_access_sessions_get**
-> VirshSandboxInternalRestListSessionsResponse v1_access_sessions_get(sandbox_id=sandbox_id, certificate_id=certificate_id, user_id=user_id, active_only=active_only, limit=limit, offset=offset)
+> InternalRestListSessionsResponse v1_access_sessions_get(sandbox_id=sandbox_id, certificate_id=certificate_id, user_id=user_id, active_only=active_only, limit=limit, offset=offset)
 
 List sessions
 
@@ -526,7 +526,7 @@ Lists access sessions with optional filtering
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.virsh_sandbox_internal_rest_list_sessions_response import VirshSandboxInternalRestListSessionsResponse
+from virsh_sandbox.models.internal_rest_list_sessions_response import InternalRestListSessionsResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -573,7 +573,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**VirshSandboxInternalRestListSessionsResponse**](VirshSandboxInternalRestListSessionsResponse.md)
+[**InternalRestListSessionsResponse**](InternalRestListSessionsResponse.md)
 
 ### Authorization
 

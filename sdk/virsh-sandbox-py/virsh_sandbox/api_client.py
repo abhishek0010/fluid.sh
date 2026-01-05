@@ -84,7 +84,7 @@ class ApiClient:
             self.default_headers[header_name] = header_value
         self.cookie = cookie
         # Set default User-Agent.
-        self.user_agent = "OpenAPI-Generator/0.0.6-beta/python"
+        self.user_agent = "OpenAPI-Generator/0.0.14-beta/python"
         self.client_side_validation = configuration.client_side_validation
 
     def __enter__(self):
@@ -188,7 +188,10 @@ class ApiClient:
             for k, v in path_params:
                 # specified safe chars, encode everything
                 resource_path = resource_path.replace(
-                    "{%s}" % k, quote(str(v), safe=config.safe_chars_for_path_param)
+                    "{%s}" % k,
+                    quote(
+                        str(v), safe=getattr(config, "safe_chars_for_path_param", "")
+                    ),
                 )
 
         # post parameters
@@ -215,7 +218,9 @@ class ApiClient:
             body = self.sanitize_for_serialization(body)
 
         # request url
-        if _host is None or self.configuration.ignore_operation_servers:
+        if _host is None or getattr(
+            self.configuration, "ignore_operation_servers", False
+        ):
             url = self.configuration.host + resource_path
         else:
             # use server/host defined in path or operation instead

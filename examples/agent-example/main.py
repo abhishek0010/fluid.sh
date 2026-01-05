@@ -13,10 +13,13 @@ from uuid import uuid4
 from typing import Any
 from virsh_sandbox import VirshSandbox, ApiException
 from openai import OpenAI
+from dotenv import load_dotenv
 from pprint import pprint
 import configuration
+from uuid import uuid4
 from tools import TOOLS
 
+load_dotenv()
 
 # ---------------------------
 # Configuration
@@ -40,12 +43,13 @@ def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
     Maps LLM tool calls to the virsh-sandbox API client.
     """
     try:
-        # if name == "check_health":
-        #     return sandbox_client.check_health()
+        if name == "check_health":
+            response = client.health.get_health()
+            return {"message": response}
 
-        # if name == "list_vms":
-        #     response = sandbox_client.list_vms()
-        #     return {"vms": [vm.to_dict() for vm in (response.vms or [])]}
+        if name == "list_sandboxes":
+            response = client.sandbox.list_sandboxes()
+            return {"sandboxes": response}
 
         # if name == "create_sandbox":
         #     response = sandbox_client.create_sandbox(
@@ -69,12 +73,16 @@ def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
         #     return {"success": True, "message": "Sandbox destroyed"}
 
         if name == "run_command":
-            client.command.run_command(
-                # sandbox_id=args["sandbox_id"],
+            response = client.sandbox.run_sandbox_command(
+                id=args["sandbox_id"],
                 command=args["command"],
-                env=args.get("env", {})
+                env=args.get("env", {}),
+                username=args.get("username", None),
+                private_key_path=args.get("private_key_path", None),
+                timeout_sec=args.get("timeout_sec", 60)
             )
-            return {"success": True, "message": "Command executed"}
+
+            return {"success": True, "message": "Command executed", "output": response}
 
         # if name == "create_snapshot":
         #     response = sandbox_client.create_snapshot(
@@ -128,7 +136,7 @@ def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------
 
 
-def run_agent(user_goal: str) -> None:
+def run_agent(user_goal: str, sandbox_id: str | None | Any) -> None:
     """
     Run the agent loop to accomplish the user's goal.
 
@@ -145,6 +153,7 @@ def run_agent(user_goal: str) -> None:
                 "- No shell pipelines or chained commands.\n"
                 "- Always check the health of the API before performing operations.\n"
                 "- Track progress and report what you're doing.\n"
+                f"- Only make changes to the sandbox with ID: {sandbox_id}"
             ),
         },
         {"role": "user", "content": user_goal},
@@ -205,32 +214,32 @@ def run_agent(user_goal: str) -> None:
 
         time.sleep(0.2)
 
-
-# ---------------------------
-# Entry point
-# ---------------------------
-
-if __name__ == "__main__":
+def main():
     print("Starting virsh-sandbox agent...")
     print("=" * 50)
 
     sandbox = None
     session = None
-
+    agent_id = str(uuid4())
     try:
 
-        sandbox = client.sandbox.create_sandbox(source_vm_name="test-vm")
+        sandbox = client.sandbox.create_sandbox(source_vm_name="test-vm", agent_id=agent_id)
         pprint(sandbox)
 
-        session = client.tmux.create_tmux_session(sandbox_id=sandbox.id)
-
         run_agent(
-            "Install an httpd server, create a basic html page and configure it to serve the page."
-            "Start with a plan, update the plan as you go. Ask the human for help."
+            "Run the command 'ls -l' on the sandbox.", sandbox["sandbox"]["id"]
         )
     except Exception as e:
         print(f"Error: {e}")
     finally:
         if(sandbox):
             print("Cleaning up sandbox...")
-            # client.sandbox.destroy_sandbox(id=sandbox.id)
+            client.sandbox.destroy_sandbox(id=sandbox["sandbox"]["id"])
+
+
+# ---------------------------
+# Entry point
+# ---------------------------
+
+if __name__ == "__main__":
+   main()

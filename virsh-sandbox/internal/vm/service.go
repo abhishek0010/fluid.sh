@@ -88,12 +88,16 @@ func NewService(mgr libvirt.Manager, st store.Store, cfg Config, opts ...Option)
 // sourceSandboxName is the name of the existing VM in libvirt to clone from.
 // SandboxName is optional; if empty, a name will be generated.
 // cpu and memoryMB are optional; if <=0 the service defaults are used.
-func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID, sandboxName string, cpu, memoryMB int) (*store.Sandbox, error) {
+// ttlSeconds is optional; if provided, sets the TTL for auto garbage collection.
+// autoStart if true will start the VM immediately after creation.
+// waitForIP if true (and autoStart is true), will wait for IP discovery.
+// Returns the sandbox, the discovered IP (if autoStart and waitForIP), and any error.
+func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID, sandboxName string, cpu, memoryMB int, ttlSeconds *int, autoStart, waitForIP bool) (*store.Sandbox, string, error) {
 	if strings.TrimSpace(sourceSandboxName) == "" {
-		return nil, fmt.Errorf("sourceSandboxName is required")
+		return nil, "", fmt.Errorf("sourceSandboxName is required")
 	}
 	if strings.TrimSpace(agentID) == "" {
-		return nil, fmt.Errorf("agentID is required")
+		return nil, "", fmt.Errorf("agentID is required")
 	}
 	if cpu <= 0 {
 		cpu = s.cfg.DefaultVCPUs
@@ -110,7 +114,7 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID,
 	// Create the VM via libvirt manager by cloning from existing VM
 	_, err := s.mgr.CloneFromVM(ctx, sourceSandboxName, sandboxName, cpu, memoryMB, s.cfg.Network)
 	if err != nil {
-		return nil, fmt.Errorf("clone vm: %w", err)
+		return nil, "", fmt.Errorf("clone vm: %w", err)
 	}
 
 	sb := &store.Sandbox{
@@ -121,13 +125,50 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID,
 		BaseImage:   sourceSandboxName, // Store the source VM name for reference
 		Network:     s.cfg.Network,
 		State:       store.SandboxStateCreated,
+		TTLSeconds:  ttlSeconds,
 		CreatedAt:   s.timeNowFn().UTC(),
 		UpdatedAt:   s.timeNowFn().UTC(),
 	}
 	if err := s.store.CreateSandbox(ctx, sb); err != nil {
-		return nil, fmt.Errorf("persist sandbox: %w", err)
+		return nil, "", fmt.Errorf("persist sandbox: %w", err)
 	}
-	return sb, nil
+
+	// If autoStart is requested, start the VM immediately
+	var ip string
+	if autoStart {
+		if err := s.mgr.StartVM(ctx, sb.SandboxName); err != nil {
+			_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateError, nil)
+			return sb, "", fmt.Errorf("auto-start vm: %w", err)
+		}
+
+		// Update state -> STARTING
+		if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateStarting, nil); err != nil {
+			return sb, "", err
+		}
+		sb.State = store.SandboxStateStarting
+
+		if waitForIP {
+			ip, err = s.mgr.GetIPAddress(ctx, sb.SandboxName, s.cfg.IPDiscoveryTimeout)
+			if err != nil {
+				// Still mark as running even if we couldn't discover the IP
+				_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, nil)
+				sb.State = store.SandboxStateRunning
+				return sb, "", fmt.Errorf("get ip: %w", err)
+			}
+			if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, &ip); err != nil {
+				return sb, ip, err
+			}
+			sb.State = store.SandboxStateRunning
+			sb.IPAddress = &ip
+		} else {
+			if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, nil); err != nil {
+				return sb, "", err
+			}
+			sb.State = store.SandboxStateRunning
+		}
+	}
+
+	return sb, ip, nil
 }
 
 func (s *Service) GetSandboxes(ctx context.Context, filter store.SandboxFilter, opts *store.ListOptions) ([]*store.Sandbox, error) {
@@ -213,19 +254,24 @@ func (s *Service) StopSandbox(ctx context.Context, sandboxID string, force bool)
 }
 
 // DestroySandbox forcibly destroys and undefines the VM and removes its workspace.
-// The sandbox is then soft-deleted from the store.
-func (s *Service) DestroySandbox(ctx context.Context, sandboxID string) error {
+// The sandbox is then soft-deleted from the store. Returns the sandbox info after destruction.
+func (s *Service) DestroySandbox(ctx context.Context, sandboxID string) (*store.Sandbox, error) {
 	if strings.TrimSpace(sandboxID) == "" {
-		return fmt.Errorf("sandboxID is required")
+		return nil, fmt.Errorf("sandboxID is required")
 	}
 	sb, err := s.store.GetSandbox(ctx, sandboxID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := s.mgr.DestroyVM(ctx, sb.SandboxName); err != nil {
-		return fmt.Errorf("destroy vm: %w", err)
+		return nil, fmt.Errorf("destroy vm: %w", err)
 	}
-	return s.store.DeleteSandbox(ctx, sandboxID)
+	if err := s.store.DeleteSandbox(ctx, sandboxID); err != nil {
+		return nil, err
+	}
+	// Update state to reflect destruction
+	sb.State = store.SandboxStateDestroyed
+	return sb, nil
 }
 
 // CreateSnapshot creates a snapshot and persists a Snapshot record.

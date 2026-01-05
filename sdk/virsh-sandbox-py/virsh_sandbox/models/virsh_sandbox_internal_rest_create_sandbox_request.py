@@ -16,10 +16,10 @@ from __future__ import annotations
 
 import json
 import pprint
-import re  # noqa: F401
 from typing import Any, ClassVar, Dict, List, Optional, Set
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
+from pydantic import (BaseModel, ConfigDict, Field, StrictBool, StrictInt,
+                      StrictStr)
 from typing_extensions import Self
 
 
@@ -42,12 +42,26 @@ class VirshSandboxInternalRestCreateSandboxRequest(BaseModel):
     vm_name: Optional[StrictStr] = Field(
         default=None, description="optional; generated if empty"
     )
+    ttl_seconds: Optional[StrictInt] = Field(
+        default=None, description="optional; TTL for auto garbage collection"
+    )
+    auto_start: Optional[StrictBool] = Field(
+        default=None,
+        description="optional; if true, start the VM immediately after creation",
+    )
+    wait_for_ip: Optional[StrictBool] = Field(
+        default=None,
+        description="optional; if true and auto_start, wait for IP discovery",
+    )
     __properties: ClassVar[List[str]] = [
         "agent_id",
         "cpu",
         "memory_mb",
         "source_vm_name",
         "vm_name",
+        "ttl_seconds",
+        "auto_start",
+        "wait_for_ip",
     ]
 
     model_config = ConfigDict(
@@ -105,6 +119,9 @@ class VirshSandboxInternalRestCreateSandboxRequest(BaseModel):
                 "memory_mb": obj.get("memory_mb"),
                 "source_vm_name": obj.get("source_vm_name"),
                 "vm_name": obj.get("vm_name"),
+                "ttl_seconds": obj.get("ttl_seconds"),
+                "auto_start": obj.get("auto_start"),
+                "wait_for_ip": obj.get("wait_for_ip"),
             }
         )
         return _obj

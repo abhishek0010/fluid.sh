@@ -5,7 +5,6 @@
     API for managing virtual machine sandboxes using libvirt
 """
 
-import asyncio
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import Field, StrictBool, StrictInt, StrictStr
@@ -14,26 +13,26 @@ from typing_extensions import Annotated
 from virsh_sandbox.api_client import ApiClient, RequestSerialized
 from virsh_sandbox.api_response import ApiResponse
 from virsh_sandbox.exceptions import ApiException
-from virsh_sandbox.models.virsh_sandbox_internal_rest_ca_public_key_response import \
-    VirshSandboxInternalRestCaPublicKeyResponse
-from virsh_sandbox.models.virsh_sandbox_internal_rest_certificate_response import \
-    VirshSandboxInternalRestCertificateResponse
-from virsh_sandbox.models.virsh_sandbox_internal_rest_list_certificates_response import \
-    VirshSandboxInternalRestListCertificatesResponse
-from virsh_sandbox.models.virsh_sandbox_internal_rest_list_sessions_response import \
-    VirshSandboxInternalRestListSessionsResponse
-from virsh_sandbox.models.virsh_sandbox_internal_rest_request_access_request import \
-    VirshSandboxInternalRestRequestAccessRequest
-from virsh_sandbox.models.virsh_sandbox_internal_rest_request_access_response import \
-    VirshSandboxInternalRestRequestAccessResponse
-from virsh_sandbox.models.virsh_sandbox_internal_rest_revoke_certificate_request import \
-    VirshSandboxInternalRestRevokeCertificateRequest
-from virsh_sandbox.models.virsh_sandbox_internal_rest_session_end_request import \
-    VirshSandboxInternalRestSessionEndRequest
-from virsh_sandbox.models.virsh_sandbox_internal_rest_session_start_request import \
-    VirshSandboxInternalRestSessionStartRequest
-from virsh_sandbox.models.virsh_sandbox_internal_rest_session_start_response import \
-    VirshSandboxInternalRestSessionStartResponse
+from virsh_sandbox.models.internal_rest_ca_public_key_response import \
+    InternalRestCaPublicKeyResponse
+from virsh_sandbox.models.internal_rest_certificate_response import \
+    InternalRestCertificateResponse
+from virsh_sandbox.models.internal_rest_list_certificates_response import \
+    InternalRestListCertificatesResponse
+from virsh_sandbox.models.internal_rest_list_sessions_response import \
+    InternalRestListSessionsResponse
+from virsh_sandbox.models.internal_rest_request_access_request import \
+    InternalRestRequestAccessRequest
+from virsh_sandbox.models.internal_rest_request_access_response import \
+    InternalRestRequestAccessResponse
+from virsh_sandbox.models.internal_rest_revoke_certificate_request import \
+    InternalRestRevokeCertificateRequest
+from virsh_sandbox.models.internal_rest_session_end_request import \
+    InternalRestSessionEndRequest
+from virsh_sandbox.models.internal_rest_session_start_request import \
+    InternalRestSessionStartRequest
+from virsh_sandbox.models.internal_rest_session_start_response import \
+    InternalRestSessionStartResponse
 
 
 class AccessApi:
@@ -44,14 +43,14 @@ class AccessApi:
             api_client = ApiClient.get_default()
         self.api_client = api_client
 
-    async def v1_access_ca_pubkey_get(
+    def v1_access_ca_pubkey_get(
         self,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalRestCaPublicKeyResponse:
+    ) -> InternalRestCaPublicKeyResponse:
         """Get the SSH CA public key
 
         Returns the CA public key that should be trusted by VMs
@@ -80,26 +79,26 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestCaPublicKeyResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestCaPublicKeyResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         ).data
 
-    async def v1_access_ca_pubkey_get_with_http_info(
+    def v1_access_ca_pubkey_get_with_http_info(
         self,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalRestCaPublicKeyResponse]:
+    ) -> ApiResponse[InternalRestCaPublicKeyResponse]:
         """Get the SSH CA public key
 
         Returns the CA public key that should be trusted by VMs
@@ -128,19 +127,19 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestCaPublicKeyResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestCaPublicKeyResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         )
 
-    async def v1_access_ca_pubkey_get_without_preload_content(
+    def v1_access_ca_pubkey_get_without_preload_content(
         self,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
@@ -176,10 +175,10 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestCaPublicKeyResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestCaPublicKeyResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
         return response_data.response
@@ -236,10 +235,10 @@ class AccessApi:
             _request_auth=_request_auth,
         )
 
-    async def v1_access_certificate_cert_id_delete(
+    def v1_access_certificate_cert_id_delete(
         self,
         cert_id: str,
-        request: Optional[VirshSandboxInternalRestRevokeCertificateRequest] = None,
+        request: Optional[InternalRestRevokeCertificateRequest] = None,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -253,7 +252,7 @@ class AccessApi:
         :param cert_id: Certificate ID (required)
         :type cert_id: str
         :param request: Revocation reason (optional)
-        :type request: VirshSandboxInternalRestRevokeCertificateRequest, optional
+        :type request: InternalRestRevokeCertificateRequest, optional
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -281,23 +280,23 @@ class AccessApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "200": "Dict[str, str]",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "404": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "404": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         ).data
 
-    async def v1_access_certificate_cert_id_delete_with_http_info(
+    def v1_access_certificate_cert_id_delete_with_http_info(
         self,
         cert_id: str,
-        request: Optional[VirshSandboxInternalRestRevokeCertificateRequest] = None,
+        request: Optional[InternalRestRevokeCertificateRequest] = None,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -311,7 +310,7 @@ class AccessApi:
         :param cert_id: Certificate ID (required)
         :type cert_id: str
         :param request: Revocation reason (optional)
-        :type request: VirshSandboxInternalRestRevokeCertificateRequest, optional
+        :type request: InternalRestRevokeCertificateRequest, optional
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -339,23 +338,23 @@ class AccessApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "200": "Dict[str, str]",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "404": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "404": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         )
 
-    async def v1_access_certificate_cert_id_delete_without_preload_content(
+    def v1_access_certificate_cert_id_delete_without_preload_content(
         self,
         cert_id: str,
-        request: Optional[VirshSandboxInternalRestRevokeCertificateRequest] = None,
+        request: Optional[InternalRestRevokeCertificateRequest] = None,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -369,7 +368,7 @@ class AccessApi:
         :param cert_id: Certificate ID (required)
         :type cert_id: str
         :param request: Revocation reason (optional)
-        :type request: VirshSandboxInternalRestRevokeCertificateRequest, optional
+        :type request: InternalRestRevokeCertificateRequest, optional
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -397,11 +396,11 @@ class AccessApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "200": "Dict[str, str]",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "404": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "404": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
         return response_data.response
@@ -409,7 +408,7 @@ class AccessApi:
     def _v1_access_certificate_cert_id_delete_serialize(
         self,
         cert_id: str,
-        request: Optional[VirshSandboxInternalRestRevokeCertificateRequest],
+        request: Optional[InternalRestRevokeCertificateRequest],
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -472,7 +471,7 @@ class AccessApi:
             _request_auth=_request_auth,
         )
 
-    async def v1_access_certificate_cert_id_get(
+    def v1_access_certificate_cert_id_get(
         self,
         cert_id: str,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
@@ -480,7 +479,7 @@ class AccessApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalRestCertificateResponse:
+    ) -> InternalRestCertificateResponse:
         """Get certificate details
 
         Returns details about an issued certificate
@@ -512,20 +511,20 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestCertificateResponse",
-            "404": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestCertificateResponse",
+            "404": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         ).data
 
-    async def v1_access_certificate_cert_id_get_with_http_info(
+    def v1_access_certificate_cert_id_get_with_http_info(
         self,
         cert_id: str,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
@@ -533,7 +532,7 @@ class AccessApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalRestCertificateResponse]:
+    ) -> ApiResponse[InternalRestCertificateResponse]:
         """Get certificate details
 
         Returns details about an issued certificate
@@ -565,20 +564,20 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestCertificateResponse",
-            "404": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestCertificateResponse",
+            "404": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         )
 
-    async def v1_access_certificate_cert_id_get_without_preload_content(
+    def v1_access_certificate_cert_id_get_without_preload_content(
         self,
         cert_id: str,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
@@ -618,11 +617,11 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestCertificateResponse",
-            "404": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestCertificateResponse",
+            "404": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
         return response_data.response
@@ -682,7 +681,7 @@ class AccessApi:
             _request_auth=_request_auth,
         )
 
-    async def v1_access_certificates_get(
+    def v1_access_certificates_get(
         self,
         sandbox_id: Optional[str] = None,
         user_id: Optional[str] = None,
@@ -695,7 +694,7 @@ class AccessApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalRestListCertificatesResponse:
+    ) -> InternalRestListCertificatesResponse:
         """List certificates
 
         Lists issued certificates with optional filtering
@@ -742,19 +741,19 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestListCertificatesResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestListCertificatesResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         ).data
 
-    async def v1_access_certificates_get_with_http_info(
+    def v1_access_certificates_get_with_http_info(
         self,
         sandbox_id: Optional[str] = None,
         user_id: Optional[str] = None,
@@ -767,7 +766,7 @@ class AccessApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalRestListCertificatesResponse]:
+    ) -> ApiResponse[InternalRestListCertificatesResponse]:
         """List certificates
 
         Lists issued certificates with optional filtering
@@ -814,19 +813,19 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestListCertificatesResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestListCertificatesResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         )
 
-    async def v1_access_certificates_get_without_preload_content(
+    def v1_access_certificates_get_without_preload_content(
         self,
         sandbox_id: Optional[str] = None,
         user_id: Optional[str] = None,
@@ -886,10 +885,10 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestListCertificatesResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestListCertificatesResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
         return response_data.response
@@ -970,21 +969,21 @@ class AccessApi:
             _request_auth=_request_auth,
         )
 
-    async def v1_access_request_post(
+    def v1_access_request_post(
         self,
-        request: VirshSandboxInternalRestRequestAccessRequest,
+        request: InternalRestRequestAccessRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalRestRequestAccessResponse:
+    ) -> InternalRestRequestAccessResponse:
         """Request SSH access to a sandbox
 
         Issues a short-lived SSH certificate for accessing a sandbox via tmux
 
         :param request: Access request (required)
-        :type request: VirshSandboxInternalRestRequestAccessRequest
+        :type request: InternalRestRequestAccessRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1010,35 +1009,35 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestRequestAccessResponse",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "404": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestRequestAccessResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "404": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         ).data
 
-    async def v1_access_request_post_with_http_info(
+    def v1_access_request_post_with_http_info(
         self,
-        request: VirshSandboxInternalRestRequestAccessRequest,
+        request: InternalRestRequestAccessRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalRestRequestAccessResponse]:
+    ) -> ApiResponse[InternalRestRequestAccessResponse]:
         """Request SSH access to a sandbox
 
         Issues a short-lived SSH certificate for accessing a sandbox via tmux
 
         :param request: Access request (required)
-        :type request: VirshSandboxInternalRestRequestAccessRequest
+        :type request: InternalRestRequestAccessRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1064,23 +1063,23 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestRequestAccessResponse",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "404": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestRequestAccessResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "404": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         )
 
-    async def v1_access_request_post_without_preload_content(
+    def v1_access_request_post_without_preload_content(
         self,
-        request: VirshSandboxInternalRestRequestAccessRequest,
+        request: InternalRestRequestAccessRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1092,7 +1091,7 @@ class AccessApi:
         Issues a short-lived SSH certificate for accessing a sandbox via tmux
 
         :param request: Access request (required)
-        :type request: VirshSandboxInternalRestRequestAccessRequest
+        :type request: InternalRestRequestAccessRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1118,19 +1117,19 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestRequestAccessResponse",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "404": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestRequestAccessResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "404": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
         return response_data.response
 
     def _v1_access_request_post_serialize(
         self,
-        request: VirshSandboxInternalRestRequestAccessRequest,
+        request: InternalRestRequestAccessRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -1191,9 +1190,9 @@ class AccessApi:
             _request_auth=_request_auth,
         )
 
-    async def v1_access_session_end_post(
+    def v1_access_session_end_post(
         self,
-        request: VirshSandboxInternalRestSessionEndRequest,
+        request: InternalRestSessionEndRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1205,7 +1204,7 @@ class AccessApi:
         Records the end of an SSH session
 
         :param request: Session end request (required)
-        :type request: VirshSandboxInternalRestSessionEndRequest
+        :type request: InternalRestSessionEndRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1232,21 +1231,21 @@ class AccessApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "200": "Dict[str, str]",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         ).data
 
-    async def v1_access_session_end_post_with_http_info(
+    def v1_access_session_end_post_with_http_info(
         self,
-        request: VirshSandboxInternalRestSessionEndRequest,
+        request: InternalRestSessionEndRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1258,7 +1257,7 @@ class AccessApi:
         Records the end of an SSH session
 
         :param request: Session end request (required)
-        :type request: VirshSandboxInternalRestSessionEndRequest
+        :type request: InternalRestSessionEndRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1285,21 +1284,21 @@ class AccessApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "200": "Dict[str, str]",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         )
 
-    async def v1_access_session_end_post_without_preload_content(
+    def v1_access_session_end_post_without_preload_content(
         self,
-        request: VirshSandboxInternalRestSessionEndRequest,
+        request: InternalRestSessionEndRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1311,7 +1310,7 @@ class AccessApi:
         Records the end of an SSH session
 
         :param request: Session end request (required)
-        :type request: VirshSandboxInternalRestSessionEndRequest
+        :type request: InternalRestSessionEndRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1338,17 +1337,17 @@ class AccessApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "200": "Dict[str, str]",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
         return response_data.response
 
     def _v1_access_session_end_post_serialize(
         self,
-        request: VirshSandboxInternalRestSessionEndRequest,
+        request: InternalRestSessionEndRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -1409,21 +1408,21 @@ class AccessApi:
             _request_auth=_request_auth,
         )
 
-    async def v1_access_session_start_post(
+    def v1_access_session_start_post(
         self,
-        request: VirshSandboxInternalRestSessionStartRequest,
+        request: InternalRestSessionStartRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalRestSessionStartResponse:
+    ) -> InternalRestSessionStartResponse:
         """Record session start
 
         Records the start of an SSH session (called by VM or auth service)
 
         :param request: Session start request (required)
-        :type request: VirshSandboxInternalRestSessionStartRequest
+        :type request: InternalRestSessionStartRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1449,34 +1448,34 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestSessionStartResponse",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestSessionStartResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         ).data
 
-    async def v1_access_session_start_post_with_http_info(
+    def v1_access_session_start_post_with_http_info(
         self,
-        request: VirshSandboxInternalRestSessionStartRequest,
+        request: InternalRestSessionStartRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalRestSessionStartResponse]:
+    ) -> ApiResponse[InternalRestSessionStartResponse]:
         """Record session start
 
         Records the start of an SSH session (called by VM or auth service)
 
         :param request: Session start request (required)
-        :type request: VirshSandboxInternalRestSessionStartRequest
+        :type request: InternalRestSessionStartRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1502,22 +1501,22 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestSessionStartResponse",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestSessionStartResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         )
 
-    async def v1_access_session_start_post_without_preload_content(
+    def v1_access_session_start_post_without_preload_content(
         self,
-        request: VirshSandboxInternalRestSessionStartRequest,
+        request: InternalRestSessionStartRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1529,7 +1528,7 @@ class AccessApi:
         Records the start of an SSH session (called by VM or auth service)
 
         :param request: Session start request (required)
-        :type request: VirshSandboxInternalRestSessionStartRequest
+        :type request: InternalRestSessionStartRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1555,18 +1554,18 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestSessionStartResponse",
-            "400": "VirshSandboxInternalRestAccessErrorResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestSessionStartResponse",
+            "400": "InternalRestAccessErrorResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
         return response_data.response
 
     def _v1_access_session_start_post_serialize(
         self,
-        request: VirshSandboxInternalRestSessionStartRequest,
+        request: InternalRestSessionStartRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -1627,7 +1626,7 @@ class AccessApi:
             _request_auth=_request_auth,
         )
 
-    async def v1_access_sessions_get(
+    def v1_access_sessions_get(
         self,
         sandbox_id: Optional[str] = None,
         certificate_id: Optional[str] = None,
@@ -1640,7 +1639,7 @@ class AccessApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalRestListSessionsResponse:
+    ) -> InternalRestListSessionsResponse:
         """List sessions
 
         Lists access sessions with optional filtering
@@ -1687,19 +1686,19 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestListSessionsResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestListSessionsResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         ).data
 
-    async def v1_access_sessions_get_with_http_info(
+    def v1_access_sessions_get_with_http_info(
         self,
         sandbox_id: Optional[str] = None,
         certificate_id: Optional[str] = None,
@@ -1712,7 +1711,7 @@ class AccessApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalRestListSessionsResponse]:
+    ) -> ApiResponse[InternalRestListSessionsResponse]:
         """List sessions
 
         Lists access sessions with optional filtering
@@ -1759,19 +1758,19 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestListSessionsResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestListSessionsResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         )
 
-    async def v1_access_sessions_get_without_preload_content(
+    def v1_access_sessions_get_without_preload_content(
         self,
         sandbox_id: Optional[str] = None,
         certificate_id: Optional[str] = None,
@@ -1831,10 +1830,10 @@ class AccessApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalRestListSessionsResponse",
-            "500": "VirshSandboxInternalRestAccessErrorResponse",
+            "200": "InternalRestListSessionsResponse",
+            "500": "InternalRestAccessErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
         return response_data.response

@@ -5,14 +5,13 @@
     API for managing virtual machine sandboxes using libvirt
 """
 
-import asyncio
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from virsh_sandbox.api_client import ApiClient, RequestSerialized
 from virsh_sandbox.api_response import ApiResponse
 from virsh_sandbox.exceptions import ApiException
-from virsh_sandbox.models.internal_rest_list_vms_response import \
-    InternalRestListVMsResponse
+from virsh_sandbox.models.virsh_sandbox_internal_rest_list_vms_response import \
+    VirshSandboxInternalRestListVMsResponse
 
 
 class VMsApi:
@@ -23,14 +22,14 @@ class VMsApi:
             api_client = ApiClient.get_default()
         self.api_client = api_client
 
-    async def list_virtual_machines(
+    def list_virtual_machines(
         self,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> InternalRestListVMsResponse:
+    ) -> VirshSandboxInternalRestListVMsResponse:
         """List all VMs
 
         Returns a list of all virtual machines from the libvirt instance
@@ -59,26 +58,26 @@ class VMsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalRestListVMsResponse",
-            "500": "InternalRestErrorResponse",
+            "200": "VirshSandboxInternalRestListVMsResponse",
+            "500": "VirshSandboxInternalRestErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         ).data
 
-    async def list_virtual_machines_with_http_info(
+    def list_virtual_machines_with_http_info(
         self,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[InternalRestListVMsResponse]:
+    ) -> ApiResponse[VirshSandboxInternalRestListVMsResponse]:
         """List all VMs
 
         Returns a list of all virtual machines from the libvirt instance
@@ -107,19 +106,19 @@ class VMsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalRestListVMsResponse",
-            "500": "InternalRestErrorResponse",
+            "200": "VirshSandboxInternalRestListVMsResponse",
+            "500": "VirshSandboxInternalRestErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
-        await response_data.read()
+        response_data.read()
         return self.api_client.response_deserialize(
             response_data=response_data,
             response_types_map=_response_types_map,
         )
 
-    async def list_virtual_machines_without_preload_content(
+    def list_virtual_machines_without_preload_content(
         self,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
@@ -155,10 +154,10 @@ class VMsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalRestListVMsResponse",
-            "500": "InternalRestErrorResponse",
+            "200": "VirshSandboxInternalRestListVMsResponse",
+            "500": "VirshSandboxInternalRestErrorResponse",
         }
-        response_data = await self.api_client.call_api(
+        response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
         )
         return response_data.response

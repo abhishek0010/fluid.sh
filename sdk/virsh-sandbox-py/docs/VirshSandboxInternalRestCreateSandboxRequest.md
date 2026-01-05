@@ -10,6 +10,9 @@ Name | Type | Description | Notes
 **memory_mb** | **int** | optional; default from service config if &lt;&#x3D;0 | [optional] 
 **source_vm_name** | **str** | required; name of existing VM in libvirt to clone from | [optional] 
 **vm_name** | **str** | optional; generated if empty | [optional] 
+**ttl_seconds** | **int** | optional; TTL for auto garbage collection | [optional] 
+**auto_start** | **bool** | optional; if true, start the VM immediately after creation | [optional] 
+**wait_for_ip** | **bool** | optional; if true and auto_start, wait for IP discovery | [optional] 
 
 ## Example
 

@@ -2,9 +2,26 @@
 """Post-process generated SDK for better quality and add unified client with flattened parameters."""
 
 import re
+import yaml
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
+
+
+def load_config() -> dict:
+    """Load the OpenAPI generator config to check for async setting."""
+    config_path = Path(".openapi-generator/config.yaml")
+    if config_path.exists():
+        with open(config_path) as f:
+            return yaml.safe_load(f)
+    return {}
+
+
+def is_async_enabled() -> bool:
+    """Check if async mode is enabled in the config."""
+    config = load_config()
+    additional = config.get("additionalProperties", {})
+    return additional.get("asyncio", False)
 
 
 @dataclass
@@ -154,10 +171,11 @@ def parse_api_methods(api_path: Path) -> list[MethodInfo]:
     content = api_path.read_text()
     methods = []
 
-    # Find all async def method signatures
-    # Pattern: async def method_name(self, params...) -> ReturnType:
+    # Find all method signatures (both async and sync)
+    # Pattern: [async] def method_name(self, params...) -> ReturnType:
+    # Updated to handle multiline docstrings with :param style
     pattern = re.compile(
-        r'async def (\w+)\(\s*self,([^)]*)\)\s*->\s*([^:]+):.*?"""(.+?)"""',
+        r'(?:async\s+)?def (\w+)\(\s*self,([^)]*)\)\s*->\s*([^:]+):\s*"""(.*?)"""',
         re.DOTALL
     )
 
@@ -172,7 +190,10 @@ def parse_api_methods(api_path: Path) -> list[MethodInfo]:
 
         params_str = match.group(2)
         return_type = match.group(3).strip()
-        docstring = match.group(4).strip().split('\n')[0]  # First line only
+        # Extract first meaningful line from docstring (skip empty lines)
+        docstring_raw = match.group(4).strip()
+        docstring_lines = [line.strip() for line in docstring_raw.split('\n') if line.strip()]
+        docstring = docstring_lines[0] if docstring_lines else method_name
 
         # Parse parameters
         path_params = []
@@ -294,7 +315,8 @@ def discover_models(sdk_dir: Path) -> dict[str, dict]:
         class_match = re.search(r'class (\w+)\(BaseModel\):', content)
         if class_match:
             class_name = class_match.group(1)
-            fields = parse_model_fields(model_file) if 'Request' in class_name else []
+            # Parse fields for ALL models (not just Request types) to generate TypedDicts
+            fields = parse_model_fields(model_file)
             models[class_name] = {
                 'fields': fields,
                 'module': model_file.stem,
@@ -313,7 +335,188 @@ def discover_models(sdk_dir: Path) -> dict[str, dict]:
     return models
 
 
-def generate_wrapper_method(method: MethodInfo, models: dict) -> str:
+def get_model_dependencies(model_name: str, models: dict) -> set:
+    """Get the set of model names that a model depends on (references in its fields)."""
+    if model_name not in models:
+        return set()
+
+    deps = set()
+    model_info = models[model_name]
+    for field in model_info.get('fields', []):
+        # Extract type names from the field type hint
+        type_names = re.findall(r'([A-Z][a-zA-Z0-9_]+)', field.type_hint)
+        for type_name in type_names:
+            if type_name in models and type_name != model_name:
+                # Skip enum types as they become str
+                if not is_enum_model(type_name, models):
+                    deps.add(type_name)
+    return deps
+
+
+def topological_sort_models(models: dict) -> list:
+    """Sort models so that dependencies come before dependents."""
+    # Build dependency graph
+    # Filter to only include non-request, non-query, non-enum models
+    filtered_models = {
+        name: info for name, info in models.items()
+        if not name.endswith('Request')
+        and not name.endswith('Query')
+        and not is_enum_model(name, models)
+    }
+
+    # Calculate dependencies for each model
+    deps = {name: get_model_dependencies(name, models) for name in filtered_models}
+
+    # Kahn's algorithm for topological sort
+    result = []
+    # Count incoming edges (how many models depend on each model)
+    in_degree = {name: 0 for name in filtered_models}
+
+    for name in filtered_models:
+        for dep in deps[name]:
+            if dep in in_degree:
+                in_degree[name] += 1
+
+    # Start with models that have no dependencies
+    queue = [name for name, degree in in_degree.items() if degree == 0]
+    queue.sort()  # Sort alphabetically for deterministic output
+
+    while queue:
+        current = queue.pop(0)
+        result.append(current)
+
+        # For each model that depends on current, decrease its in-degree
+        for name in filtered_models:
+            if current in deps[name]:
+                in_degree[name] -= 1
+                if in_degree[name] == 0:
+                    # Insert in sorted order to maintain determinism
+                    queue.append(name)
+                    queue.sort()
+
+    # If there are cycles, add remaining models (shouldn't happen in practice)
+    remaining = [name for name in filtered_models if name not in result]
+    remaining.sort()
+    result.extend(remaining)
+
+    return result
+
+
+def is_enum_model(model_name: str, models: dict) -> bool:
+    """Check if a model is an enum (has no fields and name ends with Status, Kind, State, etc.)."""
+    if model_name not in models:
+        return False
+    model_info = models[model_name]
+    # Enums typically have no fields or are explicitly marked
+    # Common enum suffixes in this codebase
+    enum_suffixes = ('Status', 'Kind', 'State', 'Type')
+    return len(model_info.get('fields', [])) == 0 and any(model_name.endswith(s) for s in enum_suffixes)
+
+
+def convert_type_to_dict_type(type_hint: str, models: dict) -> str:
+    """Convert a Pydantic model type hint to its TypedDict equivalent."""
+    # Handle Optional types
+    optional_match = re.match(r'Optional\[(.+)\]', type_hint)
+    if optional_match:
+        inner = convert_type_to_dict_type(optional_match.group(1), models)
+        return f"Optional[{inner}]"
+
+    # Handle List types
+    list_match = re.match(r'List\[(.+)\]', type_hint)
+    if list_match:
+        inner = convert_type_to_dict_type(list_match.group(1), models)
+        return f"List[{inner}]"
+
+    # Handle Dict types
+    dict_match = re.match(r'Dict\[(.+),\s*(.+)\]', type_hint)
+    if dict_match:
+        key_type = convert_type_to_dict_type(dict_match.group(1), models)
+        val_type = convert_type_to_dict_type(dict_match.group(2), models)
+        return f"Dict[{key_type}, {val_type}]"
+
+    # Convert Pydantic strict types to Python types
+    type_mapping = {
+        'StrictStr': 'str',
+        'StrictInt': 'int',
+        'StrictFloat': 'float',
+        'StrictBool': 'bool',
+        'StrictBytes': 'bytes',
+    }
+    if type_hint in type_mapping:
+        return type_mapping[type_hint]
+
+    # If this is an enum model, convert to str (enums serialize to strings)
+    if is_enum_model(type_hint, models):
+        return 'str'
+
+    # If this is a model type, convert to its TypedDict version
+    # No forward reference needed since we topologically sort the TypedDicts
+    if type_hint in models:
+        return f"{type_hint}Dict"
+
+    return type_hint
+
+
+def generate_typed_dict(class_name: str, fields: list, models: dict) -> str:
+    """Generate a TypedDict class definition for a model with docstring."""
+    lines = []
+    dict_name = f"{class_name}Dict"
+    lines.append(f"class {dict_name}(TypedDict, total=False):")
+
+    # Add docstring with field descriptions for better IDE hover
+    if fields:
+        lines.append('    """')
+        lines.append(f'    Dictionary representation of {class_name}.')
+        lines.append('')
+        lines.append('    Keys:')
+        for field in fields:
+            field_type = convert_type_to_dict_type(field.type_hint, models)
+            desc = field.description if field.description else field.name
+            lines.append(f'        {field.name} ({field_type}): {desc}')
+        lines.append('    """')
+
+    if not fields:
+        lines.append("    pass")
+    else:
+        for field in fields:
+            field_type = convert_type_to_dict_type(field.type_hint, models)
+            # Make all fields optional since to_dict() excludes None values
+            if not field_type.startswith("Optional["):
+                field_type = f"Optional[{field_type}]"
+            lines.append(f"    {field.name}: {field_type}")
+
+    return "\n".join(lines)
+
+
+def get_return_type_as_typed_dict(return_type: str, models: dict) -> str:
+    """Convert a return type to use TypedDict instead of the model class."""
+    if return_type == "None":
+        return "None"
+
+    # Handle List[ModelType]
+    list_match = re.match(r'List\[(\w+)\]', return_type)
+    if list_match:
+        inner_type = list_match.group(1)
+        if inner_type in models:
+            return f"List[{inner_type}Dict]"
+        return f"List[Dict[str, Any]]"
+
+    # Handle single model types
+    # Extract the base type name (remove Optional wrapper if present)
+    type_match = re.match(r'(?:Optional\[)?(\w+)(?:\])?', return_type)
+    if type_match:
+        base_type = type_match.group(1)
+        if base_type in models:
+            return f"{base_type}Dict"
+
+    # Fallback for Dict types or unknown types
+    if return_type.startswith("Dict["):
+        return "Dict[str, Any]"
+
+    return "Dict[str, Any]"
+
+
+def generate_wrapper_method(method: MethodInfo, models: dict, use_async: bool = True) -> str:
     """Generate a wrapper method with flattened parameters."""
     lines = []
 
@@ -338,14 +541,18 @@ def generate_wrapper_method(method: MethodInfo, models: dict) -> str:
         all_params.append(f"{field.name}: Optional[{field_type}] = None")
 
     # Method signature
+    # Determine the appropriate return type hint based on the original return type
+    # Use named TypedDict types with docstrings for IDE hover support
+    return_type_hint = get_return_type_as_typed_dict(method.return_type, models)
+    def_keyword = "async def" if use_async else "def"
     if all_params:
         params_str = ",\n        ".join(all_params)
-        lines.append(f"    async def {method.name}(")
+        lines.append(f"    {def_keyword} {method.name}(")
         lines.append(f"        self,")
         lines.append(f"        {params_str},")
-        lines.append(f"    ) -> {method.return_type}:")
+        lines.append(f"    ) -> {return_type_hint}:")
     else:
-        lines.append(f"    async def {method.name}(self) -> {method.return_type}:")
+        lines.append(f"    {def_keyword} {method.name}(self) -> {return_type_hint}:")
 
     # Docstring
     lines.append(f'        """{method.docstring}')
@@ -357,10 +564,39 @@ def generate_wrapper_method(method: MethodInfo, models: dict) -> str:
         for field in request_fields:
             desc = field.description or field.name
             lines.append(f"            {field.name}: {desc}")
+
+    # Add Returns section with dict keys for better hover documentation
+    if method.return_type != "None":
+        lines.append("")
+        lines.append("        Returns:")
+        # Extract the model name from return type
+        list_match = re.match(r'List\[(\w+)\]', method.return_type)
+        type_match = re.match(r'(?:Optional\[)?(\w+)(?:\])?', method.return_type)
+
+        if list_match:
+            model_name = list_match.group(1)
+            lines.append(f"            List of dicts with keys:")
+        elif type_match:
+            model_name = type_match.group(1)
+            lines.append(f"            Dict with keys:")
+        else:
+            model_name = None
+
+        if model_name and model_name in models:
+            model_info = models[model_name]
+            for field in model_info.get('fields', []):
+                field_type = simplify_type(field.type_hint)
+                desc = field.description if field.description else ""
+                if desc:
+                    lines.append(f"                - {field.name} ({field_type}): {desc}")
+                else:
+                    lines.append(f"                - {field.name} ({field_type})")
+
     lines.append('        """')
 
     # Method body - determine if we need to pass a request object
     call_args = [f"{p[0]}={p[0]}" for p in method.path_params]
+    await_keyword = "await " if use_async else ""
 
     if method.request_type:
         # We have a request type - need to build and pass it
@@ -380,13 +616,24 @@ def generate_wrapper_method(method: MethodInfo, models: dict) -> str:
             lines.append(f"        request = {method.request_type}()")
             call_args.append("request=request")
 
-        lines.append(f"        return await self._api.{method.name}({', '.join(call_args)})")
+        # Don't wrap with _to_dict if method returns None
+        if method.return_type == 'None':
+            lines.append(f"        return {await_keyword}self._api.{method.name}({', '.join(call_args)})")
+        else:
+            lines.append(f"        return _to_dict({await_keyword}self._api.{method.name}({', '.join(call_args)}))")
     else:
         # No request object needed
-        if call_args:
-            lines.append(f"        return await self._api.{method.name}({', '.join(call_args)})")
+        # Don't wrap with _to_dict if method returns None
+        if method.return_type == 'None':
+            if call_args:
+                lines.append(f"        return {await_keyword}self._api.{method.name}({', '.join(call_args)})")
+            else:
+                lines.append(f"        return {await_keyword}self._api.{method.name}()")
         else:
-            lines.append(f"        return await self._api.{method.name}()")
+            if call_args:
+                lines.append(f"        return _to_dict({await_keyword}self._api.{method.name}({', '.join(call_args)}))")
+            else:
+                lines.append(f"        return _to_dict({await_keyword}self._api.{method.name}())")
 
     lines.append("")
     return "\n".join(lines)
@@ -394,6 +641,9 @@ def generate_wrapper_method(method: MethodInfo, models: dict) -> str:
 
 def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     """Generate the unified VirshSandbox client wrapper with flattened parameters."""
+
+    use_async = is_async_enabled()
+    print(f"Generating {'async' if use_async else 'sync'} client...")
 
     apis = discover_apis(sdk_dir)
     models = discover_models(sdk_dir)
@@ -463,7 +713,7 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
         lines.append("")
 
         for method in api['methods']:
-            method_code = generate_wrapper_method(method, models)
+            method_code = generate_wrapper_method(method, models, use_async=use_async)
             lines.append(method_code)
 
         wrapper_classes.append("\n".join(lines))
@@ -482,14 +732,23 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     output_lines.append('Example:')
     output_lines.append(f'    from {package_name} import VirshSandbox')
     output_lines.append('')
-    output_lines.append('    async with VirshSandbox(host="http://localhost:8080") as client:')
-    output_lines.append('        # Create a sandbox with simple parameters')
-    output_lines.append('        await client.sandbox.create_sandbox(source_vm_name="ubuntu-base")')
-    output_lines.append('        # Run a command')
-    output_lines.append('        await client.command.run_command(command="ls", args=["-la"])')
+    if use_async:
+        output_lines.append('    async with VirshSandbox(host="http://localhost:8080") as client:')
+        output_lines.append('        # Create a sandbox with simple parameters')
+        output_lines.append('        await client.sandbox.create_sandbox(source_vm_name="ubuntu-base")')
+        output_lines.append('        # Run a command')
+        output_lines.append('        await client.command.run_command(command="ls", args=["-la"])')
+    else:
+        output_lines.append('    client = VirshSandbox(host="http://localhost:8080")')
+        output_lines.append('    # Create a sandbox with simple parameters')
+        output_lines.append('    client.sandbox.create_sandbox(source_vm_name="ubuntu-base")')
+        output_lines.append('    # Run a command')
+        output_lines.append('    client.command.run_command(command="ls", args=["-la"])')
     output_lines.append('"""')
     output_lines.append('')
     output_lines.append('from typing import Any, Dict, List, Optional, Tuple, Union')
+    output_lines.append('')
+    output_lines.append('from typing_extensions import TypedDict')
     output_lines.append('')
     output_lines.append(f'from {package_name}.api_client import ApiClient')
     output_lines.append(f'from {package_name}.configuration import Configuration')
@@ -500,6 +759,46 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     for imp in sorted(model_imports):
         output_lines.append(imp)
 
+    output_lines.append('')
+    output_lines.append('')
+
+    # Generate TypedDict classes for all response models
+    # Use topological sort so dependencies are defined before dependents
+    # This allows IDEs to show field information on hover without forward references
+    output_lines.append('# TypedDict definitions for response types')
+    sorted_model_names = topological_sort_models(models)
+    for model_name in sorted_model_names:
+        model_info = models[model_name]
+        typed_dict_code = generate_typed_dict(model_name, model_info['fields'], models)
+        output_lines.append(typed_dict_code)
+        output_lines.append('')
+
+    output_lines.append('')
+
+    # Add _to_dict helper function
+    output_lines.append('def _to_dict(obj: Any) -> Any:')
+    output_lines.append('    """Convert a response object to a dictionary.')
+    output_lines.append('')
+    output_lines.append('    This helper function handles the conversion of API response objects')
+    output_lines.append('    to dictionaries for easier consumption.')
+    output_lines.append('')
+    output_lines.append('    Args:')
+    output_lines.append('        obj: The object to convert. Can be None, a dict, a list,')
+    output_lines.append('             a response object with to_dict() method, or a primitive.')
+    output_lines.append('')
+    output_lines.append('    Returns:')
+    output_lines.append('        The converted dictionary, list of dictionaries, or the original')
+    output_lines.append('        value if it\'s already a dict/primitive.')
+    output_lines.append('    """')
+    output_lines.append('    if obj is None:')
+    output_lines.append('        return None')
+    output_lines.append('    if isinstance(obj, dict):')
+    output_lines.append('        return obj')
+    output_lines.append('    if isinstance(obj, list):')
+    output_lines.append('        return [_to_dict(item) for item in obj]')
+    output_lines.append('    if hasattr(obj, "to_dict"):')
+    output_lines.append('        return obj.to_dict()')
+    output_lines.append('    return obj')
     output_lines.append('')
     output_lines.append('')
 
@@ -525,8 +824,12 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     output_lines.append('')
     output_lines.append('    Example:')
     output_lines.append(f'        >>> from {package_name} import VirshSandbox')
-    output_lines.append('        >>> async with VirshSandbox() as client:')
-    output_lines.append('        ...     await client.sandbox.create_sandbox(source_vm_name="base-vm")')
+    if use_async:
+        output_lines.append('        >>> async with VirshSandbox() as client:')
+        output_lines.append('        ...     await client.sandbox.create_sandbox(source_vm_name="base-vm")')
+    else:
+        output_lines.append('        >>> client = VirshSandbox()')
+        output_lines.append('        >>> client.sandbox.create_sandbox(source_vm_name="base-vm")')
     output_lines.append('    """')
     output_lines.append('')
     output_lines.append('    def __init__(')
@@ -611,21 +914,39 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     output_lines.append('        if self._tmux_config is not self._main_config:')
     output_lines.append('            self._tmux_config.debug = debug')
     output_lines.append('')
-    output_lines.append('    async def close(self) -> None:')
-    output_lines.append('        """Close the API client connections."""')
-    output_lines.append("        if hasattr(self._main_api_client.rest_client, 'close'):")
-    output_lines.append('            await self._main_api_client.rest_client.close()')
-    output_lines.append('        if self._tmux_api_client is not self._main_api_client:')
-    output_lines.append("            if hasattr(self._tmux_api_client.rest_client, 'close'):")
-    output_lines.append('                await self._tmux_api_client.rest_client.close()')
-    output_lines.append('')
-    output_lines.append('    async def __aenter__(self) -> "VirshSandbox":')
-    output_lines.append('        """Async context manager entry."""')
-    output_lines.append('        return self')
-    output_lines.append('')
-    output_lines.append('    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:')
-    output_lines.append('        """Async context manager exit."""')
-    output_lines.append('        await self.close()')
+
+    if use_async:
+        output_lines.append('    async def close(self) -> None:')
+        output_lines.append('        """Close the API client connections."""')
+        output_lines.append("        if hasattr(self._main_api_client.rest_client, 'close'):")
+        output_lines.append('            await self._main_api_client.rest_client.close()')
+        output_lines.append('        if self._tmux_api_client is not self._main_api_client:')
+        output_lines.append("            if hasattr(self._tmux_api_client.rest_client, 'close'):")
+        output_lines.append('                await self._tmux_api_client.rest_client.close()')
+        output_lines.append('')
+        output_lines.append('    async def __aenter__(self) -> "VirshSandbox":')
+        output_lines.append('        """Async context manager entry."""')
+        output_lines.append('        return self')
+        output_lines.append('')
+        output_lines.append('    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:')
+        output_lines.append('        """Async context manager exit."""')
+        output_lines.append('        await self.close()')
+    else:
+        output_lines.append('    def close(self) -> None:')
+        output_lines.append('        """Close the API client connections."""')
+        output_lines.append("        if hasattr(self._main_api_client.rest_client, 'close'):")
+        output_lines.append('            self._main_api_client.rest_client.close()')
+        output_lines.append('        if self._tmux_api_client is not self._main_api_client:')
+        output_lines.append("            if hasattr(self._tmux_api_client.rest_client, 'close'):")
+        output_lines.append('                self._tmux_api_client.rest_client.close()')
+        output_lines.append('')
+        output_lines.append('    def __enter__(self) -> "VirshSandbox":')
+        output_lines.append('        """Context manager entry."""')
+        output_lines.append('        return self')
+        output_lines.append('')
+        output_lines.append('    def __exit__(self, exc_type, exc_val, exc_tb) -> None:')
+        output_lines.append('        """Context manager exit."""')
+        output_lines.append('        self.close()')
 
     # Write the file
     client_path = sdk_dir / "client.py"
@@ -659,6 +980,90 @@ def update_init_file(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     print("Updated __init__.py to export VirshSandbox")
 
 
+def remove_unused_imports(sdk_dir: Path):
+    """Remove unused imports from generated model files.
+
+    The OpenAPI generator adds standard imports to all model files, but many
+    are not actually used. This function removes common unused imports like
+    `re` which is imported but never used in most model files.
+    """
+    models_dir = sdk_dir / "models"
+    if not models_dir.exists():
+        print(f"Warning: models directory not found at {models_dir}")
+        return
+
+    # List of imports that are commonly unused in model files
+    # These have `# noqa: F401` comments which indicates they may be unused
+    unused_import_patterns = [
+        (r'^import re  # noqa: F401\n', ''),  # Remove unused re import with noqa comment
+        (r'^import re\n', ''),  # Remove unused re import without noqa comment
+    ]
+
+    files_modified = 0
+
+    for model_file in models_dir.glob("*.py"):
+        if model_file.name == "__init__.py":
+            continue
+
+        content = model_file.read_text()
+        original_content = content
+
+        # Check if `re` is actually used in the file (beyond the import)
+        # Look for `re.` usage which would indicate actual usage
+        re_is_used = bool(re.search(r'\bre\.', content))
+
+        if not re_is_used:
+            # Remove the unused re import
+            for pattern, replacement in unused_import_patterns:
+                content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+
+        if content != original_content:
+            model_file.write_text(content)
+            files_modified += 1
+
+    if files_modified > 0:
+        print(f"  - Removed unused imports from {files_modified} model files")
+    else:
+        print("  - No unused imports to remove")
+
+
+def patch_api_client(sdk_dir: Path):
+    """Patch api_client.py to use getattr with defaults for potentially missing config attributes.
+
+    This fixes issues where the generated api_client.py references config attributes
+    that may not exist in configuration.py (e.g., safe_chars_for_path_param, ignore_operation_servers).
+    """
+    api_client_path = sdk_dir / "api_client.py"
+    if not api_client_path.exists():
+        print(f"Warning: api_client.py not found at {api_client_path}")
+        return
+
+    content = api_client_path.read_text()
+    modified = False
+
+    # Fix safe_chars_for_path_param - replace direct attribute access with getattr
+    old_safe_chars = 'quote(str(v), safe=config.safe_chars_for_path_param)'
+    new_safe_chars = "quote(str(v), safe=getattr(config, 'safe_chars_for_path_param', ''))"
+    if old_safe_chars in content:
+        content = content.replace(old_safe_chars, new_safe_chars)
+        modified = True
+        print("  - Patched safe_chars_for_path_param to use getattr with default")
+
+    # Fix ignore_operation_servers - replace direct attribute access with getattr
+    old_ignore_servers = 'self.configuration.ignore_operation_servers'
+    new_ignore_servers = "getattr(self.configuration, 'ignore_operation_servers', False)"
+    if old_ignore_servers in content:
+        content = content.replace(old_ignore_servers, new_ignore_servers)
+        modified = True
+        print("  - Patched ignore_operation_servers to use getattr with default")
+
+    if modified:
+        api_client_path.write_text(content)
+        print("Patched api_client.py for missing config attributes")
+    else:
+        print("api_client.py already patched or no changes needed")
+
+
 def main():
     sdk_dir = Path("virsh-sandbox-py/virsh_sandbox")
     package_name = "virsh_sandbox"
@@ -673,6 +1078,12 @@ def main():
 
     print("Updating __init__.py...")
     update_init_file(sdk_dir, package_name)
+
+    print("Patching api_client.py for config compatibility...")
+    patch_api_client(sdk_dir)
+
+    print("Removing unused imports from generated files...")
+    remove_unused_imports(sdk_dir)
 
     print("SDK polished!")
 
