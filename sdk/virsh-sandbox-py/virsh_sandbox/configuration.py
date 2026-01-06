@@ -412,6 +412,6 @@ class Configuration:
                         f"Must be one of {var_config['enum_values']}."
                     )
 
-                url = url.replace(f"", var_value)
+                url = url.replace("", var_value)
 
         return url
