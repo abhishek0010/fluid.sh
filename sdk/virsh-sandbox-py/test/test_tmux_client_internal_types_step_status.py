@@ -14,9 +14,6 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_step_status import \
-    TmuxClientInternalTypesStepStatus
-
 
 class TestTmuxClientInternalTypesStepStatus(unittest.TestCase):
     """TmuxClientInternalTypesStepStatus unit test stubs"""

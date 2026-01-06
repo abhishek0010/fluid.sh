@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.virsh_sandbox_internal_store_package_info import \
-    VirshSandboxInternalStorePackageInfo
+from virsh_sandbox.models.virsh_sandbox_internal_store_package_info import (
+    VirshSandboxInternalStorePackageInfo,
+)
 
 
 class TestVirshSandboxInternalStorePackageInfo(unittest.TestCase):

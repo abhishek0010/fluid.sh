@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_snapshot_request import \
-    InternalRestSnapshotRequest
+from virsh_sandbox.models.internal_rest_snapshot_request import (
+    InternalRestSnapshotRequest,
+)
 
 
 class TestInternalRestSnapshotRequest(unittest.TestCase):

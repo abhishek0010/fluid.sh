@@ -6,7 +6,8 @@
  * OpenAPI spec version: 0.0.1-beta
  */
 
-export type TimeDuration = (typeof TimeDuration)[keyof typeof TimeDuration];
+export type TimeDuration = typeof TimeDuration[keyof typeof TimeDuration];
+
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const TimeDuration = {

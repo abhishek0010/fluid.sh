@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_revoke_certificate_request import \
-    InternalRestRevokeCertificateRequest
+from virsh_sandbox.models.internal_rest_revoke_certificate_request import (
+    InternalRestRevokeCertificateRequest,
+)
 
 
 class TestInternalRestRevokeCertificateRequest(unittest.TestCase):

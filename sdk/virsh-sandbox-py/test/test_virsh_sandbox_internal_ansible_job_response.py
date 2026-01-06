@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_job_response import \
-    VirshSandboxInternalAnsibleJobResponse
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_job_response import (
+    VirshSandboxInternalAnsibleJobResponse,
+)
 
 
 class TestVirshSandboxInternalAnsibleJobResponse(unittest.TestCase):

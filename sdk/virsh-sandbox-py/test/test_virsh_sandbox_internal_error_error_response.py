@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.virsh_sandbox_internal_error_error_response import \
-    VirshSandboxInternalErrorErrorResponse
+from virsh_sandbox.models.virsh_sandbox_internal_error_error_response import (
+    VirshSandboxInternalErrorErrorResponse,
+)
 
 
 class TestVirshSandboxInternalErrorErrorResponse(unittest.TestCase):

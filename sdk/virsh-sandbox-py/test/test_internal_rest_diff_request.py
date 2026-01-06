@@ -14,8 +14,7 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_diff_request import \
-    InternalRestDiffRequest
+from virsh_sandbox.models.internal_rest_diff_request import InternalRestDiffRequest
 
 
 class TestInternalRestDiffRequest(unittest.TestCase):

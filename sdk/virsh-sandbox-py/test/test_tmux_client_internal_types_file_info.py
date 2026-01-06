@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_file_info import \
-    TmuxClientInternalTypesFileInfo
+from virsh_sandbox.models.tmux_client_internal_types_file_info import (
+    TmuxClientInternalTypesFileInfo,
+)
 
 
 class TestTmuxClientInternalTypesFileInfo(unittest.TestCase):

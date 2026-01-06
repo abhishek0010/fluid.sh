@@ -5,6 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**ip_address** | **str** | populated when auto_start and wait_for_ip are true | [optional] 
 **sandbox** | [**VirshSandboxInternalStoreSandbox**](VirshSandboxInternalStoreSandbox.md) |  | [optional] 
 
 ## Example

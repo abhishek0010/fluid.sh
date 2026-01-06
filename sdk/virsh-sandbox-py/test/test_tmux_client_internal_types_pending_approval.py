@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_pending_approval import \
-    TmuxClientInternalTypesPendingApproval
+from virsh_sandbox.models.tmux_client_internal_types_pending_approval import (
+    TmuxClientInternalTypesPendingApproval,
+)
 
 
 class TestTmuxClientInternalTypesPendingApproval(unittest.TestCase):

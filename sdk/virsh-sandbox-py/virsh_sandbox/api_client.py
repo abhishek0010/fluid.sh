@@ -32,10 +32,15 @@ from virsh_sandbox import rest
 from virsh_sandbox.api_response import ApiResponse
 from virsh_sandbox.api_response import T as ApiResponseT
 from virsh_sandbox.configuration import Configuration
-from virsh_sandbox.exceptions import (ApiException, ApiValueError,
-                                      BadRequestException, ForbiddenException,
-                                      NotFoundException, ServiceException,
-                                      UnauthorizedException)
+from virsh_sandbox.exceptions import (
+    ApiException,
+    ApiValueError,
+    BadRequestException,
+    ForbiddenException,
+    NotFoundException,
+    ServiceException,
+    UnauthorizedException,
+)
 
 RequestSerialized = Tuple[str, str, Dict[str, str], Optional[str], List[str]]
 
@@ -84,7 +89,7 @@ class ApiClient:
             self.default_headers[header_name] = header_value
         self.cookie = cookie
         # Set default User-Agent.
-        self.user_agent = "OpenAPI-Generator/0.0.14-beta/python"
+        self.user_agent = "OpenAPI-Generator/0.0.15-beta/python"
         self.client_side_validation = configuration.client_side_validation
 
     def __enter__(self):

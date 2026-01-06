@@ -21,8 +21,9 @@ from typing import Any, ClassVar, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Self
 
-from virsh_sandbox.models.tmux_client_internal_types_pending_approval import \
-    TmuxClientInternalTypesPendingApproval
+from virsh_sandbox.models.tmux_client_internal_types_pending_approval import (
+    TmuxClientInternalTypesPendingApproval,
+)
 
 
 class TmuxClientInternalTypesListApprovalsResponse(BaseModel):

@@ -13,30 +13,42 @@ from typing_extensions import Annotated
 from virsh_sandbox.api_client import ApiClient, RequestSerialized
 from virsh_sandbox.api_response import ApiResponse
 from virsh_sandbox.exceptions import ApiException
-from virsh_sandbox.models.tmux_client_internal_types_create_pane_request import \
-    TmuxClientInternalTypesCreatePaneRequest
-from virsh_sandbox.models.tmux_client_internal_types_create_pane_response import \
-    TmuxClientInternalTypesCreatePaneResponse
-from virsh_sandbox.models.tmux_client_internal_types_kill_session_response import \
-    TmuxClientInternalTypesKillSessionResponse
-from virsh_sandbox.models.tmux_client_internal_types_list_panes_response import \
-    TmuxClientInternalTypesListPanesResponse
-from virsh_sandbox.models.tmux_client_internal_types_read_pane_request import \
-    TmuxClientInternalTypesReadPaneRequest
-from virsh_sandbox.models.tmux_client_internal_types_read_pane_response import \
-    TmuxClientInternalTypesReadPaneResponse
-from virsh_sandbox.models.tmux_client_internal_types_send_keys_request import \
-    TmuxClientInternalTypesSendKeysRequest
-from virsh_sandbox.models.tmux_client_internal_types_send_keys_response import \
-    TmuxClientInternalTypesSendKeysResponse
-from virsh_sandbox.models.tmux_client_internal_types_session_info import \
-    TmuxClientInternalTypesSessionInfo
-from virsh_sandbox.models.tmux_client_internal_types_switch_pane_request import \
-    TmuxClientInternalTypesSwitchPaneRequest
-from virsh_sandbox.models.tmux_client_internal_types_switch_pane_response import \
-    TmuxClientInternalTypesSwitchPaneResponse
-from virsh_sandbox.models.tmux_client_internal_types_window_info import \
-    TmuxClientInternalTypesWindowInfo
+from virsh_sandbox.models.tmux_client_internal_types_create_pane_request import (
+    TmuxClientInternalTypesCreatePaneRequest,
+)
+from virsh_sandbox.models.tmux_client_internal_types_create_pane_response import (
+    TmuxClientInternalTypesCreatePaneResponse,
+)
+from virsh_sandbox.models.tmux_client_internal_types_kill_session_response import (
+    TmuxClientInternalTypesKillSessionResponse,
+)
+from virsh_sandbox.models.tmux_client_internal_types_list_panes_response import (
+    TmuxClientInternalTypesListPanesResponse,
+)
+from virsh_sandbox.models.tmux_client_internal_types_read_pane_request import (
+    TmuxClientInternalTypesReadPaneRequest,
+)
+from virsh_sandbox.models.tmux_client_internal_types_read_pane_response import (
+    TmuxClientInternalTypesReadPaneResponse,
+)
+from virsh_sandbox.models.tmux_client_internal_types_send_keys_request import (
+    TmuxClientInternalTypesSendKeysRequest,
+)
+from virsh_sandbox.models.tmux_client_internal_types_send_keys_response import (
+    TmuxClientInternalTypesSendKeysResponse,
+)
+from virsh_sandbox.models.tmux_client_internal_types_session_info import (
+    TmuxClientInternalTypesSessionInfo,
+)
+from virsh_sandbox.models.tmux_client_internal_types_switch_pane_request import (
+    TmuxClientInternalTypesSwitchPaneRequest,
+)
+from virsh_sandbox.models.tmux_client_internal_types_switch_pane_response import (
+    TmuxClientInternalTypesSwitchPaneResponse,
+)
+from virsh_sandbox.models.tmux_client_internal_types_window_info import (
+    TmuxClientInternalTypesWindowInfo,
+)
 
 
 class TmuxApi:

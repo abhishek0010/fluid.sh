@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_approve_request import \
-    TmuxClientInternalTypesApproveRequest
+from virsh_sandbox.models.tmux_client_internal_types_approve_request import (
+    TmuxClientInternalTypesApproveRequest,
+)
 
 
 class TestTmuxClientInternalTypesApproveRequest(unittest.TestCase):

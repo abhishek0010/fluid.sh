@@ -21,8 +21,9 @@ from typing import Any, ClassVar, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict, StrictInt
 from typing_extensions import Self
 
-from virsh_sandbox.models.internal_api_sandbox_session_info import \
-    InternalApiSandboxSessionInfo
+from virsh_sandbox.models.internal_api_sandbox_session_info import (
+    InternalApiSandboxSessionInfo,
+)
 
 
 class InternalApiListSandboxSessionsResponse(BaseModel):

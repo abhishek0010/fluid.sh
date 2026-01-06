@@ -21,8 +21,9 @@ from typing import Any, ClassVar, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict, StrictInt, StrictStr
 from typing_extensions import Self
 
-from virsh_sandbox.models.tmux_client_internal_types_step_status import \
-    TmuxClientInternalTypesStepStatus
+from virsh_sandbox.models.tmux_client_internal_types_step_status import (
+    TmuxClientInternalTypesStepStatus,
+)
 
 
 class TmuxClientInternalTypesPlanStep(BaseModel):

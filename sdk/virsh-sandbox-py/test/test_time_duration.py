@@ -14,8 +14,6 @@
 
 import unittest
 
-from virsh_sandbox.models.time_duration import TimeDuration
-
 
 class TestTimeDuration(unittest.TestCase):
     """TimeDuration unit test stubs"""

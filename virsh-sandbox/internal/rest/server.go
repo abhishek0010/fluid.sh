@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"github.com/MarceloPetrucio/go-scalar-api-reference"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/gorilla/websocket"
 
 	"virsh-sandbox/internal/ansible"
 	serverError "virsh-sandbox/internal/error"
@@ -95,6 +97,10 @@ func (s *Server) routes() {
 			r.Post("/", s.handleCreateSandbox)
 
 			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", s.handleGetSandbox)
+				r.Get("/commands", s.handleListSandboxCommands)
+				r.Get("/stream", s.handleSandboxStream)
+
 				r.Post("/sshkey", s.handleInjectSSHKey)
 				r.Post("/start", s.handleStartSandbox)
 				r.Post("/run", s.handleRunCommand)
@@ -118,14 +124,14 @@ func (s *Server) routes() {
 // --- Request/Response DTOs ---
 
 type createSandboxRequest struct {
-	SourceVMName string `json:"source_vm_name"`         // required; name of existing VM in libvirt to clone from
-	AgentID      string `json:"agent_id"`               // required
-	VMName       string `json:"vm_name,omitempty"`      // optional; generated if empty
-	CPU          int    `json:"cpu,omitempty"`          // optional; default from service config if <=0
-	MemoryMB     int    `json:"memory_mb,omitempty"`    // optional; default from service config if <=0
-	TTLSeconds   *int   `json:"ttl_seconds,omitempty"`  // optional; TTL for auto garbage collection
-	AutoStart    bool   `json:"auto_start,omitempty"`   // optional; if true, start the VM immediately after creation
-	WaitForIP    bool   `json:"wait_for_ip,omitempty"`  // optional; if true and auto_start, wait for IP discovery
+	SourceVMName string `json:"source_vm_name"`        // required; name of existing VM in libvirt to clone from
+	AgentID      string `json:"agent_id"`              // required
+	VMName       string `json:"vm_name,omitempty"`     // optional; generated if empty
+	CPU          int    `json:"cpu,omitempty"`         // optional; default from service config if <=0
+	MemoryMB     int    `json:"memory_mb,omitempty"`   // optional; default from service config if <=0
+	TTLSeconds   *int   `json:"ttl_seconds,omitempty"` // optional; TTL for auto garbage collection
+	AutoStart    bool   `json:"auto_start,omitempty"`  // optional; if true, start the VM immediately after creation
+	WaitForIP    bool   `json:"wait_for_ip,omitempty"` // optional; if true and auto_start, wait for IP discovery
 }
 
 type createSandboxResponse struct {
@@ -645,4 +651,300 @@ func (s *Server) handleDestroySandbox(w http.ResponseWriter, r *http.Request) {
 		SandboxName: sb.SandboxName,
 		TTLSeconds:  sb.TTLSeconds,
 	})
+}
+
+// --- Get Single Sandbox DTOs ---
+
+type getSandboxResponse struct {
+	Sandbox  *store.Sandbox   `json:"sandbox"`
+	Commands []*store.Command `json:"commands,omitempty"`
+}
+
+// @Summary Get sandbox details
+// @Description Returns detailed information about a specific sandbox including recent commands
+// @Tags Sandbox
+// @Accept json
+// @Produce json
+// @Param id path string true "Sandbox ID"
+// @Param include_commands query bool false "Include command history"
+// @Success 200 {object} getSandboxResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Id getSandbox
+// @Router /v1/sandboxes/{id} [get]
+func (s *Server) handleGetSandbox(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		serverError.RespondError(w, http.StatusBadRequest, errors.New("sandbox id is required"))
+		return
+	}
+
+	sb, err := s.vmSvc.GetSandbox(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			serverError.RespondError(w, http.StatusNotFound, fmt.Errorf("sandbox not found: %s", id))
+			return
+		}
+		serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("get sandbox: %w", err))
+		return
+	}
+
+	resp := getSandboxResponse{Sandbox: sb}
+
+	// Optionally include commands
+	if r.URL.Query().Get("include_commands") == "true" {
+		cmds, err := s.vmSvc.GetSandboxCommands(r.Context(), id, nil)
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("get commands: %w", err))
+			return
+		}
+		resp.Commands = cmds
+	}
+
+	_ = serverJSON.RespondJSON(w, http.StatusOK, resp)
+}
+
+// --- List Sandbox Commands DTOs ---
+
+type listSandboxCommandsResponse struct {
+	Commands []*store.Command `json:"commands"`
+	Total    int              `json:"total"`
+}
+
+// @Summary List sandbox commands
+// @Description Returns all commands executed in the sandbox
+// @Tags Sandbox
+// @Accept json
+// @Produce json
+// @Param id path string true "Sandbox ID"
+// @Param limit query int false "Max results to return"
+// @Param offset query int false "Number of results to skip"
+// @Success 200 {object} listSandboxCommandsResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Id listSandboxCommands
+// @Router /v1/sandboxes/{id}/commands [get]
+func (s *Server) handleListSandboxCommands(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		serverError.RespondError(w, http.StatusBadRequest, errors.New("sandbox id is required"))
+		return
+	}
+
+	// Build list options from query params
+	var opts *store.ListOptions
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+	if limitStr != "" || offsetStr != "" {
+		opts = &store.ListOptions{}
+		if limitStr != "" {
+			if _, err := fmt.Sscanf(limitStr, "%d", &opts.Limit); err != nil {
+				serverError.RespondError(w, http.StatusBadRequest, fmt.Errorf("invalid limit: %w", err))
+				return
+			}
+		}
+		if offsetStr != "" {
+			if _, err := fmt.Sscanf(offsetStr, "%d", &opts.Offset); err != nil {
+				serverError.RespondError(w, http.StatusBadRequest, fmt.Errorf("invalid offset: %w", err))
+				return
+			}
+		}
+	}
+
+	cmds, err := s.vmSvc.GetSandboxCommands(r.Context(), id, opts)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			serverError.RespondError(w, http.StatusNotFound, fmt.Errorf("sandbox not found: %s", id))
+			return
+		}
+		serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("list commands: %w", err))
+		return
+	}
+
+	_ = serverJSON.RespondJSON(w, http.StatusOK, listSandboxCommandsResponse{
+		Commands: cmds,
+		Total:    len(cmds),
+	})
+}
+
+// --- Sandbox Stream WebSocket ---
+
+// StreamEvent represents a realtime event from the sandbox.
+type StreamEvent struct {
+	Type      string          `json:"type"`                 // "command_start", "command_output", "command_end", "file_change", "heartbeat"
+	Timestamp string          `json:"timestamp"`            // RFC3339 timestamp
+	Data      json.RawMessage `json:"data,omitempty"`       // Event-specific payload
+	SandboxID string          `json:"sandbox_id,omitempty"` // Sandbox ID for context
+}
+
+// CommandStartEvent is sent when a command begins execution.
+type CommandStartEvent struct {
+	CommandID string `json:"command_id"`
+	Command   string `json:"command"`
+	WorkDir   string `json:"work_dir,omitempty"`
+}
+
+// CommandOutputEvent is sent for streaming command output.
+type CommandOutputEvent struct {
+	CommandID string `json:"command_id"`
+	Output    string `json:"output"`
+	IsStderr  bool   `json:"is_stderr"`
+}
+
+// CommandEndEvent is sent when a command completes.
+type CommandEndEvent struct {
+	CommandID string `json:"command_id"`
+	ExitCode  int    `json:"exit_code"`
+	Duration  string `json:"duration"`
+}
+
+// FileChangeEvent is sent when files are modified.
+type FileChangeEvent struct {
+	Path      string `json:"path"`
+	Operation string `json:"operation"` // "created", "modified", "deleted"
+}
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins; tighten in production
+	},
+}
+
+// @Summary Stream sandbox activity
+// @Description Connects via WebSocket to stream realtime sandbox activity (commands, file changes)
+// @Tags Sandbox
+// @Param id path string true "Sandbox ID"
+// @Success 101 {string} string "Switching Protocols - WebSocket connection established"
+// @Failure 400 {string} string "Invalid sandbox ID"
+// @Failure 404 {string} string "Sandbox not found"
+// @Id streamSandboxActivity
+// @Router /v1/sandboxes/{id}/stream [get]
+func (s *Server) handleSandboxStream(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		http.Error(w, "sandbox id is required", http.StatusBadRequest)
+		return
+	}
+
+	// Verify sandbox exists
+	sb, err := s.vmSvc.GetSandbox(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "sandbox not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	// Set a reasonable deadline
+	if err := conn.SetWriteDeadline(time.Now().Add(10 * time.Minute)); err != nil {
+		return
+	}
+
+	// Send initial sandbox state
+	initialData, _ := json.Marshal(map[string]interface{}{
+		"sandbox_id":   sb.ID,
+		"sandbox_name": sb.SandboxName,
+		"state":        sb.State,
+		"ip_address":   sb.IPAddress,
+	})
+	initialEvent := StreamEvent{
+		Type:      "connected",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Data:      initialData,
+		SandboxID: sb.ID,
+	}
+	if err := conn.WriteJSON(initialEvent); err != nil {
+		return
+	}
+
+	// Send existing commands
+	cmds, _ := s.vmSvc.GetSandboxCommands(r.Context(), id, &store.ListOptions{Limit: 50})
+	for _, cmd := range cmds {
+		cmdData, _ := json.Marshal(map[string]interface{}{
+			"command_id": cmd.ID,
+			"command":    cmd.Command,
+			"stdout":     cmd.Stdout,
+			"stderr":     cmd.Stderr,
+			"exit_code":  cmd.ExitCode,
+			"started_at": cmd.StartedAt.Format(time.RFC3339),
+			"ended_at":   cmd.EndedAt.Format(time.RFC3339),
+		})
+		cmdEvent := StreamEvent{
+			Type:      "command_history",
+			Timestamp: cmd.EndedAt.Format(time.RFC3339),
+			Data:      cmdData,
+			SandboxID: sb.ID,
+		}
+		if err := conn.WriteJSON(cmdEvent); err != nil {
+			return
+		}
+	}
+
+	// Keep connection alive with heartbeats and poll for new commands
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	lastCommandCount := len(cmds)
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			// Refresh deadline
+			if err := conn.SetWriteDeadline(time.Now().Add(10 * time.Minute)); err != nil {
+				return
+			}
+
+			// Check for new commands
+			newCmds, _ := s.vmSvc.GetSandboxCommands(r.Context(), id, &store.ListOptions{Limit: 50})
+			if len(newCmds) > lastCommandCount {
+				// Send new commands
+				for i := lastCommandCount; i < len(newCmds); i++ {
+					cmd := newCmds[i]
+					cmdData, _ := json.Marshal(map[string]interface{}{
+						"command_id": cmd.ID,
+						"command":    cmd.Command,
+						"stdout":     cmd.Stdout,
+						"stderr":     cmd.Stderr,
+						"exit_code":  cmd.ExitCode,
+						"started_at": cmd.StartedAt.Format(time.RFC3339),
+						"ended_at":   cmd.EndedAt.Format(time.RFC3339),
+					})
+					cmdEvent := StreamEvent{
+						Type:      "command_new",
+						Timestamp: cmd.EndedAt.Format(time.RFC3339),
+						Data:      cmdData,
+						SandboxID: sb.ID,
+					}
+					if err := conn.WriteJSON(cmdEvent); err != nil {
+						return
+					}
+				}
+				lastCommandCount = len(newCmds)
+			}
+
+			// Send heartbeat
+			heartbeat := StreamEvent{
+				Type:      "heartbeat",
+				Timestamp: time.Now().UTC().Format(time.RFC3339),
+				SandboxID: sb.ID,
+			}
+			if err := conn.WriteJSON(heartbeat); err != nil {
+				return
+			}
+		}
+	}
 }

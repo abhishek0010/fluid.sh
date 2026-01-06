@@ -5,7 +5,7 @@
  * API for managing virtual machine sandboxes using libvirt
  * OpenAPI spec version: 0.0.1-beta
  */
-import type { VirshSandboxInternalStoreCommand } from "./virshSandboxInternalStoreCommand";
+import type { VirshSandboxInternalStoreCommand } from './virshSandboxInternalStoreCommand';
 
 export interface VirshSandboxInternalRestRunCommandResponse {
   command?: VirshSandboxInternalStoreCommand;

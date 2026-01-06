@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_switch_pane_request import \
-    TmuxClientInternalTypesSwitchPaneRequest
+from virsh_sandbox.models.tmux_client_internal_types_switch_pane_request import (
+    TmuxClientInternalTypesSwitchPaneRequest,
+)
 
 
 class TestTmuxClientInternalTypesSwitchPaneRequest(unittest.TestCase):

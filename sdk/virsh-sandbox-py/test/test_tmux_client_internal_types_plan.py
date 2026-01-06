@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_plan import \
-    TmuxClientInternalTypesPlan
+from virsh_sandbox.models.tmux_client_internal_types_plan import (
+    TmuxClientInternalTypesPlan,
+)
 
 
 class TestTmuxClientInternalTypesPlan(unittest.TestCase):

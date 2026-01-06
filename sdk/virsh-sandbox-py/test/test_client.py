@@ -3,659 +3,145 @@
 """
 Tests for the VirshSandbox unified client.
 
-This module tests that all client methods properly return dictionaries
-instead of response objects.
+This module tests that all client methods properly return Pydantic model
+objects with full IDE autocomplete support.
 """
 
 import unittest
-from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
+
+from pydantic import BaseModel
 
 from virsh_sandbox.client import (AccessOperations, AnsibleOperations,
                                   AuditOperations, CommandOperations,
                                   FileOperations, HealthOperations,
                                   HumanOperations, PlanOperations,
                                   SandboxOperations, TmuxOperations,
-                                  VirshSandbox, VMsOperations, _to_dict)
+                                  VirshSandbox, VMsOperations)
 
 
-class MockResponse:
-    """Mock response object with to_dict method."""
+class MockPydanticModel(BaseModel):
+    """Mock Pydantic model for testing."""
 
-    def __init__(self, data: Dict[str, Any]):
-        self._data = data
-
-    def to_dict(self) -> Dict[str, Any]:
-        return self._data
-
-
-class TestToDictHelper(unittest.TestCase):
-    """Test the _to_dict helper function."""
-
-    def test_to_dict_with_none(self) -> None:
-        """Test _to_dict returns None for None input."""
-        self.assertIsNone(_to_dict(None))
-
-    def test_to_dict_with_dict(self) -> None:
-        """Test _to_dict returns dict unchanged."""
-        data = {"key": "value"}
-        result = _to_dict(data)
-        self.assertEqual(result, data)
-        self.assertIsInstance(result, dict)
-
-    def test_to_dict_with_response_object(self) -> None:
-        """Test _to_dict converts response object to dict."""
-        mock_response = MockResponse({"sandbox_id": "123", "status": "running"})
-        result = _to_dict(mock_response)
-        self.assertEqual(result, {"sandbox_id": "123", "status": "running"})
-        self.assertIsInstance(result, dict)
-
-    def test_to_dict_with_list_of_responses(self) -> None:
-        """Test _to_dict converts list of response objects."""
-        mock_responses = [
-            MockResponse({"id": "1", "name": "session1"}),
-            MockResponse({"id": "2", "name": "session2"}),
-        ]
-        result = _to_dict(mock_responses)
-        self.assertEqual(
-            result,
-            [
-                {"id": "1", "name": "session1"},
-                {"id": "2", "name": "session2"},
-            ],
-        )
-        self.assertIsInstance(result, list)
-        for item in result:
-            self.assertIsInstance(item, dict)
-
-    def test_to_dict_with_list_of_dicts(self) -> None:
-        """Test _to_dict handles list of dicts."""
-        data = [{"a": 1}, {"b": 2}]
-        result = _to_dict(data)
-        self.assertEqual(result, data)
-
-    def test_to_dict_with_primitive(self) -> None:
-        """Test _to_dict returns primitives unchanged."""
-        self.assertEqual(_to_dict("string"), "string")
-        self.assertEqual(_to_dict(123), 123)
-        self.assertEqual(_to_dict(True), True)
+    id: str = ""
+    name: str = ""
 
 
 class TestAccessOperations(unittest.TestCase):
-    """Test AccessOperations returns dictionaries."""
+    """Test AccessOperations wrapper methods return Pydantic models."""
 
-    def setUp(self) -> None:
-        self.mock_api = MagicMock()
-        self.ops = AccessOperations(self.mock_api)
+    def test_v1_access_ca_pubkey_get_returns_model(self) -> None:
+        """Test v1_access_ca_pubkey_get returns a Pydantic model."""
+        mock_api = MagicMock()
+        mock_api.v1_access_ca_pubkey_get.return_value = MockPydanticModel(id="test")
+        ops = AccessOperations(mock_api)
+        result = ops.v1_access_ca_pubkey_get()
+        self.assertIsInstance(result, BaseModel)
 
-    def test_v1_access_ca_pubkey_get_returns_dict(self) -> None:
-        """Test v1_access_ca_pubkey_get returns dict."""
-        self.mock_api.v1_access_ca_pubkey_get.return_value = MockResponse(
-            {"public_key": "ssh-rsa AAAA..."}
-        )
-        result = self.ops.v1_access_ca_pubkey_get()
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result["public_key"], "ssh-rsa AAAA...")
+    def test_v1_access_certificate_cert_id_delete_returns_model(self) -> None:
+        """Test delete certificate returns a Pydantic model."""
+        mock_api = MagicMock()
+        mock_api.v1_access_certificate_cert_id_delete.return_value = MockPydanticModel()
+        ops = AccessOperations(mock_api)
+        result = ops.v1_access_certificate_cert_id_delete(cert_id="test-cert")
+        self.assertIsInstance(result, BaseModel)
 
-    def test_v1_access_certificate_cert_id_delete_returns_dict(self) -> None:
-        """Test v1_access_certificate_cert_id_delete returns dict."""
-        self.mock_api.v1_access_certificate_cert_id_delete.return_value = MockResponse(
-            {"status": "revoked"}
-        )
-        result = self.ops.v1_access_certificate_cert_id_delete(
-            cert_id="cert-123", reason="test"
-        )
-        self.assertIsInstance(result, dict)
+    def test_v1_access_certificate_cert_id_get_returns_model(self) -> None:
+        """Test get certificate returns a Pydantic model."""
+        mock_api = MagicMock()
+        mock_api.v1_access_certificate_cert_id_get.return_value = MockPydanticModel()
+        ops = AccessOperations(mock_api)
+        result = ops.v1_access_certificate_cert_id_get(cert_id="test-cert")
+        self.assertIsInstance(result, BaseModel)
 
-    def test_v1_access_certificate_cert_id_get_returns_dict(self) -> None:
-        """Test v1_access_certificate_cert_id_get returns dict."""
-        self.mock_api.v1_access_certificate_cert_id_get.return_value = MockResponse(
-            {"cert_id": "cert-123", "status": "active"}
-        )
-        result = self.ops.v1_access_certificate_cert_id_get(cert_id="cert-123")
-        self.assertIsInstance(result, dict)
+    def test_v1_access_certificates_get_returns_model(self) -> None:
+        """Test list certificates returns a Pydantic model."""
+        mock_api = MagicMock()
+        mock_api.v1_access_certificates_get.return_value = MockPydanticModel()
+        ops = AccessOperations(mock_api)
+        result = ops.v1_access_certificates_get()
+        self.assertIsInstance(result, BaseModel)
 
-    def test_v1_access_certificates_get_returns_dict(self) -> None:
-        """Test v1_access_certificates_get returns dict."""
-        self.mock_api.v1_access_certificates_get.return_value = MockResponse(
-            {"certificates": []}
-        )
-        result = self.ops.v1_access_certificates_get()
-        self.assertIsInstance(result, dict)
+    def test_v1_access_request_post_returns_model(self) -> None:
+        """Test request access returns a Pydantic model."""
+        mock_api = MagicMock()
+        mock_api.v1_access_request_post.return_value = MockPydanticModel()
+        ops = AccessOperations(mock_api)
+        result = ops.v1_access_request_post()
+        self.assertIsInstance(result, BaseModel)
 
-    def test_v1_access_request_post_returns_dict(self) -> None:
-        """Test v1_access_request_post returns dict."""
-        self.mock_api.v1_access_request_post.return_value = MockResponse(
-            {"certificate": "...", "expires_at": "2024-01-01"}
-        )
-        result = self.ops.v1_access_request_post(
-            public_key="ssh-rsa ...", sandbox_id="sbx-123"
-        )
-        self.assertIsInstance(result, dict)
+    def test_v1_access_session_end_post_returns_model(self) -> None:
+        """Test session end returns a Pydantic model."""
+        mock_api = MagicMock()
+        mock_api.v1_access_session_end_post.return_value = MockPydanticModel()
+        ops = AccessOperations(mock_api)
+        result = ops.v1_access_session_end_post()
+        self.assertIsInstance(result, BaseModel)
 
-    def test_v1_access_session_end_post_returns_dict(self) -> None:
-        """Test v1_access_session_end_post returns dict."""
-        self.mock_api.v1_access_session_end_post.return_value = MockResponse(
-            {"status": "ended"}
-        )
-        result = self.ops.v1_access_session_end_post(session_id="sess-123")
-        self.assertIsInstance(result, dict)
+    def test_v1_access_session_start_post_returns_model(self) -> None:
+        """Test session start returns a Pydantic model."""
+        mock_api = MagicMock()
+        mock_api.v1_access_session_start_post.return_value = MockPydanticModel()
+        ops = AccessOperations(mock_api)
+        result = ops.v1_access_session_start_post()
+        self.assertIsInstance(result, BaseModel)
 
-    def test_v1_access_session_start_post_returns_dict(self) -> None:
-        """Test v1_access_session_start_post returns dict."""
-        self.mock_api.v1_access_session_start_post.return_value = MockResponse(
-            {"session_id": "sess-123"}
-        )
-        result = self.ops.v1_access_session_start_post(certificate_id="cert-123")
-        self.assertIsInstance(result, dict)
-
-    def test_v1_access_sessions_get_returns_dict(self) -> None:
-        """Test v1_access_sessions_get returns dict."""
-        self.mock_api.v1_access_sessions_get.return_value = MockResponse(
-            {"sessions": []}
-        )
-        result = self.ops.v1_access_sessions_get()
-        self.assertIsInstance(result, dict)
-
-
-class TestAnsibleOperations(unittest.TestCase):
-    """Test AnsibleOperations returns dictionaries."""
-
-    def setUp(self) -> None:
-        self.mock_api = MagicMock()
-        self.ops = AnsibleOperations(self.mock_api)
-
-    def test_create_ansible_job_returns_dict(self) -> None:
-        """Test create_ansible_job returns dict."""
-        self.mock_api.create_ansible_job.return_value = MockResponse(
-            {"job_id": "job-123", "status": "pending"}
-        )
-        result = self.ops.create_ansible_job(playbook="test.yml", vm_name="test-vm")
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result["job_id"], "job-123")
-
-    def test_get_ansible_job_returns_dict(self) -> None:
-        """Test get_ansible_job returns dict."""
-        self.mock_api.get_ansible_job.return_value = MockResponse(
-            {"job_id": "job-123", "status": "completed", "output": "..."}
-        )
-        result = self.ops.get_ansible_job(job_id="job-123")
-        self.assertIsInstance(result, dict)
-
-
-class TestAuditOperations(unittest.TestCase):
-    """Test AuditOperations returns dictionaries."""
-
-    def setUp(self) -> None:
-        self.mock_api = MagicMock()
-        self.ops = AuditOperations(self.mock_api)
-
-    def test_get_audit_stats_returns_dict(self) -> None:
-        """Test get_audit_stats returns dict."""
-        self.mock_api.get_audit_stats.return_value = MockResponse(
-            {"total_events": 100, "by_type": {}}
-        )
-        result = self.ops.get_audit_stats()
-        self.assertIsInstance(result, dict)
-
-    def test_query_audit_log_returns_dict(self) -> None:
-        """Test query_audit_log returns dict."""
-        self.mock_api.query_audit_log.return_value = MockResponse({"entries": []})
-        result = self.ops.query_audit_log()
-        self.assertIsInstance(result, dict)
-
-
-class TestCommandOperations(unittest.TestCase):
-    """Test CommandOperations returns dictionaries."""
-
-    def setUp(self) -> None:
-        self.mock_api = MagicMock()
-        self.ops = CommandOperations(self.mock_api)
-
-    def test_get_allowed_commands_returns_dict(self) -> None:
-        """Test get_allowed_commands returns dict."""
-        self.mock_api.get_allowed_commands.return_value = MockResponse(
-            {"commands": ["ls", "cat", "grep"]}
-        )
-        result = self.ops.get_allowed_commands()
-        self.assertIsInstance(result, dict)
-
-    def test_run_command_returns_dict(self) -> None:
-        """Test run_command returns dict."""
-        self.mock_api.run_command.return_value = MockResponse(
-            {"exit_code": 0, "stdout": "file.txt", "stderr": ""}
-        )
-        result = self.ops.run_command(command="ls", args=["-la"])
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result["exit_code"], 0)
-
-
-class TestFileOperations(unittest.TestCase):
-    """Test FileOperations returns dictionaries."""
-
-    def setUp(self) -> None:
-        self.mock_api = MagicMock()
-        self.ops = FileOperations(self.mock_api)
-
-    def test_check_file_exists_returns_dict(self) -> None:
-        """Test check_file_exists returns dict."""
-        self.mock_api.check_file_exists.return_value = MockResponse({"exists": True})
-        result = self.ops.check_file_exists()
-        self.assertIsInstance(result, dict)
-
-    def test_copy_file_returns_dict(self) -> None:
-        """Test copy_file returns dict."""
-        self.mock_api.copy_file.return_value = MockResponse({"success": True})
-        result = self.ops.copy_file(source="/src", destination="/dst")
-        self.assertIsInstance(result, dict)
-
-    def test_delete_file_returns_dict(self) -> None:
-        """Test delete_file returns dict."""
-        self.mock_api.delete_file.return_value = MockResponse({"deleted": True})
-        result = self.ops.delete_file(path="/tmp/test.txt")
-        self.assertIsInstance(result, dict)
-
-    def test_edit_file_returns_dict(self) -> None:
-        """Test edit_file returns dict."""
-        self.mock_api.edit_file.return_value = MockResponse(
-            {"modified": True, "matches": 1}
-        )
-        result = self.ops.edit_file(path="/tmp/test.txt", old_text="a", new_text="b")
-        self.assertIsInstance(result, dict)
-
-    def test_get_file_hash_returns_dict(self) -> None:
-        """Test get_file_hash returns dict."""
-        self.mock_api.get_file_hash.return_value = MockResponse(
-            {"hash": "abc123", "algorithm": "sha256"}
-        )
-        result = self.ops.get_file_hash()
-        self.assertIsInstance(result, dict)
-
-    def test_list_directory_returns_dict(self) -> None:
-        """Test list_directory returns dict."""
-        self.mock_api.list_directory.return_value = MockResponse(
-            {"files": [{"name": "test.txt", "size": 100}]}
-        )
-        result = self.ops.list_directory(path="/tmp")
-        self.assertIsInstance(result, dict)
-
-    def test_read_file_returns_dict(self) -> None:
-        """Test read_file returns dict."""
-        self.mock_api.read_file.return_value = MockResponse(
-            {"content": "Hello World", "lines": 1}
-        )
-        result = self.ops.read_file(path="/tmp/test.txt")
-        self.assertIsInstance(result, dict)
-
-    def test_write_file_returns_dict(self) -> None:
-        """Test write_file returns dict."""
-        self.mock_api.write_file.return_value = MockResponse(
-            {"written": True, "bytes": 11}
-        )
-        result = self.ops.write_file(path="/tmp/test.txt", content="Hello World")
-        self.assertIsInstance(result, dict)
-
-
-class TestHealthOperations(unittest.TestCase):
-    """Test HealthOperations returns dictionaries."""
-
-    def setUp(self) -> None:
-        self.mock_api = MagicMock()
-        self.ops = HealthOperations(self.mock_api)
-
-    def test_get_health_returns_dict(self) -> None:
-        """Test get_health returns dict."""
-        self.mock_api.get_health.return_value = MockResponse(
-            {"status": "healthy", "components": {}}
-        )
-        result = self.ops.get_health()
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result["status"], "healthy")
-
-
-class TestHumanOperations(unittest.TestCase):
-    """Test HumanOperations returns dictionaries."""
-
-    def setUp(self) -> None:
-        self.mock_api = MagicMock()
-        self.ops = HumanOperations(self.mock_api)
-
-    def test_ask_human_returns_dict(self) -> None:
-        """Test ask_human returns dict."""
-        self.mock_api.ask_human.return_value = MockResponse(
-            {"approved": True, "response": "yes"}
-        )
-        result = self.ops.ask_human(prompt="Continue?")
-        self.assertIsInstance(result, dict)
-
-    def test_ask_human_async_returns_dict(self) -> None:
-        """Test ask_human_async returns dict."""
-        self.mock_api.ask_human_async.return_value = MockResponse(
-            {"request_id": "req-123"}
-        )
-        result = self.ops.ask_human_async(prompt="Continue?")
-        self.assertIsInstance(result, dict)
-
-    def test_cancel_approval_returns_dict(self) -> None:
-        """Test cancel_approval returns dict."""
-        self.mock_api.cancel_approval.return_value = MockResponse({"cancelled": True})
-        result = self.ops.cancel_approval(request_id="req-123")
-        self.assertIsInstance(result, dict)
-
-    def test_get_pending_approval_returns_dict(self) -> None:
-        """Test get_pending_approval returns dict."""
-        self.mock_api.get_pending_approval.return_value = MockResponse(
-            {"request_id": "req-123", "prompt": "Continue?", "status": "pending"}
-        )
-        result = self.ops.get_pending_approval(request_id="req-123")
-        self.assertIsInstance(result, dict)
-
-    def test_list_pending_approvals_returns_dict(self) -> None:
-        """Test list_pending_approvals returns dict."""
-        self.mock_api.list_pending_approvals.return_value = MockResponse(
-            {"approvals": []}
-        )
-        result = self.ops.list_pending_approvals()
-        self.assertIsInstance(result, dict)
-
-    def test_respond_to_approval_returns_dict(self) -> None:
-        """Test respond_to_approval returns dict."""
-        self.mock_api.respond_to_approval.return_value = MockResponse(
-            {"approved": True}
-        )
-        result = self.ops.respond_to_approval(request_id="req-123", approved=True)
-        self.assertIsInstance(result, dict)
-
-
-class TestPlanOperations(unittest.TestCase):
-    """Test PlanOperations returns dictionaries."""
-
-    def setUp(self) -> None:
-        self.mock_api = MagicMock()
-        self.ops = PlanOperations(self.mock_api)
-
-    def test_abort_plan_returns_dict(self) -> None:
-        """Test abort_plan returns dict."""
-        self.mock_api.abort_plan.return_value = MockResponse({"aborted": True})
-        result = self.ops.abort_plan(plan_id="plan-123")
-        self.assertIsInstance(result, dict)
-
-    def test_advance_plan_step_returns_dict(self) -> None:
-        """Test advance_plan_step returns dict."""
-        self.mock_api.advance_plan_step.return_value = MockResponse({"current_step": 2})
-        result = self.ops.advance_plan_step(plan_id="plan-123")
-        self.assertIsInstance(result, dict)
-
-    def test_create_plan_returns_dict(self) -> None:
-        """Test create_plan returns dict."""
-        self.mock_api.create_plan.return_value = MockResponse(
-            {"plan_id": "plan-123", "status": "created"}
-        )
-        result = self.ops.create_plan(name="Test Plan", steps=["step1", "step2"])
-        self.assertIsInstance(result, dict)
-
-    def test_delete_plan_returns_dict(self) -> None:
-        """Test delete_plan returns dict."""
-        self.mock_api.delete_plan.return_value = MockResponse({"deleted": True})
-        result = self.ops.delete_plan(plan_id="plan-123")
-        self.assertIsInstance(result, dict)
-
-    def test_get_plan_returns_dict(self) -> None:
-        """Test get_plan returns dict."""
-        self.mock_api.get_plan.return_value = MockResponse(
-            {"plan_id": "plan-123", "name": "Test Plan", "steps": []}
-        )
-        result = self.ops.get_plan(plan_id="plan-123")
-        self.assertIsInstance(result, dict)
-
-    def test_list_plans_returns_dict(self) -> None:
-        """Test list_plans returns dict."""
-        self.mock_api.list_plans.return_value = MockResponse({"plans": []})
-        result = self.ops.list_plans()
-        self.assertIsInstance(result, dict)
-
-    def test_update_plan_returns_dict(self) -> None:
-        """Test update_plan returns dict."""
-        self.mock_api.update_plan.return_value = MockResponse({"updated": True})
-        result = self.ops.update_plan(plan_id="plan-123", step_index=0, result="done")
-        self.assertIsInstance(result, dict)
+    def test_v1_access_sessions_get_returns_model(self) -> None:
+        """Test list sessions returns a Pydantic model."""
+        mock_api = MagicMock()
+        mock_api.v1_access_sessions_get.return_value = MockPydanticModel()
+        ops = AccessOperations(mock_api)
+        result = ops.v1_access_sessions_get()
+        self.assertIsInstance(result, BaseModel)
 
 
 class TestSandboxOperations(unittest.TestCase):
-    """Test SandboxOperations returns dictionaries."""
+    """Test SandboxOperations wrapper methods return Pydantic models."""
 
-    def setUp(self) -> None:
-        self.mock_api = MagicMock()
-        self.ops = SandboxOperations(self.mock_api)
+    def test_create_sandbox_returns_model(self) -> None:
+        """Test create_sandbox returns a Pydantic model."""
+        mock_api = MagicMock()
+        mock_api.create_sandbox.return_value = MockPydanticModel(id="SBX-123")
+        ops = SandboxOperations(mock_api)
+        result = ops.create_sandbox()
+        self.assertIsInstance(result, BaseModel)
 
-    def test_create_sandbox_returns_dict(self) -> None:
-        """Test create_sandbox returns dict."""
-        self.mock_api.create_sandbox.return_value = MockResponse(
-            {
-                "sandbox": {
-                    "id": "SBX-123",
-                    "agent_id": "agent-123",
-                    "state": "CREATED",
-                }
-            }
-        )
-        result = self.ops.create_sandbox(agent_id="agent-123", source_vm_name="base-vm")
-        self.assertIsInstance(result, dict)
-        self.assertIn("sandbox", result)
-        self.assertIsInstance(result["sandbox"], dict)
+    def test_create_sandbox_session_returns_model(self) -> None:
+        """Test create_sandbox_session returns a Pydantic model."""
+        mock_api = MagicMock()
+        mock_api.create_sandbox_session.return_value = MockPydanticModel()
+        ops = SandboxOperations(mock_api)
+        result = ops.create_sandbox_session()
+        self.assertIsInstance(result, BaseModel)
 
-    def test_create_sandbox_session_returns_dict(self) -> None:
-        """Test create_sandbox_session returns dict."""
-        self.mock_api.create_sandbox_session.return_value = MockResponse(
-            {"session_name": "sess-123", "certificate": "..."}
-        )
-        result = self.ops.create_sandbox_session(sandbox_id="SBX-123")
-        self.assertIsInstance(result, dict)
-
-    def test_create_snapshot_returns_dict(self) -> None:
-        """Test create_snapshot returns dict."""
-        self.mock_api.create_snapshot.return_value = MockResponse(
-            {"snapshot_id": "snap-123", "name": "test-snapshot"}
-        )
-        result = self.ops.create_snapshot(id="SBX-123", name="test-snapshot")
-        self.assertIsInstance(result, dict)
-
-    def test_diff_snapshots_returns_dict(self) -> None:
-        """Test diff_snapshots returns dict."""
-        self.mock_api.diff_snapshots.return_value = MockResponse(
-            {"changes": [], "summary": {}}
-        )
-        result = self.ops.diff_snapshots(
-            id="SBX-123", from_snapshot="snap-1", to_snapshot="snap-2"
-        )
-        self.assertIsInstance(result, dict)
-
-    def test_get_sandbox_session_returns_dict(self) -> None:
-        """Test get_sandbox_session returns dict."""
-        self.mock_api.get_sandbox_session.return_value = MockResponse(
-            {"session_name": "sess-123", "sandbox_id": "SBX-123"}
-        )
-        result = self.ops.get_sandbox_session(session_name="sess-123")
-        self.assertIsInstance(result, dict)
-
-    def test_kill_sandbox_session_returns_dict(self) -> None:
-        """Test kill_sandbox_session returns dict."""
-        self.mock_api.kill_sandbox_session.return_value = MockResponse({"killed": True})
-        result = self.ops.kill_sandbox_session(session_name="sess-123")
-        self.assertIsInstance(result, dict)
-
-    def test_list_sandbox_sessions_returns_dict(self) -> None:
-        """Test list_sandbox_sessions returns dict."""
-        self.mock_api.list_sandbox_sessions.return_value = MockResponse(
-            {"sessions": []}
-        )
-        result = self.ops.list_sandbox_sessions()
-        self.assertIsInstance(result, dict)
-
-    def test_run_sandbox_command_returns_dict(self) -> None:
-        """Test run_sandbox_command returns dict."""
-        self.mock_api.run_sandbox_command.return_value = MockResponse(
-            {"exit_code": 0, "stdout": "output", "stderr": ""}
-        )
-        result = self.ops.run_sandbox_command(
-            id="SBX-123",
-            command="ls -la",
-            username="root",
-            private_key_path="/path/to/key",
-        )
-        self.assertIsInstance(result, dict)
-
-    def test_sandbox_api_health_returns_dict(self) -> None:
-        """Test sandbox_api_health returns dict."""
-        self.mock_api.sandbox_api_health.return_value = MockResponse(
-            {"status": "healthy"}
-        )
-        result = self.ops.sandbox_api_health()
-        self.assertIsInstance(result, dict)
-
-    def test_start_sandbox_returns_dict(self) -> None:
-        """Test start_sandbox returns dict."""
-        self.mock_api.start_sandbox.return_value = MockResponse(
-            {"sandbox": {"id": "SBX-123", "state": "RUNNING", "ip_address": "10.0.0.1"}}
-        )
-        result = self.ops.start_sandbox(id="SBX-123", wait_for_ip=True)
-        self.assertIsInstance(result, dict)
-
-
-class TestTmuxOperations(unittest.TestCase):
-    """Test TmuxOperations returns dictionaries."""
-
-    def setUp(self) -> None:
-        self.mock_api = MagicMock()
-        self.ops = TmuxOperations(self.mock_api)
-
-    def test_create_tmux_pane_returns_dict(self) -> None:
-        """Test create_tmux_pane returns dict."""
-        self.mock_api.create_tmux_pane.return_value = MockResponse(
-            {"pane_id": "%1", "window_name": "main"}
-        )
-        result = self.ops.create_tmux_pane(session_name="test-session")
-        self.assertIsInstance(result, dict)
-
-    def test_create_tmux_session_returns_dict(self) -> None:
-        """Test create_tmux_session returns dict."""
-        self.mock_api.create_tmux_session.return_value = MockResponse(
-            {"session_name": "test-session"}
-        )
-        result = self.ops.create_tmux_session()
-        self.assertIsInstance(result, dict)
-
-    def test_kill_tmux_pane_returns_dict(self) -> None:
-        """Test kill_tmux_pane returns dict."""
-        self.mock_api.kill_tmux_pane.return_value = MockResponse({"killed": True})
-        result = self.ops.kill_tmux_pane(pane_id="%1")
-        self.assertIsInstance(result, dict)
-
-    def test_kill_tmux_session_returns_dict(self) -> None:
-        """Test kill_tmux_session returns dict."""
-        self.mock_api.kill_tmux_session.return_value = MockResponse({"killed": True})
-        result = self.ops.kill_tmux_session(session_name="test-session")
-        self.assertIsInstance(result, dict)
-
-    def test_list_tmux_panes_returns_dict(self) -> None:
-        """Test list_tmux_panes returns dict."""
-        self.mock_api.list_tmux_panes.return_value = MockResponse({"panes": []})
-        result = self.ops.list_tmux_panes(session="test-session")
-        self.assertIsInstance(result, dict)
-
-    def test_list_tmux_sessions_returns_list_of_dicts(self) -> None:
-        """Test list_tmux_sessions returns list of dicts."""
-        self.mock_api.list_tmux_sessions.return_value = [
-            MockResponse({"name": "session1", "windows": 1}),
-            MockResponse({"name": "session2", "windows": 2}),
-        ]
-        result = self.ops.list_tmux_sessions()
-        self.assertIsInstance(result, list)
-        for item in result:
-            self.assertIsInstance(item, dict)
-
-    def test_list_tmux_windows_returns_list_of_dicts(self) -> None:
-        """Test list_tmux_windows returns list of dicts."""
-        self.mock_api.list_tmux_windows.return_value = [
-            MockResponse({"name": "window1", "index": 0}),
-            MockResponse({"name": "window2", "index": 1}),
-        ]
-        result = self.ops.list_tmux_windows(session="test-session")
-        self.assertIsInstance(result, list)
-        for item in result:
-            self.assertIsInstance(item, dict)
-
-    def test_read_tmux_pane_returns_dict(self) -> None:
-        """Test read_tmux_pane returns dict."""
-        self.mock_api.read_tmux_pane.return_value = MockResponse(
-            {"content": "$ ls\nfile.txt", "lines": 2}
-        )
-        result = self.ops.read_tmux_pane(pane_id="%1")
-        self.assertIsInstance(result, dict)
-
-    def test_release_tmux_session_returns_dict(self) -> None:
-        """Test release_tmux_session returns dict."""
-        self.mock_api.release_tmux_session.return_value = MockResponse(
-            {"released": True}
-        )
-        result = self.ops.release_tmux_session(session_id="sess-123")
-        self.assertIsInstance(result, dict)
-
-    def test_send_keys_to_pane_returns_dict(self) -> None:
-        """Test send_keys_to_pane returns dict."""
-        self.mock_api.send_keys_to_pane.return_value = MockResponse({"sent": True})
-        result = self.ops.send_keys_to_pane(pane_id="%1", key="Enter")
-        self.assertIsInstance(result, dict)
-
-    def test_switch_tmux_pane_returns_dict(self) -> None:
-        """Test switch_tmux_pane returns dict."""
-        self.mock_api.switch_tmux_pane.return_value = MockResponse({"switched": True})
-        result = self.ops.switch_tmux_pane(pane_id="%1")
-        self.assertIsInstance(result, dict)
-
-
-class TestVMsOperations(unittest.TestCase):
-    """Test VMsOperations returns dictionaries."""
-
-    def setUp(self) -> None:
-        self.mock_api = MagicMock()
-        self.ops = VMsOperations(self.mock_api)
-
-    def test_list_virtual_machines_returns_dict(self) -> None:
-        """Test list_virtual_machines returns dict."""
-        self.mock_api.list_virtual_machines.return_value = MockResponse(
-            {
-                "vms": [
-                    {"name": "vm1", "state": "running"},
-                    {"name": "vm2", "state": "stopped"},
-                ]
-            }
-        )
-        result = self.ops.list_virtual_machines()
-        self.assertIsInstance(result, dict)
-        self.assertIn("vms", result)
+    def test_start_sandbox_returns_model(self) -> None:
+        """Test start_sandbox returns a Pydantic model."""
+        mock_api = MagicMock()
+        mock_api.start_sandbox.return_value = MockPydanticModel()
+        ops = SandboxOperations(mock_api)
+        result = ops.start_sandbox(id="SBX-123")
+        self.assertIsInstance(result, BaseModel)
 
 
 class TestVirshSandboxClient(unittest.TestCase):
     """Test the main VirshSandbox client."""
 
-    def test_client_initialization(self) -> None:
-        """Test client initializes correctly."""
+    @patch("virsh_sandbox.client.ApiClient")
+    @patch("virsh_sandbox.client.Configuration")
+    def test_client_initialization(
+        self, mock_config: MagicMock, mock_api_client: MagicMock
+    ) -> None:
+        """Test client initializes with default parameters."""
         client = VirshSandbox(host="http://localhost:8080")
         self.assertIsNotNone(client)
-        self.assertEqual(client.configuration.host, "http://localhost:8080")
 
-    def test_client_with_separate_tmux_host(self) -> None:
-        """Test client with separate tmux host."""
-        client = VirshSandbox(
-            host="http://localhost:8080", tmux_host="http://localhost:8081"
-        )
-        self.assertEqual(client.configuration.host, "http://localhost:8080")
-        self.assertEqual(client.tmux_configuration.host, "http://localhost:8081")
-
-    def test_client_properties_return_operations(self) -> None:
-        """Test client properties return correct operation classes."""
-        client = VirshSandbox()
+    @patch("virsh_sandbox.client.ApiClient")
+    @patch("virsh_sandbox.client.Configuration")
+    def test_client_properties_return_operations(
+        self, mock_config: MagicMock, mock_api_client: MagicMock
+    ) -> None:
+        """Test client properties return Operation instances."""
+        client = VirshSandbox(host="http://localhost:8080")
         self.assertIsInstance(client.access, AccessOperations)
         self.assertIsInstance(client.ansible, AnsibleOperations)
         self.assertIsInstance(client.audit, AuditOperations)
@@ -668,49 +154,336 @@ class TestVirshSandboxClient(unittest.TestCase):
         self.assertIsInstance(client.tmux, TmuxOperations)
         self.assertIsInstance(client.vms, VMsOperations)
 
-    def test_client_context_manager(self) -> None:
-        """Test client can be used as context manager."""
-        with VirshSandbox() as client:
+    @patch("virsh_sandbox.client.ApiClient")
+    @patch("virsh_sandbox.client.Configuration")
+    def test_client_context_manager(
+        self, mock_config: MagicMock, mock_api_client: MagicMock
+    ) -> None:
+        """Test client works as context manager."""
+        with VirshSandbox(host="http://localhost:8080") as client:
             self.assertIsNotNone(client)
 
-    def test_client_set_debug(self) -> None:
-        """Test setting debug mode."""
-        client = VirshSandbox()
-        client.set_debug(True)
-        self.assertTrue(client.configuration.debug)
+    @patch("virsh_sandbox.client.ApiClient")
+    @patch("virsh_sandbox.client.Configuration")
+    def test_client_with_separate_tmux_host(
+        self, mock_config: MagicMock, mock_api_client: MagicMock
+    ) -> None:
+        """Test client with separate tmux host."""
+        client = VirshSandbox(
+            host="http://localhost:8080", tmux_host="http://localhost:8081"
+        )
+        self.assertIsNotNone(client)
 
 
-class TestReturnTypeConsistency(unittest.TestCase):
-    """Test that all operations consistently return dicts or lists of dicts."""
+class TestPydanticModelReturns(unittest.TestCase):
+    """Test that Pydantic models provide IDE autocomplete benefits."""
 
-    def test_all_sandbox_operations_return_dict(self) -> None:
-        """Verify SandboxOperations methods return dict type."""
+    def test_model_has_fields(self) -> None:
+        """Test that returned models have accessible fields."""
+        model = MockPydanticModel(id="test-id", name="test-name")
+        self.assertEqual(model.id, "test-id")
+        self.assertEqual(model.name, "test-name")
+
+    def test_model_dump_converts_to_dict(self) -> None:
+        """Test that model_dump() converts to dict when needed."""
+        model = MockPydanticModel(id="test-id", name="test-name")
+        result = model.model_dump()
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["id"], "test-id")
+        self.assertEqual(result["name"], "test-name")
+
+    def test_model_has_field_info(self) -> None:
+        """Test that Pydantic models expose field information for IDE autocomplete."""
+        # model_fields contains field definitions for IDE introspection
+        self.assertIn("id", MockPydanticModel.model_fields)
+        self.assertIn("name", MockPydanticModel.model_fields)
+
+
+class TestIntegrationStyleFieldAccess(unittest.TestCase):
+    """Integration-style tests that verify Pydantic field access patterns."""
+
+    def test_create_sandbox_field_access(self) -> None:
+        """Test create_sandbox returns model with accessible fields."""
+        from virsh_sandbox.models.virsh_sandbox_internal_rest_create_sandbox_response import \
+            VirshSandboxInternalRestCreateSandboxResponse
+        from virsh_sandbox.models.virsh_sandbox_internal_store_sandbox import \
+            VirshSandboxInternalStoreSandbox
+
+        # Setup mock
         mock_api = MagicMock()
+        mock_sandbox = VirshSandboxInternalStoreSandbox(
+            id="SBX-123",
+            agent_id="test-agent",
+            base_image="ubuntu-base.qcow2",
+            sandbox_name="test-vm",
+            state="CREATED",
+        )
+        mock_response = VirshSandboxInternalRestCreateSandboxResponse(
+            sandbox=mock_sandbox, ip_address="192.168.122.100"
+        )
+        mock_api.create_sandbox.return_value = mock_response
+
+        # Execute
         ops = SandboxOperations(mock_api)
+        result = ops.create_sandbox(source_vm_name="test-vm")
 
-        # Set up mock returns
-        mock_api.create_sandbox.return_value = MockResponse({"sandbox": {}})
-        mock_api.create_sandbox_session.return_value = MockResponse({})
-        mock_api.create_snapshot.return_value = MockResponse({})
-        mock_api.diff_snapshots.return_value = MockResponse({})
-        mock_api.get_sandbox_session.return_value = MockResponse({})
-        mock_api.kill_sandbox_session.return_value = MockResponse({})
-        mock_api.list_sandbox_sessions.return_value = MockResponse({})
-        mock_api.run_sandbox_command.return_value = MockResponse({})
-        mock_api.sandbox_api_health.return_value = MockResponse({})
-        mock_api.start_sandbox.return_value = MockResponse({})
+        # Verify direct field access works as documented
+        self.assertIsInstance(result, VirshSandboxInternalRestCreateSandboxResponse)
+        self.assertEqual(result.ip_address, "192.168.122.100")
 
-        # Test all methods
-        self.assertIsInstance(ops.create_sandbox(), dict)
-        self.assertIsInstance(ops.create_sandbox_session(), dict)
-        self.assertIsInstance(ops.create_snapshot(id="test"), dict)
-        self.assertIsInstance(ops.diff_snapshots(id="test"), dict)
-        self.assertIsInstance(ops.get_sandbox_session(session_name="test"), dict)
-        self.assertIsInstance(ops.kill_sandbox_session(session_name="test"), dict)
-        self.assertIsInstance(ops.list_sandbox_sessions(), dict)
-        self.assertIsInstance(ops.run_sandbox_command(id="test"), dict)
-        self.assertIsInstance(ops.sandbox_api_health(), dict)
-        self.assertIsInstance(ops.start_sandbox(id="test"), dict)
+        # Verify nested model access
+        self.assertIsNotNone(result.sandbox)
+        self.assertEqual(result.sandbox.id, "SBX-123")
+        self.assertEqual(result.sandbox.agent_id, "test-agent")
+        self.assertEqual(result.sandbox.base_image, "ubuntu-base.qcow2")
+        self.assertEqual(result.sandbox.sandbox_name, "test-vm")
+        self.assertEqual(result.sandbox.state, "CREATED")
+
+        # Verify model_dump() conversion works
+        as_dict = result.model_dump()
+        self.assertIsInstance(as_dict, dict)
+        self.assertEqual(as_dict["ip_address"], "192.168.122.100")
+        self.assertEqual(as_dict["sandbox"]["id"], "SBX-123")
+
+    def test_start_sandbox_field_access(self) -> None:
+        """Test start_sandbox returns model with accessible fields."""
+        from virsh_sandbox.models.virsh_sandbox_internal_rest_start_sandbox_response import \
+            VirshSandboxInternalRestStartSandboxResponse
+
+        # Setup mock
+        mock_api = MagicMock()
+        mock_response = VirshSandboxInternalRestStartSandboxResponse(
+            message="Sandbox started successfully", ip_address="192.168.122.101"
+        )
+        mock_api.start_sandbox.return_value = mock_response
+
+        # Execute
+        ops = SandboxOperations(mock_api)
+        result = ops.start_sandbox(id="SBX-123", wait_for_ip=True)
+
+        # Verify field access works
+        self.assertIsInstance(result, VirshSandboxInternalRestStartSandboxResponse)
+        self.assertEqual(result.message, "Sandbox started successfully")
+        self.assertEqual(result.ip_address, "192.168.122.101")
+
+        # Verify model_dump() works
+        as_dict = result.model_dump()
+        self.assertIsInstance(as_dict, dict)
+        self.assertEqual(as_dict["message"], "Sandbox started successfully")
+        self.assertEqual(as_dict["ip_address"], "192.168.122.101")
+
+    def test_list_sandboxes_field_access(self) -> None:
+        """Test list_sandboxes returns model with list of sandbox models."""
+        from virsh_sandbox.models.virsh_sandbox_internal_rest_list_sandboxes_response import \
+            VirshSandboxInternalRestListSandboxesResponse
+        from virsh_sandbox.models.virsh_sandbox_internal_store_sandbox import \
+            VirshSandboxInternalStoreSandbox
+
+        # Setup mock with multiple sandboxes
+        mock_api = MagicMock()
+        mock_sandboxes = [
+            VirshSandboxInternalStoreSandbox(
+                id="SBX-001", agent_id="agent-1", state="RUNNING"
+            ),
+            VirshSandboxInternalStoreSandbox(
+                id="SBX-002", agent_id="agent-2", state="STOPPED"
+            ),
+        ]
+        mock_response = VirshSandboxInternalRestListSandboxesResponse(
+            sandboxes=mock_sandboxes, total=2, limit=10, offset=0
+        )
+        mock_api.list_sandboxes.return_value = mock_response
+
+        # Execute
+        ops = SandboxOperations(mock_api)
+        result = ops.list_sandboxes()
+
+        # Verify field access on response
+        self.assertIsInstance(result, VirshSandboxInternalRestListSandboxesResponse)
+        self.assertEqual(result.total, 2)
+        self.assertEqual(result.limit, 10)
+        self.assertEqual(result.offset, 0)
+
+        # Verify list contains proper models
+        self.assertIsNotNone(result.sandboxes)
+        self.assertEqual(len(result.sandboxes), 2)
+
+        # Verify field access on list items
+        self.assertEqual(result.sandboxes[0].id, "SBX-001")
+        self.assertEqual(result.sandboxes[0].agent_id, "agent-1")
+        self.assertEqual(result.sandboxes[0].state, "RUNNING")
+
+        self.assertEqual(result.sandboxes[1].id, "SBX-002")
+        self.assertEqual(result.sandboxes[1].agent_id, "agent-2")
+        self.assertEqual(result.sandboxes[1].state, "STOPPED")
+
+        # Verify model_dump() works with nested lists
+        as_dict = result.model_dump()
+        self.assertIsInstance(as_dict, dict)
+        self.assertEqual(as_dict["total"], 2)
+        self.assertIsInstance(as_dict["sandboxes"], list)
+        self.assertEqual(len(as_dict["sandboxes"]), 2)
+        self.assertEqual(as_dict["sandboxes"][0]["id"], "SBX-001")
+
+    def test_get_health_field_access(self) -> None:
+        """Test health check returns model with accessible fields."""
+        from virsh_sandbox.models.tmux_client_internal_types_health_response import \
+            TmuxClientInternalTypesHealthResponse
+
+        # Setup mock
+        mock_api = MagicMock()
+        mock_response = TmuxClientInternalTypesHealthResponse(
+            status="healthy", version="1.0.0"
+        )
+        mock_api.get_health.return_value = mock_response
+
+        # Execute
+        ops = HealthOperations(mock_api)
+        result = ops.get_health()
+
+        # Verify field access works
+        self.assertIsInstance(result, TmuxClientInternalTypesHealthResponse)
+        self.assertEqual(result.status, "healthy")
+        self.assertEqual(result.version, "1.0.0")
+
+        # Verify model_dump() works
+        as_dict = result.model_dump()
+        self.assertIsInstance(as_dict, dict)
+        self.assertEqual(as_dict["status"], "healthy")
+
+    def test_run_command_field_access(self) -> None:
+        """Test run_command returns model with accessible fields."""
+        from virsh_sandbox.models.tmux_client_internal_types_run_command_response import \
+            TmuxClientInternalTypesRunCommandResponse
+
+        # Setup mock
+        mock_api = MagicMock()
+        mock_response = TmuxClientInternalTypesRunCommandResponse(
+            stdout="command output", stderr="", exit_code=0, duration_ms=150
+        )
+        mock_api.run_command.return_value = mock_response
+
+        # Execute
+        ops = CommandOperations(mock_api)
+        result = ops.run_command(command="ls", args=["-la"])
+
+        # Verify field access works
+        self.assertIsInstance(result, TmuxClientInternalTypesRunCommandResponse)
+        self.assertEqual(result.stdout, "command output")
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.duration_ms, 150)
+
+        # Verify model_dump() works
+        as_dict = result.model_dump()
+        self.assertIsInstance(as_dict, dict)
+        self.assertEqual(as_dict["stdout"], "command output")
+        self.assertEqual(as_dict["exit_code"], 0)
+
+    def test_read_file_field_access(self) -> None:
+        """Test read_file returns model with accessible fields."""
+        from virsh_sandbox.models.tmux_client_internal_types_read_file_response import \
+            TmuxClientInternalTypesReadFileResponse
+
+        # Setup mock
+        mock_api = MagicMock()
+        mock_response = TmuxClientInternalTypesReadFileResponse(
+            content="file contents here",
+            lines=1,
+            truncated=False,
+            size_bytes=18,
+        )
+        mock_api.read_file.return_value = mock_response
+
+        # Execute
+        ops = FileOperations(mock_api)
+        result = ops.read_file(path="/tmp/test.txt")
+
+        # Verify field access works
+        self.assertIsInstance(result, TmuxClientInternalTypesReadFileResponse)
+        self.assertEqual(result.content, "file contents here")
+        self.assertEqual(result.lines, 1)
+        self.assertEqual(result.truncated, False)
+        self.assertEqual(result.size_bytes, 18)
+
+        # Verify model_dump() works
+        as_dict = result.model_dump()
+        self.assertIsInstance(as_dict, dict)
+        self.assertEqual(as_dict["content"], "file contents here")
+        self.assertEqual(as_dict["lines"], 1)
+
+    def test_create_sandbox_session_field_access(self) -> None:
+        """Test create_sandbox_session returns model with nested fields."""
+        from virsh_sandbox.models.internal_api_create_sandbox_session_response import \
+            InternalApiCreateSandboxSessionResponse
+
+        # Setup mock
+        mock_api = MagicMock()
+        mock_response = InternalApiCreateSandboxSessionResponse(
+            session_name="session-abc123",
+            certificate_id="cert-xyz789",
+            tmux_url="http://tmux:8081",
+        )
+        mock_api.create_sandbox_session.return_value = mock_response
+
+        # Execute
+        ops = SandboxOperations(mock_api)
+        result = ops.create_sandbox_session(
+            sandbox_id="SBX-123", session_name="test-session"
+        )
+
+        # Verify field access works
+        self.assertIsInstance(result, InternalApiCreateSandboxSessionResponse)
+        self.assertEqual(result.session_name, "session-abc123")
+        self.assertEqual(result.certificate_id, "cert-xyz789")
+        self.assertEqual(result.tmux_url, "http://tmux:8081")
+
+        # Verify model_dump() works
+        as_dict = result.model_dump()
+        self.assertIsInstance(as_dict, dict)
+        self.assertEqual(as_dict["session_name"], "session-abc123")
+        self.assertEqual(as_dict["certificate_id"], "cert-xyz789")
+
+    def test_list_tmux_sessions_list_return_type(self) -> None:
+        """Test list_tmux_sessions returns list of Pydantic models."""
+        from virsh_sandbox.models.tmux_client_internal_types_session_info import \
+            TmuxClientInternalTypesSessionInfo
+
+        # Setup mock
+        mock_api = MagicMock()
+        mock_sessions = [
+            TmuxClientInternalTypesSessionInfo(
+                name="session-1", windows=2, attached=True
+            ),
+            TmuxClientInternalTypesSessionInfo(
+                name="session-2", windows=1, attached=False
+            ),
+        ]
+        mock_api.list_tmux_sessions.return_value = mock_sessions
+
+        # Execute
+        ops = TmuxOperations(mock_api)
+        result = ops.list_tmux_sessions()
+
+        # Verify list return type
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+
+        # Verify each item is a Pydantic model with accessible fields
+        self.assertIsInstance(result[0], TmuxClientInternalTypesSessionInfo)
+        self.assertEqual(result[0].name, "session-1")
+        self.assertEqual(result[0].windows, 2)
+        self.assertEqual(result[0].attached, True)
+
+        self.assertIsInstance(result[1], TmuxClientInternalTypesSessionInfo)
+        self.assertEqual(result[1].name, "session-2")
+        self.assertEqual(result[1].windows, 1)
+        self.assertEqual(result[1].attached, False)
+
+        # Verify model_dump() works on list items
+        item_dict = result[0].model_dump()
+        self.assertIsInstance(item_dict, dict)
+        self.assertEqual(item_dict["name"], "session-1")
 
 
 if __name__ == "__main__":

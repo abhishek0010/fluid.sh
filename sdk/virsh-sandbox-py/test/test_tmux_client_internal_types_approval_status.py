@@ -14,9 +14,6 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_approval_status import \
-    TmuxClientInternalTypesApprovalStatus
-
 
 class TestTmuxClientInternalTypesApprovalStatus(unittest.TestCase):
     """TmuxClientInternalTypesApprovalStatus unit test stubs"""

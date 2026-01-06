@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_write_file_request import \
-    TmuxClientInternalTypesWriteFileRequest
+from virsh_sandbox.models.tmux_client_internal_types_write_file_request import (
+    TmuxClientInternalTypesWriteFileRequest,
+)
 
 
 class TestTmuxClientInternalTypesWriteFileRequest(unittest.TestCase):

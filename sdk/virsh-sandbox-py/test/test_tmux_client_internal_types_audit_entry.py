@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_audit_entry import \
-    TmuxClientInternalTypesAuditEntry
+from virsh_sandbox.models.tmux_client_internal_types_audit_entry import (
+    TmuxClientInternalTypesAuditEntry,
+)
 
 
 class TestTmuxClientInternalTypesAuditEntry(unittest.TestCase):

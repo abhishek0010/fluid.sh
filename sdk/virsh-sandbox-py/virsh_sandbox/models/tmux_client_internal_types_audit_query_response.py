@@ -21,8 +21,9 @@ from typing import Any, ClassVar, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict, StrictBool, StrictInt
 from typing_extensions import Self
 
-from virsh_sandbox.models.tmux_client_internal_types_audit_entry import \
-    TmuxClientInternalTypesAuditEntry
+from virsh_sandbox.models.tmux_client_internal_types_audit_entry import (
+    TmuxClientInternalTypesAuditEntry,
+)
 
 
 class TmuxClientInternalTypesAuditQueryResponse(BaseModel):

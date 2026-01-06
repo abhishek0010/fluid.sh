@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_api_list_sandbox_sessions_response import \
-    InternalApiListSandboxSessionsResponse
+from virsh_sandbox.models.internal_api_list_sandbox_sessions_response import (
+    InternalApiListSandboxSessionsResponse,
+)
 
 
 class TestInternalApiListSandboxSessionsResponse(unittest.TestCase):

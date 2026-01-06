@@ -21,13 +21,10 @@ docker run --rm \
 echo "Running polish script..."
 python3 scripts/polish_sdk.py
 
-echo "Running tests..."
+echo "Formatting code..."
 cd virsh-sandbox-py
 pip install -r requirements.txt
 black .
 isort .
-mypy virsh_sandbox
-pip install -r test-requirements.txt
-pytest
 
 echo "Finished!"

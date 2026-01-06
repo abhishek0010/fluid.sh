@@ -199,7 +199,7 @@ func NewCA(cfg Config, opts ...Option) (*CA, error) {
 	ca.sshKeygen = sshKeygen
 
 	// Create work directory
-	if err := os.MkdirAll(cfg.WorkDir, 0700); err != nil {
+	if err := os.MkdirAll(cfg.WorkDir, 0o700); err != nil {
 		return nil, fmt.Errorf("create work directory: %w", err)
 	}
 
@@ -225,7 +225,7 @@ func (ca *CA) Initialize(ctx context.Context) error {
 		}
 		mode := info.Mode().Perm()
 		// Key should be readable only by owner (0600 or 0400)
-		if mode&0077 != 0 {
+		if mode&0o077 != 0 {
 			return fmt.Errorf("%w: %s has mode %o, expected 0600 or 0400",
 				ErrCAKeyPermissions, ca.cfg.CAKeyPath, mode)
 		}
@@ -323,7 +323,7 @@ func (ca *CA) IssueCertificate(ctx context.Context, req *CertificateRequest) (*C
 
 	// Write public key to temp file
 	pubKeyPath := filepath.Join(tempDir, "user_key.pub")
-	if err := os.WriteFile(pubKeyPath, []byte(req.PublicKey), 0600); err != nil {
+	if err := os.WriteFile(pubKeyPath, []byte(req.PublicKey), 0o600); err != nil {
 		return nil, fmt.Errorf("write public key: %w", err)
 	}
 
@@ -394,7 +394,7 @@ func (ca *CA) GetPublicKey() (string, error) {
 func GenerateCA(keyPath, comment string) error {
 	// Ensure directory exists
 	dir := filepath.Dir(keyPath)
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("create CA directory: %w", err)
 	}
 
@@ -421,7 +421,7 @@ func GenerateCA(keyPath, comment string) error {
 	}
 
 	// Set secure permissions on private key
-	if err := os.Chmod(keyPath, 0600); err != nil {
+	if err := os.Chmod(keyPath, 0o600); err != nil {
 		return fmt.Errorf("set CA key permissions: %w", err)
 	}
 

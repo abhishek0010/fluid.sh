@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_ask_human_request import \
-    TmuxClientInternalTypesAskHumanRequest
+from virsh_sandbox.models.tmux_client_internal_types_ask_human_request import (
+    TmuxClientInternalTypesAskHumanRequest,
+)
 
 
 class TestTmuxClientInternalTypesAskHumanRequest(unittest.TestCase):

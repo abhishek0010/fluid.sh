@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_api_sandbox_session_info import \
-    TmuxClientInternalApiSandboxSessionInfo
+from virsh_sandbox.models.tmux_client_internal_api_sandbox_session_info import (
+    TmuxClientInternalApiSandboxSessionInfo,
+)
 
 
 class TestTmuxClientInternalApiSandboxSessionInfo(unittest.TestCase):

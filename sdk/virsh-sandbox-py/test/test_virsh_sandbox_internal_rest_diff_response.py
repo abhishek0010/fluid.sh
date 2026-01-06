@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.virsh_sandbox_internal_rest_diff_response import \
-    VirshSandboxInternalRestDiffResponse
+from virsh_sandbox.models.virsh_sandbox_internal_rest_diff_response import (
+    VirshSandboxInternalRestDiffResponse,
+)
 
 
 class TestVirshSandboxInternalRestDiffResponse(unittest.TestCase):

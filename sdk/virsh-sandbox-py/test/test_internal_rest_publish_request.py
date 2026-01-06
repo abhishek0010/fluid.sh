@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_publish_request import \
-    InternalRestPublishRequest
+from virsh_sandbox.models.internal_rest_publish_request import (
+    InternalRestPublishRequest,
+)
 
 
 class TestInternalRestPublishRequest(unittest.TestCase):

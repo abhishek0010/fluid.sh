@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_update_plan_request import \
-    TmuxClientInternalTypesUpdatePlanRequest
+from virsh_sandbox.models.tmux_client_internal_types_update_plan_request import (
+    TmuxClientInternalTypesUpdatePlanRequest,
+)
 
 
 class TestTmuxClientInternalTypesUpdatePlanRequest(unittest.TestCase):

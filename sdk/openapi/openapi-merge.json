@@ -6,12 +6,7 @@
         "prefix": "VirshSandbox"
       },
       "operationSelection": {
-        "excludePaths": [
-          {
-            "path": "/v1/health",
-            "method": "get"
-          }
-        ]
+        "excludeTags": ["Health"]
       }
     },
     {

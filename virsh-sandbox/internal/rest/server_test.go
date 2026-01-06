@@ -373,3 +373,174 @@ func TestCreateSandboxResponseJSON_NoIPAddress(t *testing.T) {
 		t.Errorf("expected ip_address to be omitted or empty, got %v", ipVal)
 	}
 }
+
+func TestGetSandboxResponseJSON(t *testing.T) {
+	// Test that getSandboxResponse can be properly marshaled
+	ip := "192.168.1.50"
+	resp := getSandboxResponse{
+		Sandbox: &store.Sandbox{
+			ID:          "SBX-456",
+			JobID:       "JOB-123",
+			AgentID:     "agent-456",
+			SandboxName: "test-sandbox",
+			BaseImage:   "ubuntu-22.04.qcow2",
+			Network:     "default",
+			IPAddress:   &ip,
+			State:       store.SandboxStateRunning,
+		},
+		Commands: []*store.Command{
+			{
+				ID:        "CMD-001",
+				SandboxID: "SBX-456",
+				Command:   "echo hello",
+				Stdout:    "hello\n",
+				Stderr:    "",
+				ExitCode:  0,
+			},
+		},
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("failed to marshal get sandbox response: %v", err)
+	}
+
+	var decoded getSandboxResponse
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("failed to unmarshal get sandbox response: %v", err)
+	}
+
+	if decoded.Sandbox == nil {
+		t.Fatal("expected sandbox to be present")
+	}
+	if decoded.Sandbox.ID != resp.Sandbox.ID {
+		t.Errorf("expected sandbox ID %q, got %q", resp.Sandbox.ID, decoded.Sandbox.ID)
+	}
+	if len(decoded.Commands) != 1 {
+		t.Errorf("expected 1 command, got %d", len(decoded.Commands))
+	}
+	if decoded.Commands[0].Command != "echo hello" {
+		t.Errorf("expected command %q, got %q", "echo hello", decoded.Commands[0].Command)
+	}
+}
+
+func TestGetSandboxResponseJSON_NoCommands(t *testing.T) {
+	// Test that getSandboxResponse omits commands when nil
+	resp := getSandboxResponse{
+		Sandbox: &store.Sandbox{
+			ID:          "SBX-789",
+			SandboxName: "empty-sandbox",
+			State:       store.SandboxStateCreated,
+		},
+		Commands: nil,
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("failed to marshal get sandbox response: %v", err)
+	}
+
+	var rawMap map[string]interface{}
+	if err := json.Unmarshal(data, &rawMap); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	// commands should be omitted when nil due to omitempty tag
+	if _, exists := rawMap["commands"]; exists {
+		t.Error("expected commands to be omitted when nil")
+	}
+}
+
+func TestListSandboxCommandsResponseJSON(t *testing.T) {
+	// Test that listSandboxCommandsResponse can be properly marshaled
+	resp := listSandboxCommandsResponse{
+		Commands: []*store.Command{
+			{
+				ID:        "CMD-001",
+				SandboxID: "SBX-123",
+				Command:   "ls -la",
+				Stdout:    "total 0\n",
+				ExitCode:  0,
+			},
+			{
+				ID:        "CMD-002",
+				SandboxID: "SBX-123",
+				Command:   "pwd",
+				Stdout:    "/home/user\n",
+				ExitCode:  0,
+			},
+		},
+		Total: 2,
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("failed to marshal list sandbox commands response: %v", err)
+	}
+
+	var decoded listSandboxCommandsResponse
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("failed to unmarshal list sandbox commands response: %v", err)
+	}
+
+	if decoded.Total != 2 {
+		t.Errorf("expected total %d, got %d", 2, decoded.Total)
+	}
+	if len(decoded.Commands) != 2 {
+		t.Errorf("expected 2 commands, got %d", len(decoded.Commands))
+	}
+	if decoded.Commands[0].Command != "ls -la" {
+		t.Errorf("expected command %q, got %q", "ls -la", decoded.Commands[0].Command)
+	}
+}
+
+func TestStreamEventJSON(t *testing.T) {
+	// Test that StreamEvent can be properly marshaled
+	event := StreamEvent{
+		Type:      "command_new",
+		Timestamp: "2024-01-15T10:30:00Z",
+		Data:      json.RawMessage(`{"command_id":"CMD-001","command":"echo test"}`),
+		SandboxID: "SBX-123",
+	}
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("failed to marshal stream event: %v", err)
+	}
+
+	var decoded StreamEvent
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("failed to unmarshal stream event: %v", err)
+	}
+
+	if decoded.Type != "command_new" {
+		t.Errorf("expected type %q, got %q", "command_new", decoded.Type)
+	}
+	if decoded.SandboxID != "SBX-123" {
+		t.Errorf("expected sandbox_id %q, got %q", "SBX-123", decoded.SandboxID)
+	}
+}
+
+func TestStreamEventJSON_Heartbeat(t *testing.T) {
+	// Test heartbeat event without data
+	event := StreamEvent{
+		Type:      "heartbeat",
+		Timestamp: "2024-01-15T10:30:00Z",
+		SandboxID: "SBX-123",
+	}
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("failed to marshal heartbeat event: %v", err)
+	}
+
+	var rawMap map[string]interface{}
+	if err := json.Unmarshal(data, &rawMap); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	// data should be omitted for heartbeat due to omitempty tag
+	if _, exists := rawMap["data"]; exists {
+		t.Error("expected data to be omitted for heartbeat event")
+	}
+}

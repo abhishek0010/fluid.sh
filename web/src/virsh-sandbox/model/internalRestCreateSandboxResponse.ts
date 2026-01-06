@@ -5,8 +5,10 @@
  * API for managing virtual machine sandboxes using libvirt
  * OpenAPI spec version: 0.0.1-beta
  */
-import type { VirshSandboxInternalStoreSandbox } from "./virshSandboxInternalStoreSandbox";
+import type { VirshSandboxInternalStoreSandbox } from './virshSandboxInternalStoreSandbox';
 
 export interface InternalRestCreateSandboxResponse {
+  /** populated when auto_start and wait_for_ip are true */
+  ip_address?: string;
   sandbox?: VirshSandboxInternalStoreSandbox;
 }

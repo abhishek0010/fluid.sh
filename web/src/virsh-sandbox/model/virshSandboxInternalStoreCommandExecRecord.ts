@@ -5,8 +5,8 @@
  * API for managing virtual machine sandboxes using libvirt
  * OpenAPI spec version: 0.0.1-beta
  */
-import type { VirshSandboxInternalStoreCommandExecRecordRedacted } from "./virshSandboxInternalStoreCommandExecRecordRedacted";
-import type { TimeDuration } from "./timeDuration";
+import type { VirshSandboxInternalStoreCommandExecRecordRedacted } from './virshSandboxInternalStoreCommandExecRecordRedacted';
+import type { TimeDuration } from './timeDuration';
 
 export interface VirshSandboxInternalStoreCommandExecRecord {
   /** placeholders for secrets redaction */

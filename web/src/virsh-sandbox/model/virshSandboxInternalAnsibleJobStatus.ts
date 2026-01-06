@@ -6,13 +6,13 @@
  * OpenAPI spec version: 0.0.1-beta
  */
 
-export type VirshSandboxInternalAnsibleJobStatus =
-  (typeof VirshSandboxInternalAnsibleJobStatus)[keyof typeof VirshSandboxInternalAnsibleJobStatus];
+export type VirshSandboxInternalAnsibleJobStatus = typeof VirshSandboxInternalAnsibleJobStatus[keyof typeof VirshSandboxInternalAnsibleJobStatus];
+
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const VirshSandboxInternalAnsibleJobStatus = {
-  JobStatusPending: "pending",
-  JobStatusRunning: "running",
-  JobStatusFinished: "finished",
-  JobStatusFailed: "failed",
+  JobStatusPending: 'pending',
+  JobStatusRunning: 'running',
+  JobStatusFinished: 'finished',
+  JobStatusFailed: 'failed',
 } as const;

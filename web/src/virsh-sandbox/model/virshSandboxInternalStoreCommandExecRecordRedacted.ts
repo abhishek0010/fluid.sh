@@ -9,6 +9,4 @@
 /**
  * placeholders for secrets redaction
  */
-export type VirshSandboxInternalStoreCommandExecRecordRedacted = {
-  [key: string]: string;
-};
+export type VirshSandboxInternalStoreCommandExecRecordRedacted = {[key: string]: string};

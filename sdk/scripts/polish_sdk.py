@@ -17,6 +17,97 @@ def load_config() -> dict:
     return {}
 
 
+def simplify_type_name(verbose_name: str) -> str:
+    """Convert verbose TypedDict names to user-friendly aliases.
+
+    Examples:
+        VirshSandboxInternalRestCreateSandboxResponseDict -> CreateSandboxResponse
+        VirshSandboxInternalStoreSandboxDict -> Sandbox
+        TmuxClientInternalTypesRunCommandResponseDict -> RunCommandResponse
+        InternalAnsibleJobDict -> AnsibleJob
+    """
+    name = verbose_name
+
+    # Remove Dict suffix first
+    if name.endswith('Dict'):
+        name = name[:-4]
+
+    # Remove common prefixes in order of specificity
+    prefixes_to_remove = [
+        'VirshSandboxInternalRest',
+        'VirshSandboxInternalStore',
+        'VirshSandboxInternal',
+        'VirshSandbox',
+        'TmuxClientInternalTypes',
+        'TmuxClientInternalApi',
+        'TmuxClientInternal',
+        'TmuxClient',
+        'InternalRest',
+        'InternalApi',
+        'InternalStore',
+        'Internal',
+    ]
+
+    for prefix in prefixes_to_remove:
+        if name.startswith(prefix):
+            name = name[len(prefix):]
+            break
+
+    # Handle edge cases where name might be empty or start with lowercase
+    if not name or not name[0].isupper():
+        # Fall back to a reasonable extraction
+        name = verbose_name.replace('Dict', '')
+
+    return name
+
+
+def generate_simplified_aliases(models: dict) -> dict[str, str]:
+    """Generate a mapping from verbose TypedDict names to simplified aliases.
+
+    Returns:
+        Dict mapping verbose_name -> simplified_name
+        Handles collisions by preferring longer/more specific model names,
+        since those are typically the ones used in API return types.
+    """
+    # Filter to only non-request, non-query, non-enum models (same as topological_sort_models)
+    filtered_models = {
+        name: info for name, info in models.items()
+        if not name.endswith('Request')
+        and not name.endswith('Query')
+        and not is_enum_model(name, models)
+    }
+
+    # Get all model names to avoid collisions with existing exports
+    all_model_names = set(models.keys())
+
+    verbose_to_simple: dict[str, str] = {}
+    simple_to_verbose: dict[str, str] = {}  # Track collisions
+
+    # Sort by length descending, then alphabetically
+    # This ensures longer/more specific names (like VirshSandbox... or TmuxClient...)
+    # get priority over shorter duplicates
+    sorted_names = sorted(filtered_models.keys(), key=lambda x: (-len(x), x))
+
+    for verbose_name in sorted_names:
+        verbose_dict_name = f"{verbose_name}Dict"
+        simple_name = simplify_type_name(verbose_dict_name)
+
+        # Skip if simple name collides with an existing model class name
+        if simple_name in all_model_names:
+            # Collision with model class - use "Dict" suffix to disambiguate
+            simple_name = f"{simple_name}Dict"
+
+        # Handle collisions between TypedDict aliases
+        if simple_name in simple_to_verbose:
+            # Collision detected - skip the shorter duplicate
+            continue
+
+        verbose_to_simple[verbose_dict_name] = simple_name
+        simple_to_verbose[simple_name] = verbose_dict_name
+
+    return verbose_to_simple
+
+
 def is_async_enabled() -> bool:
     """Check if async mode is enabled in the config."""
     config = load_config()
@@ -488,36 +579,36 @@ def generate_typed_dict(class_name: str, fields: list, models: dict) -> str:
     return "\n".join(lines)
 
 
-def get_return_type_as_typed_dict(return_type: str, models: dict) -> str:
-    """Convert a return type to use TypedDict instead of the model class."""
+def get_return_type_for_model(return_type: str, models: dict) -> str:
+    """Get the return type, keeping the original Pydantic model class.
+
+    Args:
+        return_type: The original return type from the API method
+        models: Dictionary of all discovered models
+    """
     if return_type == "None":
         return "None"
 
-    # Handle List[ModelType]
+    # Handle List[ModelType] - keep as is
     list_match = re.match(r'List\[(\w+)\]', return_type)
     if list_match:
         inner_type = list_match.group(1)
         if inner_type in models:
-            return f"List[{inner_type}Dict]"
-        return f"List[Dict[str, Any]]"
+            return f"List[{inner_type}]"
+        return return_type
 
-    # Handle single model types
-    # Extract the base type name (remove Optional wrapper if present)
+    # Handle single model types - keep the model class name
     type_match = re.match(r'(?:Optional\[)?(\w+)(?:\])?', return_type)
     if type_match:
         base_type = type_match.group(1)
         if base_type in models:
-            return f"{base_type}Dict"
+            return base_type
 
-    # Fallback for Dict types or unknown types
-    if return_type.startswith("Dict["):
-        return "Dict[str, Any]"
-
-    return "Dict[str, Any]"
+    return return_type
 
 
 def generate_wrapper_method(method: MethodInfo, models: dict, use_async: bool = True) -> str:
-    """Generate a wrapper method with flattened parameters."""
+    """Generate a wrapper method with flattened parameters that returns Pydantic models."""
     lines = []
 
     # Get request fields if applicable
@@ -540,15 +631,13 @@ def generate_wrapper_method(method: MethodInfo, models: dict, use_async: bool = 
         field_type = simplify_type(field.type_hint)
         all_params.append(f"{field.name}: Optional[{field_type}] = None")
 
-    # Method signature
-    # Determine the appropriate return type hint based on the original return type
-    # Use named TypedDict types with docstrings for IDE hover support
-    return_type_hint = get_return_type_as_typed_dict(method.return_type, models)
+    # Method signature - use the original Pydantic model as return type
+    return_type_hint = get_return_type_for_model(method.return_type, models)
     def_keyword = "async def" if use_async else "def"
     if all_params:
         params_str = ",\n        ".join(all_params)
         lines.append(f"    {def_keyword} {method.name}(")
-        lines.append(f"        self,")
+        lines.append("        self,")
         lines.append(f"        {params_str},")
         lines.append(f"    ) -> {return_type_hint}:")
     else:
@@ -565,32 +654,12 @@ def generate_wrapper_method(method: MethodInfo, models: dict, use_async: bool = 
             desc = field.description or field.name
             lines.append(f"            {field.name}: {desc}")
 
-    # Add Returns section with dict keys for better hover documentation
+    # Add Returns section
     if method.return_type != "None":
         lines.append("")
         lines.append("        Returns:")
-        # Extract the model name from return type
-        list_match = re.match(r'List\[(\w+)\]', method.return_type)
-        type_match = re.match(r'(?:Optional\[)?(\w+)(?:\])?', method.return_type)
-
-        if list_match:
-            model_name = list_match.group(1)
-            lines.append(f"            List of dicts with keys:")
-        elif type_match:
-            model_name = type_match.group(1)
-            lines.append(f"            Dict with keys:")
-        else:
-            model_name = None
-
-        if model_name and model_name in models:
-            model_info = models[model_name]
-            for field in model_info.get('fields', []):
-                field_type = simplify_type(field.type_hint)
-                desc = field.description if field.description else ""
-                if desc:
-                    lines.append(f"                - {field.name} ({field_type}): {desc}")
-                else:
-                    lines.append(f"                - {field.name} ({field_type})")
+        lines.append(f"            {return_type_hint}: Pydantic model with full IDE autocomplete.")
+        lines.append("            Call .model_dump() to convert to dict if needed.")
 
     lines.append('        """')
 
@@ -616,24 +685,14 @@ def generate_wrapper_method(method: MethodInfo, models: dict, use_async: bool = 
             lines.append(f"        request = {method.request_type}()")
             call_args.append("request=request")
 
-        # Don't wrap with _to_dict if method returns None
-        if method.return_type == 'None':
+        # Return the Pydantic model directly (no _to_dict conversion)
+        lines.append(f"        return {await_keyword}self._api.{method.name}({', '.join(call_args)})")
+    else:
+        # No request object needed - return model directly
+        if call_args:
             lines.append(f"        return {await_keyword}self._api.{method.name}({', '.join(call_args)})")
         else:
-            lines.append(f"        return _to_dict({await_keyword}self._api.{method.name}({', '.join(call_args)}))")
-    else:
-        # No request object needed
-        # Don't wrap with _to_dict if method returns None
-        if method.return_type == 'None':
-            if call_args:
-                lines.append(f"        return {await_keyword}self._api.{method.name}({', '.join(call_args)})")
-            else:
-                lines.append(f"        return {await_keyword}self._api.{method.name}()")
-        else:
-            if call_args:
-                lines.append(f"        return _to_dict({await_keyword}self._api.{method.name}({', '.join(call_args)}))")
-            else:
-                lines.append(f"        return _to_dict({await_keyword}self._api.{method.name}())")
+            lines.append(f"        return {await_keyword}self._api.{method.name}()")
 
     lines.append("")
     return "\n".join(lines)
@@ -723,6 +782,8 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
 
     output_lines.append('# coding: utf-8')
     output_lines.append('')
+    output_lines.append('from __future__ import annotations')
+    output_lines.append('')
     output_lines.append('"""')
     output_lines.append('Unified VirshSandbox Client')
     output_lines.append('')
@@ -746,9 +807,7 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
         output_lines.append('    client.command.run_command(command="ls", args=["-la"])')
     output_lines.append('"""')
     output_lines.append('')
-    output_lines.append('from typing import Any, Dict, List, Optional, Tuple, Union')
-    output_lines.append('')
-    output_lines.append('from typing_extensions import TypedDict')
+    output_lines.append('from typing import Dict, List, Optional')
     output_lines.append('')
     output_lines.append(f'from {package_name}.api_client import ApiClient')
     output_lines.append(f'from {package_name}.configuration import Configuration')
@@ -759,46 +818,6 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     for imp in sorted(model_imports):
         output_lines.append(imp)
 
-    output_lines.append('')
-    output_lines.append('')
-
-    # Generate TypedDict classes for all response models
-    # Use topological sort so dependencies are defined before dependents
-    # This allows IDEs to show field information on hover without forward references
-    output_lines.append('# TypedDict definitions for response types')
-    sorted_model_names = topological_sort_models(models)
-    for model_name in sorted_model_names:
-        model_info = models[model_name]
-        typed_dict_code = generate_typed_dict(model_name, model_info['fields'], models)
-        output_lines.append(typed_dict_code)
-        output_lines.append('')
-
-    output_lines.append('')
-
-    # Add _to_dict helper function
-    output_lines.append('def _to_dict(obj: Any) -> Any:')
-    output_lines.append('    """Convert a response object to a dictionary.')
-    output_lines.append('')
-    output_lines.append('    This helper function handles the conversion of API response objects')
-    output_lines.append('    to dictionaries for easier consumption.')
-    output_lines.append('')
-    output_lines.append('    Args:')
-    output_lines.append('        obj: The object to convert. Can be None, a dict, a list,')
-    output_lines.append('             a response object with to_dict() method, or a primitive.')
-    output_lines.append('')
-    output_lines.append('    Returns:')
-    output_lines.append('        The converted dictionary, list of dictionaries, or the original')
-    output_lines.append('        value if it\'s already a dict/primitive.')
-    output_lines.append('    """')
-    output_lines.append('    if obj is None:')
-    output_lines.append('        return None')
-    output_lines.append('    if isinstance(obj, dict):')
-    output_lines.append('        return obj')
-    output_lines.append('    if isinstance(obj, list):')
-    output_lines.append('        return [_to_dict(item) for item in obj]')
-    output_lines.append('    if hasattr(obj, "to_dict"):')
-    output_lines.append('        return obj.to_dict()')
-    output_lines.append('    return obj')
     output_lines.append('')
     output_lines.append('')
 

@@ -14,9 +14,6 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_health_status import \
-    TmuxClientInternalTypesHealthStatus
-
 
 class TestTmuxClientInternalTypesHealthStatus(unittest.TestCase):
     """TmuxClientInternalTypesHealthStatus unit test stubs"""

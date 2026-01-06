@@ -18,11 +18,12 @@ import json
 import pprint
 from typing import Any, ClassVar, Dict, List, Optional, Set
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing_extensions import Self
 
-from virsh_sandbox.models.virsh_sandbox_internal_store_sandbox import \
-    VirshSandboxInternalStoreSandbox
+from virsh_sandbox.models.virsh_sandbox_internal_store_sandbox import (
+    VirshSandboxInternalStoreSandbox,
+)
 
 
 class InternalRestCreateSandboxResponse(BaseModel):
@@ -30,8 +31,11 @@ class InternalRestCreateSandboxResponse(BaseModel):
     InternalRestCreateSandboxResponse
     """  # noqa: E501
 
+    ip_address: Optional[StrictStr] = Field(
+        default=None, description="populated when auto_start and wait_for_ip are true"
+    )
     sandbox: Optional[VirshSandboxInternalStoreSandbox] = None
-    __properties: ClassVar[List[str]] = ["sandbox"]
+    __properties: ClassVar[List[str]] = ["ip_address", "sandbox"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -86,9 +90,10 @@ class InternalRestCreateSandboxResponse(BaseModel):
 
         _obj = cls.model_validate(
             {
+                "ip_address": obj.get("ip_address"),
                 "sandbox": VirshSandboxInternalStoreSandbox.from_dict(obj["sandbox"])
                 if obj.get("sandbox") is not None
-                else None
+                else None,
             }
         )
         return _obj

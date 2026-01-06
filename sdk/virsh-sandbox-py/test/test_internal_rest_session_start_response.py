@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_session_start_response import \
-    InternalRestSessionStartResponse
+from virsh_sandbox.models.internal_rest_session_start_response import (
+    InternalRestSessionStartResponse,
+)
 
 
 class TestInternalRestSessionStartResponse(unittest.TestCase):

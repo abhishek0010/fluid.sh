@@ -14,9 +14,6 @@
 
 import unittest
 
-from virsh_sandbox.models.virsh_sandbox_internal_store_sandbox_state import \
-    VirshSandboxInternalStoreSandboxState
-
 
 class TestVirshSandboxInternalStoreSandboxState(unittest.TestCase):
     """VirshSandboxInternalStoreSandboxState unit test stubs"""

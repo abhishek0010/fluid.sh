@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_list_approvals_response import \
-    TmuxClientInternalTypesListApprovalsResponse
+from virsh_sandbox.models.tmux_client_internal_types_list_approvals_response import (
+    TmuxClientInternalTypesListApprovalsResponse,
+)
 
 
 class TestTmuxClientInternalTypesListApprovalsResponse(unittest.TestCase):

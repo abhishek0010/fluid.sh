@@ -10,7 +10,7 @@ Method | HTTP request | Description
 
 
 # **create_ansible_job**
-> InternalAnsibleJobResponse create_ansible_job(request)
+> VirshSandboxInternalAnsibleJobResponse create_ansible_job(request)
 
 Create Ansible job
 
@@ -21,8 +21,8 @@ Creates a new Ansible playbook execution job
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.internal_ansible_job_request import InternalAnsibleJobRequest
-from virsh_sandbox.models.internal_ansible_job_response import InternalAnsibleJobResponse
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_job_request import VirshSandboxInternalAnsibleJobRequest
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_job_response import VirshSandboxInternalAnsibleJobResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -37,7 +37,7 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AnsibleApi(api_client)
-    request = virsh_sandbox.InternalAnsibleJobRequest() # InternalAnsibleJobRequest | Job creation parameters
+    request = virsh_sandbox.VirshSandboxInternalAnsibleJobRequest() # VirshSandboxInternalAnsibleJobRequest | Job creation parameters
 
     try:
         # Create Ansible job
@@ -55,11 +55,11 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request** | [**InternalAnsibleJobRequest**](InternalAnsibleJobRequest.md)| Job creation parameters | 
+ **request** | [**VirshSandboxInternalAnsibleJobRequest**](VirshSandboxInternalAnsibleJobRequest.md)| Job creation parameters | 
 
 ### Return type
 
-[**InternalAnsibleJobResponse**](InternalAnsibleJobResponse.md)
+[**VirshSandboxInternalAnsibleJobResponse**](VirshSandboxInternalAnsibleJobResponse.md)
 
 ### Authorization
 
@@ -80,7 +80,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_ansible_job**
-> InternalAnsibleJob get_ansible_job(job_id)
+> VirshSandboxInternalAnsibleJob get_ansible_job(job_id)
 
 Get Ansible job
 
@@ -91,7 +91,7 @@ Gets the status of an Ansible job
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.internal_ansible_job import InternalAnsibleJob
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_job import VirshSandboxInternalAnsibleJob
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -128,7 +128,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**InternalAnsibleJob**](InternalAnsibleJob.md)
+[**VirshSandboxInternalAnsibleJob**](VirshSandboxInternalAnsibleJob.md)
 
 ### Authorization
 

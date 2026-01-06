@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_copy_file_request import \
-    TmuxClientInternalTypesCopyFileRequest
+from virsh_sandbox.models.tmux_client_internal_types_copy_file_request import (
+    TmuxClientInternalTypesCopyFileRequest,
+)
 
 
 class TestTmuxClientInternalTypesCopyFileRequest(unittest.TestCase):

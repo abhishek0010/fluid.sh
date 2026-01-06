@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.virsh_sandbox_internal_rest_request_access_response import \
-    VirshSandboxInternalRestRequestAccessResponse
+from virsh_sandbox.models.virsh_sandbox_internal_rest_request_access_response import (
+    VirshSandboxInternalRestRequestAccessResponse,
+)
 
 
 class TestVirshSandboxInternalRestRequestAccessResponse(unittest.TestCase):

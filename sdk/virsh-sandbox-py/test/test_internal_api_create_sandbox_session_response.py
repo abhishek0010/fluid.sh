@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_api_create_sandbox_session_response import \
-    InternalApiCreateSandboxSessionResponse
+from virsh_sandbox.models.internal_api_create_sandbox_session_response import (
+    InternalApiCreateSandboxSessionResponse,
+)
 
 
 class TestInternalApiCreateSandboxSessionResponse(unittest.TestCase):

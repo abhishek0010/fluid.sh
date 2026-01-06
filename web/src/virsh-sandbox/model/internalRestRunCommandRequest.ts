@@ -5,7 +5,7 @@
  * API for managing virtual machine sandboxes using libvirt
  * OpenAPI spec version: 0.0.1-beta
  */
-import type { InternalRestRunCommandRequestEnv } from "./internalRestRunCommandRequestEnv";
+import type { InternalRestRunCommandRequestEnv } from './internalRestRunCommandRequestEnv';
 
 export interface InternalRestRunCommandRequest {
   /** required */

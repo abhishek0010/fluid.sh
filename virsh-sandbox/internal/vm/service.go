@@ -175,6 +175,26 @@ func (s *Service) GetSandboxes(ctx context.Context, filter store.SandboxFilter, 
 	return s.store.ListSandboxes(ctx, filter, opts)
 }
 
+// GetSandbox retrieves a single sandbox by ID.
+func (s *Service) GetSandbox(ctx context.Context, sandboxID string) (*store.Sandbox, error) {
+	if strings.TrimSpace(sandboxID) == "" {
+		return nil, fmt.Errorf("sandboxID is required")
+	}
+	return s.store.GetSandbox(ctx, sandboxID)
+}
+
+// GetSandboxCommands retrieves all commands executed in a sandbox.
+func (s *Service) GetSandboxCommands(ctx context.Context, sandboxID string, opts *store.ListOptions) ([]*store.Command, error) {
+	if strings.TrimSpace(sandboxID) == "" {
+		return nil, fmt.Errorf("sandboxID is required")
+	}
+	// Verify sandbox exists
+	if _, err := s.store.GetSandbox(ctx, sandboxID); err != nil {
+		return nil, err
+	}
+	return s.store.ListCommands(ctx, sandboxID, opts)
+}
+
 // InjectSSHKey injects a public key for a user into the VM disk prior to boot.
 func (s *Service) InjectSSHKey(ctx context.Context, sandboxID, username, publicKey string) error {
 	if strings.TrimSpace(sandboxID) == "" {

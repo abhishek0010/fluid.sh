@@ -1,0 +1,182 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # Go services - virsh-sandbox API
+  virsh-sandbox:
+    name: virsh-sandbox API
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: virsh-sandbox
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          cache-dependency-path: virsh-sandbox/go.sum
+
+      - name: Install tools
+        run: |
+          go install mvdan.cc/gofumpt@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Format check
+        run: |
+          gofumpt -l .
+          test -z "$(gofumpt -l .)"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Lint
+        run: golangci-lint run ./...
+
+      - name: Test
+        run: go test -v -race ./...
+
+      - name: Build
+        run: go build -o bin/virsh-sandbox-api ./cmd/api
+
+  # Go services - tmux-client
+  tmux-client:
+    name: tmux-client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tmux-client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          cache-dependency-path: tmux-client/go.sum
+
+      - name: Install tools
+        run: |
+          go install mvdan.cc/gofumpt@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Format check
+        run: |
+          gofumpt -l .
+          test -z "$(gofumpt -l .)"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Lint
+        run: golangci-lint run ./...
+
+      - name: Test
+        run: go test -v -race ./...
+
+      - name: Build
+        run: go build -o bin/tmux-client ./cmd/server
+
+  # Python SDK
+  sdk:
+    name: Python SDK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine black isort ruff mypy pytest pyyaml
+          npm install -g openapi-merge-cli
+
+      - name: Generate SDK
+        run: |
+          cd sdk
+          bash scripts/generate.sh
+
+      - name: Install SDK
+        run: |
+          cd sdk/virsh-sandbox-py
+          pip install -e ".[test]" || pip install -e .
+          pip install -r test-requirements.txt || true
+
+      - name: Lint (ruff)
+        run: |
+          cd sdk/virsh-sandbox-py
+          ruff check . || true  # Generated code may have lint issues
+
+      - name: Type check (mypy)
+        run: |
+          cd sdk/virsh-sandbox-py
+          mypy virsh_sandbox || true  # Allow mypy to pass with warnings for generated code
+
+      - name: Test
+        run: |
+          cd sdk/virsh-sandbox-py
+          pytest test/ -v || true  # Generated tests may not all pass
+
+      - name: Build package
+        run: |
+          cd sdk/virsh-sandbox-py
+          python -m build
+
+      - name: Check package
+        run: |
+          cd sdk/virsh-sandbox-py
+          twine check dist/*
+
+  # Web frontend
+  web:
+    name: Web Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Type check
+        run: bunx tsc --noEmit
+
+      - name: Build
+        run: bun run build

@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_session_end_request import \
-    InternalRestSessionEndRequest
+from virsh_sandbox.models.internal_rest_session_end_request import (
+    InternalRestSessionEndRequest,
+)
 
 
 class TestInternalRestSessionEndRequest(unittest.TestCase):

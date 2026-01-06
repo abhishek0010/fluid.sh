@@ -1,27 +1,60 @@
 pre-commit:
   parallel: true
   commands:
-    vet-tmux-client:
+    # Go - virsh-sandbox API
+    fmt-virsh-sandbox:
       glob: "*.go"
-      root: "tmux-client"
-      run: make vet
-    vet-api:
+      root: "virsh-sandbox"
+      run: make fmt
+      stage_fixed: true
+    vet-virsh-sandbox:
       glob: "*.go"
-      root: "api"
+      root: "virsh-sandbox"
       run: make vet
+    test-virsh-sandbox:
+      glob: "*.go"
+      root: "virsh-sandbox"
+      run: make test
+
+    # Go - tmux-client
     fmt-tmux-client:
       glob: "*.go"
       root: "tmux-client"
       run: make fmt
       stage_fixed: true
-    fmt-api:
+    vet-tmux-client:
       glob: "*.go"
-      root: "api"
-      run: make fmt
+      root: "tmux-client"
+      run: make vet
+    test-tmux-client:
+      glob: "*.go"
+      root: "tmux-client"
+      run: make test
+
+    # Python SDK
+    fmt-sdk-black:
+      glob: "*.py"
+      root: "sdk/virsh-sandbox-py"
+      run: black .
       stage_fixed: true
-    # lint-api:
+    fmt-sdk-isort:
+      glob: "*.py"
+      root: "sdk/virsh-sandbox-py"
+      run: isort .
+      stage_fixed: true
+    # lint-sdk:
+    #   glob: "*.py"
+    #   root: "sdk/virsh-sandbox-py"
+    #   run: ruff check . --fix
+    #   stage_fixed: true
+    # test-sdk:
+    #   glob: "*.py"
+    #   root: "sdk/virsh-sandbox-py"
+    #   run: python3 -m pytest test/ -v --tb=short
+
+    # lint-virsh-sandbox:
     #   glob: "*.go"
-    #   root: "api"
+    #   root: "virsh-sandbox"
     #   run: make lint
     # lint-tmux-client:
     #   glob: "*.go"

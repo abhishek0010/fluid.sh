@@ -14,9 +14,6 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_plan_status import \
-    TmuxClientInternalTypesPlanStatus
-
 
 class TestTmuxClientInternalTypesPlanStatus(unittest.TestCase):
     """TmuxClientInternalTypesPlanStatus unit test stubs"""

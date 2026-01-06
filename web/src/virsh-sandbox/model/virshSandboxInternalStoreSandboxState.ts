@@ -6,15 +6,15 @@
  * OpenAPI spec version: 0.0.1-beta
  */
 
-export type VirshSandboxInternalStoreSandboxState =
-  (typeof VirshSandboxInternalStoreSandboxState)[keyof typeof VirshSandboxInternalStoreSandboxState];
+export type VirshSandboxInternalStoreSandboxState = typeof VirshSandboxInternalStoreSandboxState[keyof typeof VirshSandboxInternalStoreSandboxState];
+
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const VirshSandboxInternalStoreSandboxState = {
-  SandboxStateCreated: "CREATED",
-  SandboxStateStarting: "STARTING",
-  SandboxStateRunning: "RUNNING",
-  SandboxStateStopped: "STOPPED",
-  SandboxStateDestroyed: "DESTROYED",
-  SandboxStateError: "ERROR",
+  SandboxStateCreated: 'CREATED',
+  SandboxStateStarting: 'STARTING',
+  SandboxStateRunning: 'RUNNING',
+  SandboxStateStopped: 'STOPPED',
+  SandboxStateDestroyed: 'DESTROYED',
+  SandboxStateError: 'ERROR',
 } as const;

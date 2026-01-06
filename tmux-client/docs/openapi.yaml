@@ -907,7 +907,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_api.ListSandboxSessionsResponse"
+                $ref: "#/components/schemas/tmux-client_internal_api.ListSandboxSessionsResponse"
           description: OK
         "500":
           content:
@@ -973,7 +973,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_api.SandboxSessionInfo"
+                $ref: "#/components/schemas/tmux-client_internal_api.SandboxSessionInfo"
           description: OK
         "404":
           content:
@@ -992,7 +992,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_api.CreateSandboxSessionRequest"
+              $ref: "#/components/schemas/tmux-client_internal_api.CreateSandboxSessionRequest"
         description: Create sandbox session request
         required: true
       responses:
@@ -1000,7 +1000,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_api.CreateSandboxSessionResponse"
+                $ref: "#/components/schemas/tmux-client_internal_api.CreateSandboxSessionResponse"
           description: OK
         "400":
           content:
@@ -1390,6 +1390,75 @@ components:
           type: integer
       type: object
     internal_api.CreateSandboxSessionResponse:
+      properties:
+        message:
+          description: Message provides additional information
+          type: string
+        sandbox_id:
+          description: SandboxID is the sandbox being accessed
+          type: string
+        session_id:
+          description: SessionID is the tmux session ID
+          type: string
+        session_name:
+          description: SessionName is the tmux session name
+          type: string
+        ttl_seconds:
+          description: TTLSeconds is the remaining certificate validity in seconds
+          type: integer
+        username:
+          description: Username is the SSH username
+          type: string
+        valid_until:
+          description: ValidUntil is when the certificate expires (RFC3339)
+          type: string
+        vm_ip_address:
+          description: VMIPAddress is the IP of the sandbox VM
+          type: string
+      type: object
+    internal_api.ListSandboxSessionsResponse:
+      properties:
+        sessions:
+          items:
+            $ref: "#/components/schemas/internal_api.SandboxSessionInfo"
+          type: array
+        total:
+          type: integer
+      type: object
+    internal_api.SandboxSessionInfo:
+      properties:
+        is_expired:
+          type: boolean
+        sandbox_id:
+          type: string
+        session_id:
+          type: string
+        session_name:
+          type: string
+        ttl_seconds:
+          type: integer
+        username:
+          type: string
+        valid_until:
+          type: string
+        vm_ip_address:
+          type: string
+      type: object
+    tmux-client_internal_api.CreateSandboxSessionRequest:
+      properties:
+        sandbox_id:
+          description: SandboxID is the ID of the sandbox to connect to
+          type: string
+        session_name:
+          description: SessionName is the optional tmux session name (auto-generated
+            if empty)
+          type: string
+        ttl_minutes:
+          description: "TTLMinutes is the certificate TTL in minutes (1-10, default\
+            \ 5)"
+          type: integer
+      type: object
+    tmux-client_internal_api.CreateSandboxSessionResponse:
       example:
         session_name: session_name
         valid_until: valid_until
@@ -1425,7 +1494,7 @@ components:
           description: VMIPAddress is the IP of the sandbox VM
           type: string
       type: object
-    internal_api.ListSandboxSessionsResponse:
+    tmux-client_internal_api.ListSandboxSessionsResponse:
       example:
         sessions:
         - session_name: session_name
@@ -1448,12 +1517,12 @@ components:
       properties:
         sessions:
           items:
-            $ref: "#/components/schemas/internal_api.SandboxSessionInfo"
+            $ref: "#/components/schemas/tmux-client_internal_api.SandboxSessionInfo"
           type: array
         total:
           type: integer
       type: object
-    internal_api.SandboxSessionInfo:
+    tmux-client_internal_api.SandboxSessionInfo:
       example:
         session_name: session_name
         is_expired: true
@@ -1463,75 +1532,6 @@ components:
         session_id: session_id
         vm_ip_address: vm_ip_address
         username: username
-      properties:
-        is_expired:
-          type: boolean
-        sandbox_id:
-          type: string
-        session_id:
-          type: string
-        session_name:
-          type: string
-        ttl_seconds:
-          type: integer
-        username:
-          type: string
-        valid_until:
-          type: string
-        vm_ip_address:
-          type: string
-      type: object
-    tmux-client_internal_api.CreateSandboxSessionRequest:
-      properties:
-        sandbox_id:
-          description: SandboxID is the ID of the sandbox to connect to
-          type: string
-        session_name:
-          description: SessionName is the optional tmux session name (auto-generated
-            if empty)
-          type: string
-        ttl_minutes:
-          description: "TTLMinutes is the certificate TTL in minutes (1-10, default\
-            \ 5)"
-          type: integer
-      type: object
-    tmux-client_internal_api.CreateSandboxSessionResponse:
-      properties:
-        message:
-          description: Message provides additional information
-          type: string
-        sandbox_id:
-          description: SandboxID is the sandbox being accessed
-          type: string
-        session_id:
-          description: SessionID is the tmux session ID
-          type: string
-        session_name:
-          description: SessionName is the tmux session name
-          type: string
-        ttl_seconds:
-          description: TTLSeconds is the remaining certificate validity in seconds
-          type: integer
-        username:
-          description: Username is the SSH username
-          type: string
-        valid_until:
-          description: ValidUntil is when the certificate expires (RFC3339)
-          type: string
-        vm_ip_address:
-          description: VMIPAddress is the IP of the sandbox VM
-          type: string
-      type: object
-    tmux-client_internal_api.ListSandboxSessionsResponse:
-      properties:
-        sessions:
-          items:
-            $ref: "#/components/schemas/tmux-client_internal_api.SandboxSessionInfo"
-          type: array
-        total:
-          type: integer
-      type: object
-    tmux-client_internal_api.SandboxSessionInfo:
       properties:
         is_expired:
           type: boolean

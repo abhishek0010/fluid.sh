@@ -42,7 +42,7 @@ func TestGenerateCA(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to stat private key: %v", err)
 	}
-	if info.Mode().Perm() != 0600 {
+	if info.Mode().Perm() != 0o600 {
 		t.Errorf("private key has wrong permissions: %o, expected 0600", info.Mode().Perm())
 	}
 

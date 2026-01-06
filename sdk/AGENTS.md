@@ -89,12 +89,12 @@ cd sdk
 
 ### Return Type Convention
 
-All SDK client methods MUST return Python dictionaries (`dict`) rather than response objects.
+All SDK client methods return **Pydantic models** directly for full IDE autocomplete support.
 
-- Response objects from the underlying API are automatically converted using the `_to_dict()` helper function
-- Methods that return a single item should return `Dict[str, Any]` or a specific `TypedDict`
-- Methods that return a list should return `List[Dict[str, Any]]` or `List[SomeTypedDict]`
-- This ensures consistent, JSON-serializable responses that are easy to work with
+- Methods return the original Pydantic model classes (e.g., `VirshSandboxInternalRestCreateSandboxResponse`)
+- IDEs can introspect model fields with descriptions for autocomplete
+- Use `.model_dump()` to convert to a dictionary if needed
+- Each model field has type hints and descriptions from the OpenAPI spec
 
 ### Type Annotations
 
@@ -134,61 +134,58 @@ All SDK functions MUST have correct type annotations:
 ### Example
 
 ```python
-# Correct - returns a typed dict with proper annotations
+# Returns a Pydantic model with full IDE autocomplete
 def create_sandbox(
     self,
     agent_id: Optional[str] = None,
     source_vm_name: Optional[str] = None,
-) -> CreateSandboxResponseDict:
+) -> VirshSandboxInternalRestCreateSandboxResponse:
     """Create a new sandbox.
-    
+
     Args:
         agent_id: Required agent identity.
         source_vm_name: Required; name of existing VM to clone from.
-    
+
     Returns:
-        CreateSandboxResponseDict: Dictionary containing the created sandbox.
+        VirshSandboxInternalRestCreateSandboxResponse: Pydantic model with full IDE autocomplete.
+        Call .model_dump() to convert to dict if needed.
     """
-    request = InternalRestCreateSandboxRequest(
+    request = VirshSandboxInternalRestCreateSandboxRequest(
         agent_id=agent_id,
         source_vm_name=source_vm_name,
     )
-    return _to_dict(self._api.create_sandbox(request=request))
+    return self._api.create_sandbox(request=request)
 
-# Result is a dict:
-# {"sandbox": {"id": "SBX-123", "state": "CREATED", ...}}
+# Usage:
+result = client.sandbox.create_sandbox(source_vm_name="test-vm")
+# IDE autocomplete works on result.sandbox, result.ip_address, etc.
+sandbox_id = result.sandbox.id  # Full autocomplete support
+# Convert to dict if needed:
+as_dict = result.model_dump()
 ```
 
 ### Adding New Methods
 
 When adding new methods to the client:
 
-1. Define a `TypedDict` for the response type if it doesn't exist:
-   ```python
-   class NewResponseDict(TypedDict, total=False):
-       field1: str
-       field2: int
-       optional_field: Optional[str]
-   ```
-
-2. Add type annotations to all parameters and return type:
+1. Use the Pydantic model class as the return type annotation:
    ```python
    def new_method(
        self,
        required_param: str,
        optional_param: Optional[int] = None,
-   ) -> NewResponseDict:
+   ) -> SomeModelResponse:
    ```
 
-3. Wrap the API call return value with `_to_dict()`:
+2. Return the API result directly (no conversion needed):
    ```python
-   return _to_dict(self._api.new_method(param=param))
+   return self._api.new_method(param=param)
    ```
 
-4. Add docstrings with Args and Returns sections
+3. Add docstrings with Args and Returns sections
 
-5. Add corresponding tests in `test/test_client.py` to verify:
-   - Dict return types
+4. Add corresponding tests in `test/test_client.py` to verify:
+   - Pydantic model return types
    - Correct parameter handling
 
 ### Documentation
@@ -203,14 +200,15 @@ All functions should have docstrings that include:
 def get_sandbox_session(
     self,
     session_name: str,
-) -> SandboxSessionInfoDict:
+) -> InternalApiSandboxSessionInfo:
     """Get sandbox session.
 
     Args:
         session_name: The session name to retrieve.
 
     Returns:
-        SandboxSessionInfoDict: Dictionary containing session info.
+        InternalApiSandboxSessionInfo: Pydantic model with full IDE autocomplete.
+        Call .model_dump() to convert to dict if needed.
     """
-    return _to_dict(self._api.get_sandbox_session(session_name=session_name))
+    return self._api.get_sandbox_session(session_name=session_name)
 ```

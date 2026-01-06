@@ -4,9 +4,6 @@ AI Agent for working on sys-admin tasks using the virsh-sandbox API.
 This agent uses OpenAI's function calling to interact with the
 virsh-sandbox API through a set of defined tools.
 """
-import re
-import uuid
-
 import json
 import time
 from uuid import uuid4
@@ -15,7 +12,6 @@ from virsh_sandbox import VirshSandbox, ApiException
 from openai import OpenAI
 from dotenv import load_dotenv
 from pprint import pprint
-import configuration
 from uuid import uuid4
 from tools import TOOLS
 
@@ -45,11 +41,17 @@ def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
     try:
         if name == "check_health":
             response = client.health.get_health()
-            return {"message": response}
+            # Convert Pydantic model to dict for JSON serialization
+            return {"status": response.status if hasattr(response, 'status') else "healthy"}
 
         if name == "list_sandboxes":
             response = client.sandbox.list_sandboxes()
-            return {"sandboxes": response}
+            if(response.sandboxes):
+                # Convert list of Pydantic models to list of dicts
+                sandboxes = [sb.to_dict() if hasattr(sb, 'to_dict') else sb for sb in response.sandboxes]
+                return {"sandboxes": sandboxes}
+            else:
+                return {"sandboxes": []}
 
         # if name == "create_sandbox":
         #     response = sandbox_client.create_sandbox(
@@ -81,8 +83,9 @@ def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
                 private_key_path=args.get("private_key_path", None),
                 timeout_sec=args.get("timeout_sec", 60)
             )
-
-            return {"success": True, "message": "Command executed", "output": response}
+            # Convert Pydantic model to dict for JSON serialization
+            output = response.to_dict() if hasattr(response, 'to_dict') else response
+            return {"success": True, "message": "Command executed", "output": output}
 
         # if name == "create_snapshot":
         #     response = sandbox_client.create_snapshot(
@@ -219,22 +222,23 @@ def main():
     print("=" * 50)
 
     sandbox = None
-    session = None
     agent_id = str(uuid4())
     try:
 
-        sandbox = client.sandbox.create_sandbox(source_vm_name="test-vm", agent_id=agent_id)
+        sandbox = client.sandbox.create_sandbox(source_vm_name="test-vm-arm64", agent_id=agent_id, auto_start=True, wait_for_ip=True).sandbox
+        print("Sandbox Created:")
         pprint(sandbox)
 
-        run_agent(
-            "Run the command 'ls -l' on the sandbox.", sandbox["sandbox"]["id"]
-        )
+        if(sandbox):
+            run_agent(
+                "Run the command 'ls -l'", sandbox.id
+            )
     except Exception as e:
         print(f"Error: {e}")
     finally:
-        if(sandbox):
+        if(sandbox and sandbox.id):
             print("Cleaning up sandbox...")
-            client.sandbox.destroy_sandbox(id=sandbox["sandbox"]["id"])
+            client.sandbox.destroy_sandbox(id=sandbox.id)
 
 
 # ---------------------------

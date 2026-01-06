@@ -21,8 +21,9 @@ from typing import Any, ClassVar, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict, StrictInt
 from typing_extensions import Self
 
-from virsh_sandbox.models.internal_rest_certificate_response import \
-    InternalRestCertificateResponse
+from virsh_sandbox.models.internal_rest_certificate_response import (
+    InternalRestCertificateResponse,
+)
 
 
 class InternalRestListCertificatesResponse(BaseModel):

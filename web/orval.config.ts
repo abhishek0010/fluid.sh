@@ -19,22 +19,22 @@ export default defineConfig({
       target: "../virsh-sandbox/docs/openapi.yaml",
     },
   },
-  "tmux-client": {
-    output: {
-      client: "react-query",
-      mode: "tags-split",
-      clean: true,
-      prettier: true,
-      target: "./src/tmux-client",
-      schemas: "./src/tmux-client/model",
-      override: {
-        operationName: (operation) => {
-          return operation.operationId || "";
-        },
-      },
-    },
-    input: {
-      target: "../tmux-client/docs/openapi.yaml",
-    },
-  },
+  // "tmux-client": {
+  //   output: {
+  //     client: "react-query",
+  //     mode: "tags-split",
+  //     clean: true,
+  //     prettier: true,
+  //     target: "./src/tmux-client",
+  //     schemas: "./src/tmux-client/model",
+  //     override: {
+  //       operationName: (operation) => {
+  //         return operation.operationId || "";
+  //       },
+  //     },
+  //   },
+  //   input: {
+  //     target: "../tmux-client/docs/openapi.yaml",
+  //   },
+  // },
 });

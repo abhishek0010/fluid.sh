@@ -21,8 +21,9 @@ from typing import Any, ClassVar, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict, StrictStr
 from typing_extensions import Self
 
-from virsh_sandbox.models.tmux_client_internal_types_health_status import \
-    TmuxClientInternalTypesHealthStatus
+from virsh_sandbox.models.tmux_client_internal_types_health_status import (
+    TmuxClientInternalTypesHealthStatus,
+)
 
 
 class TmuxClientInternalTypesComponentHealth(BaseModel):
