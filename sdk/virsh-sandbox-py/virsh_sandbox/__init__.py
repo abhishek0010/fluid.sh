@@ -18,6 +18,7 @@ __version__ = "0.0.15-beta"
 
 # Define package exports
 __all__ = [
+    "VirshSandbox",
     "AccessApi",
     "AnsibleApi",
     "AuditApi",
