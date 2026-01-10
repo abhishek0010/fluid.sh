@@ -76,11 +76,20 @@ type Config struct {
 	SSHKeyInjectMethod    string // "virt-customize" or "cloud-init"
 	CloudInitMetaTemplate string // optional meta-data template for cloud-init seed
 
+	// SSH CA public key for managed credentials.
+	SSHCAPubKey string
+
+	// SSH ProxyJump host for reaching VMs on an isolated network.
+	SSHProxyJump string
+
 	// Optional explicit paths to binaries; if empty these are looked up in PATH.
 	VirshPath         string
 	QemuImgPath       string
 	VirtCustomizePath string
 	QemuNbdPath       string
+
+	// Socket VMNet configuration (macOS only)
+	SocketVMNetWrapper string // e.g., /path/to/qemu-socket-vmnet-wrapper.sh
 
 	// Domain defaults
 	DefaultVCPUs    int
@@ -202,4 +211,14 @@ func (m *VirshManager) GetIPAddress(ctx context.Context, vmName string, timeout 
 // GetVMState is a stub that returns an error when libvirt is not available.
 func (m *VirshManager) GetVMState(ctx context.Context, vmName string) (VMState, error) {
 	return VMStateUnknown, ErrLibvirtNotAvailable
+}
+
+// GetVMMAC is a stub that returns an error when libvirt is not available.
+func (m *VirshManager) GetVMMAC(ctx context.Context, vmName string) (string, error) {
+	return "", ErrLibvirtNotAvailable
+}
+
+// ReleaseDHCPLease is a stub that returns an error when libvirt is not available.
+func (m *VirshManager) ReleaseDHCPLease(ctx context.Context, network, mac string) error {
+	return ErrLibvirtNotAvailable
 }

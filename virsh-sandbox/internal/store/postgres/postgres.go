@@ -766,7 +766,7 @@ func (s *postgresStore) GetNextTaskPosition(ctx context.Context, playbookID stri
 // --- Migration ---
 
 func (s *postgresStore) autoMigrate(ctx context.Context) error {
-	return s.db.WithContext(ctx).AutoMigrate(
+	if err := s.db.WithContext(ctx).AutoMigrate(
 		&SandboxModel{},
 		&SnapshotModel{},
 		&CommandModel{},
@@ -775,7 +775,23 @@ func (s *postgresStore) autoMigrate(ctx context.Context) error {
 		&PublicationModel{},
 		&PlaybookModel{},
 		&PlaybookTaskModel{},
-	)
+	); err != nil {
+		return err
+	}
+
+	// Create partial unique index on sandbox_name for non-deleted rows only.
+	// This allows reusing sandbox names after soft-delete.
+	// We use CREATE INDEX IF NOT EXISTS to be idempotent.
+	if err := s.db.WithContext(ctx).Exec(`
+		DROP INDEX IF EXISTS idx_sandboxes_sandbox_name;
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_sandbox_name_active
+		ON sandboxes (sandbox_name)
+		WHERE deleted_at IS NULL
+	`).Error; err != nil {
+		return fmt.Errorf("create partial unique index: %w", err)
+	}
+
+	return nil
 }
 
 // --- Models & Converters ---
@@ -784,7 +800,7 @@ type SandboxModel struct {
 	ID          string     `gorm:"primaryKey;column:id"`
 	JobID       string     `gorm:"column:job_id;not null;index"`
 	AgentID     string     `gorm:"column:agent_id;not null;index"`
-	SandboxName string     `gorm:"column:sandbox_name;not null;uniqueIndex"`
+	SandboxName string     `gorm:"column:sandbox_name;not null"` // Partial unique index created in autoMigrate
 	BaseImage   string     `gorm:"column:base_image;not null;index"`
 	Network     string     `gorm:"column:network;not null"`
 	IPAddress   *string    `gorm:"column:ip"`

@@ -221,21 +221,19 @@ def main():
     agent_id = str(uuid4())
     try:
 
-        sandbox = client.sandbox.create_sandbox(source_vm_name="test-vm", agent_id=agent_id).sandbox
+        sandbox = client.sandbox.create_sandbox(source_vm_name="test-vm", agent_id=agent_id, auto_start=True, wait_for_ip=True, request_timeout=180.0).sandbox
         pprint(sandbox)
 
         if(sandbox and sandbox.id):
-            res = client.sandbox.start_sandbox(id=sandbox.id, wait_for_ip=True)
-            pprint(res)
             run_agent(
                 "Run the command 'whoami'", sandbox.id
             )
     except Exception as e:
         print(f"Error: {e}")
-    finally:
-        if(sandbox and sandbox.id):
-            print("Cleaning up sandbox...")
-            client.sandbox.destroy_sandbox(id=sandbox.id)
+    # finally:
+    #     if(sandbox and sandbox.id):
+    #         print("Cleaning up sandbox...")
+    #         client.sandbox.destroy_sandbox(id=sandbox.id)
 
 
 # ---------------------------

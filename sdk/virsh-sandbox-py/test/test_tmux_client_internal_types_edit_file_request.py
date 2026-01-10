@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_edit_file_request import \
-    TmuxClientInternalTypesEditFileRequest
+from virsh_sandbox.models.tmux_client_internal_types_edit_file_request import (
+    TmuxClientInternalTypesEditFileRequest,
+)
 
 
 class TestTmuxClientInternalTypesEditFileRequest(unittest.TestCase):

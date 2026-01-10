@@ -112,6 +112,7 @@ func (s *Server) routes() {
 				r.Get("/", s.handleGetSandbox)
 				r.Get("/commands", s.handleListSandboxCommands)
 				r.Get("/stream", s.handleSandboxStream)
+				r.Get("/ip", s.handleDiscoverIP)
 
 				r.Post("/sshkey", s.handleInjectSSHKey)
 				r.Post("/start", s.handleStartSandbox)
@@ -171,6 +172,10 @@ type startSandboxRequest struct {
 
 type startSandboxResponse struct {
 	IPAddress string `json:"ip_address,omitempty"`
+}
+
+type discoverIPResponse struct {
+	IPAddress string `json:"ip_address"`
 }
 
 type runCommandRequest struct {
@@ -366,6 +371,36 @@ func (s *Server) handleStartSandbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = serverJSON.RespondJSON(w, http.StatusOK, startSandboxResponse{IPAddress: ip})
+}
+
+// @Summary Discover sandbox IP
+// @Description Discovers and returns the IP address for a running sandbox. Use this for async workflows where wait_for_ip was false during start.
+// @Tags Sandbox
+// @Produce json
+// @Param id path string true "Sandbox ID"
+// @Success 200 {object} discoverIPResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Id discoverSandboxIP
+// @Router /v1/sandboxes/{id}/ip [get]
+func (s *Server) handleDiscoverIP(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		serverError.RespondError(w, http.StatusBadRequest, errors.New("sandbox id is required"))
+		return
+	}
+
+	ip, err := s.vmSvc.DiscoverIP(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			serverError.RespondError(w, http.StatusNotFound, fmt.Errorf("sandbox not found: %s", id))
+			return
+		}
+		serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("discover ip: %w", err))
+		return
+	}
+	_ = serverJSON.RespondJSON(w, http.StatusOK, discoverIPResponse{IPAddress: ip})
 }
 
 // @Summary Run command in sandbox

@@ -793,6 +793,7 @@ func TestValidateIPUniqueness_NoConflict(t *testing.T) {
 	svc := &Service{
 		store:     mockSt,
 		timeNowFn: time.Now,
+		logger:    slog.Default(),
 	}
 
 	err := svc.validateIPUniqueness(context.Background(), "SBX-123", ip)
@@ -820,6 +821,7 @@ func TestValidateIPUniqueness_Conflict(t *testing.T) {
 	svc := &Service{
 		store:     mockSt,
 		timeNowFn: time.Now,
+		logger:    slog.Default(),
 	}
 
 	err := svc.validateIPUniqueness(context.Background(), "SBX-123", ip)
@@ -850,6 +852,7 @@ func TestValidateIPUniqueness_SameSandboxIgnored(t *testing.T) {
 	svc := &Service{
 		store:     mockSt,
 		timeNowFn: time.Now,
+		logger:    slog.Default(),
 	}
 
 	err := svc.validateIPUniqueness(context.Background(), "SBX-123", ip)

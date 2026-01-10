@@ -138,18 +138,9 @@ TOOLS = [
                     "private_key_path": {
                         "type": "string",
                         "description": "Path to SSH private key on the API host",
-                    },
-                    "timeout_sec": {
-                        "type": "integer",
-                        "description": "Optional command timeout in seconds",
-                    },
-                    "env": {
-                        "type": "object",
-                        "additionalProperties": {"type": "string"},
-                        "description": "Optional environment variables to set",
-                    },
+                    }
                 },
-                "required": ["sandbox_id", "command", "username", "private_key_path"],
+                "required": ["sandbox_id", "command"],
             },
         },
     },

@@ -1,30 +1,48 @@
 procs:
   postgres:
     cwd: "."
+    autostart: false
     shell: "docker-compose up postgres"
     stop: "SIGTERM"
 
   api:
-    cwd: "."
-    shell: "docker-compose up api --build"
+    cwd: "./virsh-sandbox"
+    autostart: false
+    shell: 'go build --tags libvirt -ldflags="-s -w" -o bin/api ./cmd/api && bin/api'
     env:
       LOG_FORMAT: "text"
       LOG_LEVEL: "debug"
       API_HTTP_ADDR: ":8080"
-      LIBVIRT_URI: "qemu:///system"
-      LIBVIRT_NETWORK: "default"
+      LIBVIRT_URI: "qemu:///session"
+      LIBVIRT_NETWORK: "socket_vmnet"
+      SOCKET_VMNET_WRAPPER: "/Users/collinpfeifer/GitHub/fluid.sh/scripts/qemu-socket-vmnet-wrapper.sh"
       BASE_IMAGE_DIR: "/var/lib/libvirt/images/base"
       SANDBOX_WORKDIR: "/var/lib/libvirt/images/jobs"
       DATABASE_URL: "postgresql://virsh_sandbox:virsh_sandbox@localhost:5432/virsh_sandbox"
+      SSH_CA_KEY_PATH: "/Users/collinpfeifer/GitHub/fluid.sh/.ssh-ca/ssh_ca"
+      SSH_CA_PUB_KEY_PATH: "/Users/collinpfeifer/GitHub/fluid.sh/.ssh-ca/ssh_ca.pub"
+      SSH_KEY_DIR: "/tmp/sandbox-keys/"
+      SSH_CERT_TTL_SEC: "300"
       DEFAULT_VCPUS: "2"
       DEFAULT_MEMORY_MB: "2048"
       COMMAND_TIMEOUT_SEC: "600"
-      IP_DISCOVERY_TIMEOUT_SEC: "120"
+      IP_DISCOVERY_TIMEOUT_SEC: "300"
 
   tmux-client:
     cwd: "."
     shell: "docker-compose up tmux-client --build"
 
   frontend:
-    cwd: "frontend"
-    shell: "bun run dev"
+    cwd: "./web"
+    autostart: false
+    shell: "bun dev"
+
+  list-sandboxes:
+    cwd: "."
+    autostart: false
+    shell: "virsh -c qemu:///session list --all"
+
+  cleanup-sandboxes:
+    cwd: "."
+    autostart: false
+    shell: "./scripts/cleanup-vms.sh"

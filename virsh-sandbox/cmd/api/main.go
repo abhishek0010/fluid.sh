@@ -58,6 +58,9 @@ func main() {
 	cmdTimeout := durationFromSecondsEnv("COMMAND_TIMEOUT_SEC", 600)              // 10m default
 	ipDiscoveryTimeout := durationFromSecondsEnv("IP_DISCOVERY_TIMEOUT_SEC", 120) // 2m default
 
+	// SSH proxy for reaching VMs on isolated networks (e.g., through Lima)
+	sshProxyJump := getenv("SSH_PROXY_JUMP", "")
+
 	// Ansible configuration
 	ansibleInventoryPath := getenv("ANSIBLE_INVENTORY_PATH", "/ansible/inventory")
 	ansibleImage := getenv("ANSIBLE_IMAGE", "ansible-sandbox")
@@ -164,6 +167,7 @@ func main() {
 		DefaultMemoryMB:    defaultMemMB,
 		CommandTimeout:     cmdTimeout,
 		IPDiscoveryTimeout: ipDiscoveryTimeout,
+		SSHProxyJump:       sshProxyJump,
 	}, vmOpts...)
 
 	// Initialize Ansible runner
@@ -176,12 +180,17 @@ func main() {
 	restSrv := rest.NewServerWithPlaybooks(vmSvc, domainMgr, ansibleRunner, playbookSvc)
 
 	// Build http.Server so we can gracefully shutdown
+	// WriteTimeout must be > IPDiscoveryTimeout to allow wait_for_ip to complete
+	writeTimeout := ipDiscoveryTimeout + 30*time.Second
+	if writeTimeout < 120*time.Second {
+		writeTimeout = 120 * time.Second
+	}
 	httpSrv := &http.Server{
 		Addr:              apiAddr,
 		Handler:           restSrv.Router, // use the chi router directly for graceful shutdowns
 		ReadHeaderTimeout: 15 * time.Second,
 		ReadTimeout:       60 * time.Second,
-		WriteTimeout:      60 * time.Second,
+		WriteTimeout:      writeTimeout,
 		IdleTimeout:       120 * time.Second,
 	}
 

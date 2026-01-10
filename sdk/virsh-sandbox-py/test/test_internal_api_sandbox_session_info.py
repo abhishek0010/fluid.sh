@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_api_sandbox_session_info import \
-    InternalApiSandboxSessionInfo
+from virsh_sandbox.models.internal_api_sandbox_session_info import (
+    InternalApiSandboxSessionInfo,
+)
 
 
 class TestInternalApiSandboxSessionInfo(unittest.TestCase):

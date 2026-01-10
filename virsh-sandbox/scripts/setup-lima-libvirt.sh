@@ -56,6 +56,8 @@ LIMA_DISK=50
 CREATE_TEST_VM=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${PROJECT_ROOT}/.." && pwd)"
+SSH_CA_DIR="${REPO_ROOT}/.ssh-ca"
 
 # Colors for output
 RED='\033[0;31m'
@@ -93,6 +95,48 @@ check_command() {
     if ! command -v "$1" &> /dev/null; then
         log_error "Required command '$1' not found. Please install it first."
         exit 1
+    fi
+}
+
+# =============================================================================
+# SSH CA Setup
+# =============================================================================
+
+setup_ssh_ca() {
+    local ca_dir="$1"
+    local ca_key="${ca_dir}/ssh_ca"
+    local ca_pub="${ca_dir}/ssh_ca.pub"
+
+    if [[ -f "${ca_key}" ]] && [[ -f "${ca_pub}" ]]; then
+        log_info "SSH CA already exists at ${ca_dir}"
+        return 0
+    fi
+
+    log_info "Generating SSH Certificate Authority..."
+    mkdir -p "${ca_dir}"
+    chmod 700 "${ca_dir}"
+
+    ssh-keygen -t ed25519 -f "${ca_key}" -N "" -C "virsh-sandbox-ssh-ca" -q
+
+    if [[ ! -f "${ca_key}" ]] || [[ ! -f "${ca_pub}" ]]; then
+        log_error "Failed to generate SSH CA"
+        return 1
+    fi
+
+    chmod 600 "${ca_key}"
+    chmod 644 "${ca_pub}"
+
+    log_success "SSH CA generated at ${ca_dir}"
+    log_info "  Private key: ${ca_key}"
+    log_info "  Public key:  ${ca_pub}"
+}
+
+get_ssh_ca_pubkey() {
+    local ca_pub="${SSH_CA_DIR}/ssh_ca.pub"
+    if [[ -f "${ca_pub}" ]]; then
+        cat "${ca_pub}"
+    else
+        echo ""
     fi
 }
 
@@ -582,6 +626,16 @@ create_test_vm_in_lima() {
 
     log_info "Detected architecture: ${arch}"
 
+    # Get SSH CA public key for VM trust
+    local ssh_ca_pubkey
+    ssh_ca_pubkey=$(get_ssh_ca_pubkey)
+    if [[ -z "${ssh_ca_pubkey}" ]]; then
+        log_warn "SSH CA not found - VMs will not trust certificate-based auth"
+        log_warn "Run: ./setup-ssh-ca.sh --dir ${SSH_CA_DIR}"
+    else
+        log_info "SSH CA public key will be injected into VM"
+    fi
+
     # Run setup inside Lima
     limactl shell "${lima_vm}" -- sudo bash << SETUP_VM
 set -e
@@ -590,6 +644,7 @@ BASE_DIR="/var/lib/libvirt/images/base"
 VM_NAME="${vm_name}"
 CLOUD_IMAGE="${cloud_image}"
 CLOUD_IMAGE_URL="${cloud_image_url}"
+SSH_CA_PUBKEY="${ssh_ca_pubkey}"
 
 # Download cloud image if needed
 if [ ! -f "\${BASE_DIR}/\${CLOUD_IMAGE}" ]; then
@@ -607,19 +662,29 @@ fi
 # Create cloud-init ISO
 echo "[INFO] Creating cloud-init ISO..."
 mkdir -p /tmp/cloud-init-\${VM_NAME}
-cat > /tmp/cloud-init-\${VM_NAME}/user-data << 'USERDATA'
+
+# Build cloud-init user-data with SSH CA trust
+cat > /tmp/cloud-init-\${VM_NAME}/user-data << USERDATA
 #cloud-config
 hostname: test-vm
+
 users:
   - name: testuser
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     lock_passwd: false
+  - name: sandbox
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: true
+
 chpasswd:
   list: |
     testuser:testpassword
   expire: false
+
 ssh_pwauth: true
+
 network:
   version: 2
   ethernets:
@@ -627,6 +692,21 @@ network:
       match:
         driver: virtio*
       dhcp4: true
+
+write_files:
+  - path: /etc/ssh/ssh_ca.pub
+    content: "\${SSH_CA_PUBKEY}"
+    permissions: '0644'
+    owner: root:root
+
+runcmd:
+  - |
+    # Configure SSH to trust the CA for user authentication
+    if [ -s /etc/ssh/ssh_ca.pub ]; then
+      echo "TrustedUserCAKeys /etc/ssh/ssh_ca.pub" >> /etc/ssh/sshd_config
+      systemctl restart sshd || systemctl restart ssh
+      echo "[INFO] SSH CA trust configured"
+    fi
 USERDATA
 
 cat > /tmp/cloud-init-\${VM_NAME}/meta-data << METADATA
@@ -867,6 +947,81 @@ ENV_EOF
 }
 
 # =============================================================================
+# Update Root .env File for Docker Compose
+# =============================================================================
+
+update_root_env_file() {
+    local ssh_port="$1"
+    local env_file="${REPO_ROOT}/.env"
+    local libvirt_uri="qemu+ssh://${USER}@host.docker.internal:${ssh_port}/system"
+
+    if [ -f "${env_file}" ]; then
+        # File exists - update LIBVIRT_URI if present, otherwise append
+        if grep -q "^LIBVIRT_URI=" "${env_file}"; then
+            # Update existing LIBVIRT_URI line
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s|^LIBVIRT_URI=.*|LIBVIRT_URI=${libvirt_uri}|" "${env_file}"
+            else
+                sed -i "s|^LIBVIRT_URI=.*|LIBVIRT_URI=${libvirt_uri}|" "${env_file}"
+            fi
+            log_info "Updated LIBVIRT_URI in ${env_file}"
+        else
+            # Append LIBVIRT_URI
+            echo "" >> "${env_file}"
+            echo "# Lima VM libvirt connection" >> "${env_file}"
+            echo "LIBVIRT_URI=${libvirt_uri}" >> "${env_file}"
+            log_info "Added LIBVIRT_URI to ${env_file}"
+        fi
+
+        # Update or add LIMA_SSH_PORT
+        if grep -q "^LIMA_SSH_PORT=" "${env_file}"; then
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s|^LIMA_SSH_PORT=.*|LIMA_SSH_PORT=${ssh_port}|" "${env_file}"
+            else
+                sed -i "s|^LIMA_SSH_PORT=.*|LIMA_SSH_PORT=${ssh_port}|" "${env_file}"
+            fi
+        else
+            echo "LIMA_SSH_PORT=${ssh_port}" >> "${env_file}"
+        fi
+    else
+        # Create new .env file with essential settings
+        log_info "Creating ${env_file}..."
+        cat > "${env_file}" << ENV_EOF
+# Lima VM SSH port - update this if Lima restarts with a different port
+# Check current port with: limactl list ${LIMA_VM_NAME}
+LIBVIRT_URI=${libvirt_uri}
+LIMA_SSH_PORT=${ssh_port}
+
+# Libvirt network
+LIBVIRT_NETWORK=default
+
+# Image directories (shared between Mac, Docker, and Lima via mount)
+BASE_IMAGES_DIR=/var/lib/libvirt/images/base
+JOBS_DIR=/var/lib/libvirt/images/jobs
+
+# API settings
+API_HTTP_ADDR=:8080
+
+# VM defaults
+DEFAULT_VCPUS=2
+DEFAULT_MEMORY_MB=2048
+
+# Timeouts
+COMMAND_TIMEOUT_SEC=600
+IP_DISCOVERY_TIMEOUT_SEC=120
+
+# Logging
+LOG_FORMAT=text
+LOG_LEVEL=info
+ENV_EOF
+    fi
+
+    log_success "Root .env file updated: ${env_file}"
+    log_info "  LIBVIRT_URI=${libvirt_uri}"
+    log_info "  LIMA_SSH_PORT=${ssh_port}"
+}
+
+# =============================================================================
 # Main Setup Logic
 # =============================================================================
 
@@ -878,6 +1033,11 @@ main() {
     log_info "  Memory: ${LIMA_MEMORY}GB"
     log_info "  Disk: ${LIMA_DISK}GB"
     log_info "  Create Test VM: ${CREATE_TEST_VM}"
+    log_info "  SSH CA Dir: ${SSH_CA_DIR}"
+    echo ""
+
+    # Setup SSH CA (generates if not exists)
+    setup_ssh_ca "${SSH_CA_DIR}"
     echo ""
 
     case "${PLATFORM}" in
@@ -895,10 +1055,7 @@ main() {
                     log_info "Keeping existing VM"
                     if [ "${CREATE_TEST_VM}" = true ]; then
                         log_info "Creating test VM inside existing Lima instance..."
-                        TEST_VM_SCRIPT="/tmp/create-test-vm.sh"
-                        generate_test_vm_script "${TEST_VM_SCRIPT}"
-                        limactl copy "${TEST_VM_SCRIPT}" "${LIMA_VM_NAME}:/tmp/create-test-vm.sh"
-                        limactl shell "${LIMA_VM_NAME}" -- bash /tmp/create-test-vm.sh
+                        create_test_vm_in_lima "${LIMA_VM_NAME}"
                     fi
                     exit 0
                 fi
@@ -958,6 +1115,9 @@ main() {
                 create_test_vm_in_lima "${LIMA_VM_NAME}"
             fi
 
+            # Update root .env file for docker-compose
+            update_root_env_file "${SSH_PORT}"
+
             # Generate environment file
             ENV_FILE="${PROJECT_ROOT}/.env.lima"
             generate_env_file "${ENV_FILE}" "${SSH_PORT}" "${SSH_KEY}"
@@ -985,10 +1145,18 @@ main() {
             echo "    export LIBVIRT_URI='qemu+ssh://${USER}@localhost:${SSH_PORT}/system?keyfile=${SSH_KEY}'"
             echo "    virsh list --all"
             echo ""
-            echo "  Environment file created at: ${ENV_FILE}"
-            echo "    source ${ENV_FILE}"
+            echo "  Environment files:"
+            echo "    ${REPO_ROOT}/.env (for docker-compose)"
+            echo "    ${ENV_FILE} (for local development)"
             echo ""
-            echo "  Run the API with:"
+            echo "  SSH CA (for managed credentials):"
+            echo "    ${SSH_CA_DIR}/ssh_ca (private key)"
+            echo "    ${SSH_CA_DIR}/ssh_ca.pub (public key - injected into VMs)"
+            echo ""
+            echo "  Docker Compose (uses .env automatically):"
+            echo "    docker-compose up --build"
+            echo ""
+            echo "  Run the API locally with:"
             echo "    export LIBVIRT_URI='qemu+tcp://localhost:16509/system'"
             echo "    go run ./cmd/api"
             echo ""

@@ -28,7 +28,7 @@ Then you review what it did—a clean diff of every change—and approve. One cl
 
 **The agent does the work. You just approve.**
 
-That's what virsh-sandbox enables.
+That's what Fluid.sh enables.
 
 ---
 
@@ -242,6 +242,7 @@ sandbox = client.sandbox.create_sandbox(
     source_vm_name="ubuntu-base",
     agent_id="my-agent",
     auto_start=True
+    wait_for_ip=True
 ).sandbox
 
 # Your agent logic here...

@@ -4,13 +4,9 @@
 
 ---
 
-## Title Options (pick one)
+## Title 
 
-1. `Show HN: virsh-sandbox – Autonomous AI agents for infrastructure with human approval`
-2. `Show HN: Let AI agents do infrastructure work in VMs, then approve for production`
-3. `Show HN: Give AI agents root in sandboxes, not production – then review and approve`
-
-**Recommended:** Option 1
+1. `Show HN: fluid.sh – Make Infrastructure Safe for AI
 
 ---
 
@@ -19,7 +15,7 @@
 ```
 Hey HN,
 
-I built virsh-sandbox because I wanted AI agents to actually DO infrastructure work—not just suggest commands for me to copy-paste.
+I built fluid.sh because I wanted AI agents to actually DO infrastructure work—not just suggest commands for me to copy-paste.
 
 The problem: We can give AI agents root access to codebases, but not to servers. One bad command on production and you're restoring from backups. So we limit agents to "suggestion mode" while humans do the actual execution.
 

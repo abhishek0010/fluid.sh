@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_ca_public_key_response import \
-    InternalRestCaPublicKeyResponse
+from virsh_sandbox.models.internal_rest_ca_public_key_response import (
+    InternalRestCaPublicKeyResponse,
+)
 
 
 class TestInternalRestCaPublicKeyResponse(unittest.TestCase):

@@ -12,12 +12,20 @@ from unittest.mock import MagicMock, patch
 
 from pydantic import BaseModel
 
-from virsh_sandbox.client import (AccessOperations, AnsibleOperations,
-                                  AuditOperations, CommandOperations,
-                                  FileOperations, HealthOperations,
-                                  HumanOperations, PlanOperations,
-                                  SandboxOperations, TmuxOperations,
-                                  VirshSandbox, VMsOperations)
+from virsh_sandbox.client import (
+    AccessOperations,
+    AnsibleOperations,
+    AuditOperations,
+    CommandOperations,
+    FileOperations,
+    HealthOperations,
+    HumanOperations,
+    PlanOperations,
+    SandboxOperations,
+    TmuxOperations,
+    VirshSandbox,
+    VMsOperations,
+)
 
 
 class MockPydanticModel(BaseModel):
@@ -204,10 +212,12 @@ class TestIntegrationStyleFieldAccess(unittest.TestCase):
 
     def test_create_sandbox_field_access(self) -> None:
         """Test create_sandbox returns model with accessible fields."""
-        from virsh_sandbox.models.virsh_sandbox_internal_rest_create_sandbox_response import \
-            VirshSandboxInternalRestCreateSandboxResponse
-        from virsh_sandbox.models.virsh_sandbox_internal_store_sandbox import \
-            VirshSandboxInternalStoreSandbox
+        from virsh_sandbox.models.virsh_sandbox_internal_rest_create_sandbox_response import (
+            VirshSandboxInternalRestCreateSandboxResponse,
+        )
+        from virsh_sandbox.models.virsh_sandbox_internal_store_sandbox import (
+            VirshSandboxInternalStoreSandbox,
+        )
 
         # Setup mock
         mock_api = MagicMock()
@@ -247,8 +257,9 @@ class TestIntegrationStyleFieldAccess(unittest.TestCase):
 
     def test_start_sandbox_field_access(self) -> None:
         """Test start_sandbox returns model with accessible fields."""
-        from virsh_sandbox.models.virsh_sandbox_internal_rest_start_sandbox_response import \
-            VirshSandboxInternalRestStartSandboxResponse
+        from virsh_sandbox.models.virsh_sandbox_internal_rest_start_sandbox_response import (
+            VirshSandboxInternalRestStartSandboxResponse,
+        )
 
         # Setup mock
         mock_api = MagicMock()
@@ -274,10 +285,12 @@ class TestIntegrationStyleFieldAccess(unittest.TestCase):
 
     def test_list_sandboxes_field_access(self) -> None:
         """Test list_sandboxes returns model with list of sandbox models."""
-        from virsh_sandbox.models.virsh_sandbox_internal_rest_list_sandboxes_response import \
-            VirshSandboxInternalRestListSandboxesResponse
-        from virsh_sandbox.models.virsh_sandbox_internal_store_sandbox import \
-            VirshSandboxInternalStoreSandbox
+        from virsh_sandbox.models.virsh_sandbox_internal_rest_list_sandboxes_response import (
+            VirshSandboxInternalRestListSandboxesResponse,
+        )
+        from virsh_sandbox.models.virsh_sandbox_internal_store_sandbox import (
+            VirshSandboxInternalStoreSandbox,
+        )
 
         # Setup mock with multiple sandboxes
         mock_api = MagicMock()
@@ -327,8 +340,9 @@ class TestIntegrationStyleFieldAccess(unittest.TestCase):
 
     def test_get_health_field_access(self) -> None:
         """Test health check returns model with accessible fields."""
-        from virsh_sandbox.models.tmux_client_internal_types_health_response import \
-            TmuxClientInternalTypesHealthResponse
+        from virsh_sandbox.models.tmux_client_internal_types_health_response import (
+            TmuxClientInternalTypesHealthResponse,
+        )
 
         # Setup mock
         mock_api = MagicMock()
@@ -353,8 +367,9 @@ class TestIntegrationStyleFieldAccess(unittest.TestCase):
 
     def test_run_command_field_access(self) -> None:
         """Test run_command returns model with accessible fields."""
-        from virsh_sandbox.models.tmux_client_internal_types_run_command_response import \
-            TmuxClientInternalTypesRunCommandResponse
+        from virsh_sandbox.models.tmux_client_internal_types_run_command_response import (
+            TmuxClientInternalTypesRunCommandResponse,
+        )
 
         # Setup mock
         mock_api = MagicMock()
@@ -382,8 +397,9 @@ class TestIntegrationStyleFieldAccess(unittest.TestCase):
 
     def test_read_file_field_access(self) -> None:
         """Test read_file returns model with accessible fields."""
-        from virsh_sandbox.models.tmux_client_internal_types_read_file_response import \
-            TmuxClientInternalTypesReadFileResponse
+        from virsh_sandbox.models.tmux_client_internal_types_read_file_response import (
+            TmuxClientInternalTypesReadFileResponse,
+        )
 
         # Setup mock
         mock_api = MagicMock()
@@ -414,8 +430,9 @@ class TestIntegrationStyleFieldAccess(unittest.TestCase):
 
     def test_create_sandbox_session_field_access(self) -> None:
         """Test create_sandbox_session returns model with nested fields."""
-        from virsh_sandbox.models.internal_api_create_sandbox_session_response import \
-            InternalApiCreateSandboxSessionResponse
+        from virsh_sandbox.models.internal_api_create_sandbox_session_response import (
+            InternalApiCreateSandboxSessionResponse,
+        )
 
         # Setup mock
         mock_api = MagicMock()
@@ -446,8 +463,9 @@ class TestIntegrationStyleFieldAccess(unittest.TestCase):
 
     def test_list_tmux_sessions_list_return_type(self) -> None:
         """Test list_tmux_sessions returns list of Pydantic models."""
-        from virsh_sandbox.models.tmux_client_internal_types_session_info import \
-            TmuxClientInternalTypesSessionInfo
+        from virsh_sandbox.models.tmux_client_internal_types_session_info import (
+            TmuxClientInternalTypesSessionInfo,
+        )
 
         # Setup mock
         mock_api = MagicMock()

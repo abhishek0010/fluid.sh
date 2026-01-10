@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_read_file_request import \
-    TmuxClientInternalTypesReadFileRequest
+from virsh_sandbox.models.tmux_client_internal_types_read_file_request import (
+    TmuxClientInternalTypesReadFileRequest,
+)
 
 
 class TestTmuxClientInternalTypesReadFileRequest(unittest.TestCase):

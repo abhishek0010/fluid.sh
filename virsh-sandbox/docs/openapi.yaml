@@ -335,7 +335,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_ansible.JobRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_ansible.JobRequest"
         description: Job creation parameters
         required: true
       responses:
@@ -343,7 +343,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.JobResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_ansible.JobResponse"
           description: OK
         "400":
           content:
@@ -371,7 +371,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.Job"
+                $ref: "#/components/schemas/virsh-sandbox_internal_ansible.Job"
           description: OK
         "404":
           content:
@@ -424,7 +424,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.listPlaybooksResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_ansible.listPlaybooksResponse"
           description: OK
       summary: List playbooks
       tags:
@@ -436,7 +436,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_ansible.createPlaybookRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_ansible.createPlaybookRequest"
         description: Playbook creation parameters
         required: true
       responses:
@@ -444,7 +444,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.createPlaybookResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_ansible.createPlaybookResponse"
           description: Created
         "400":
           content:
@@ -462,14 +462,14 @@ paths:
       tags:
       - Ansible Playbooks
       x-codegen-request-body-name: request
-  /v1/ansible/playbooks/{name}:
+  /v1/ansible/playbooks/{playbook_name}:
     delete:
       description: Deletes a playbook and all its tasks
       operationId: deletePlaybook
       parameters:
       - description: Playbook name
         in: path
-        name: name
+        name: playbook_name
         required: true
         schema:
           type: string
@@ -492,7 +492,7 @@ paths:
       parameters:
       - description: Playbook name
         in: path
-        name: name
+        name: playbook_name
         required: true
         schema:
           type: string
@@ -501,7 +501,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.getPlaybookResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_ansible.getPlaybookResponse"
           description: OK
         "404":
           content:
@@ -512,14 +512,14 @@ paths:
       summary: Get playbook
       tags:
       - Ansible Playbooks
-  /v1/ansible/playbooks/{name}/export:
+  /v1/ansible/playbooks/{playbook_name}/export:
     get:
       description: Exports a playbook as raw YAML
       operationId: exportPlaybook
       parameters:
       - description: Playbook name
         in: path
-        name: name
+        name: playbook_name
         required: true
         schema:
           type: string
@@ -528,7 +528,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.exportPlaybookResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_ansible.exportPlaybookResponse"
           description: OK
         "404":
           content:
@@ -539,14 +539,14 @@ paths:
       summary: Export playbook
       tags:
       - Ansible Playbooks
-  /v1/ansible/playbooks/{name}/tasks:
+  /v1/ansible/playbooks/{playbook_name}/tasks:
     post:
       description: Adds a new task to an existing playbook
       operationId: addPlaybookTask
       parameters:
       - description: Playbook name
         in: path
-        name: name
+        name: playbook_name
         required: true
         schema:
           type: string
@@ -554,7 +554,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_ansible.addTaskRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_ansible.addTaskRequest"
         description: Task parameters
         required: true
       responses:
@@ -562,7 +562,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.addTaskResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_ansible.addTaskResponse"
           description: Created
         "400":
           content:
@@ -580,14 +580,14 @@ paths:
       tags:
       - Ansible Playbooks
       x-codegen-request-body-name: request
-  /v1/ansible/playbooks/{name}/tasks/{task_id}:
+  /v1/ansible/playbooks/{playbook_name}/tasks/{task_id}:
     delete:
       description: Removes a task from a playbook
       operationId: deletePlaybookTask
       parameters:
       - description: Playbook name
         in: path
-        name: name
+        name: playbook_name
         required: true
         schema:
           type: string
@@ -616,7 +616,7 @@ paths:
       parameters:
       - description: Playbook name
         in: path
-        name: name
+        name: playbook_name
         required: true
         schema:
           type: string
@@ -630,7 +630,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_ansible.updateTaskRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_ansible.updateTaskRequest"
         description: Task update parameters
         required: true
       responses:
@@ -638,7 +638,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.updateTaskResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_ansible.updateTaskResponse"
           description: OK
         "400":
           content:
@@ -656,14 +656,14 @@ paths:
       tags:
       - Ansible Playbooks
       x-codegen-request-body-name: request
-  /v1/ansible/playbooks/{name}/tasks/reorder:
+  /v1/ansible/playbooks/{playbook_name}/tasks/reorder:
     patch:
       description: Reorders tasks in a playbook
       operationId: reorderPlaybookTasks
       parameters:
       - description: Playbook name
         in: path
-        name: name
+        name: playbook_name
         required: true
         schema:
           type: string
@@ -671,7 +671,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_ansible.reorderTasksRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_ansible.reorderTasksRequest"
         description: New task order
         required: true
       responses:
@@ -1006,6 +1006,46 @@ paths:
       summary: Generate configuration
       tags:
       - Sandbox
+  /v1/sandboxes/{id}/ip:
+    get:
+      description: Discovers and returns the IP address for a running sandbox. Use
+        this for async workflows where wait_for_ip was false during start.
+      operationId: discoverSandboxIP
+      parameters:
+      - description: Sandbox ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.discoverIPResponse"
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+          description: Bad Request
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+          description: Internal Server Error
+      summary: Discover sandbox IP
+      tags:
+      - Sandbox
   /v1/sandboxes/{id}/publish:
     post:
       description: Publishes sandbox changes to GitOps repository
@@ -1260,12 +1300,6 @@ paths:
 components:
   schemas:
     internal_ansible.Job:
-      example:
-        check: true
-        id: id
-        vm_name: vm_name
-        playbook: playbook
-        status: pending
       properties:
         check:
           type: boolean
@@ -1288,9 +1322,6 @@ components:
           type: string
       type: object
     internal_ansible.JobResponse:
-      example:
-        job_id: job_id
-        ws_url: ws_url
       properties:
         job_id:
           type: string
@@ -1321,16 +1352,6 @@ components:
           type: object
       type: object
     internal_ansible.addTaskResponse:
-      example:
-        task:
-          module: module
-          name: name
-          created_at: created_at
-          id: id
-          position: 0
-          params:
-            key: "{}"
-          playbook_id: playbook_id
       properties:
         task:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.PlaybookTask"
@@ -1345,53 +1366,16 @@ components:
           type: string
       type: object
     internal_ansible.createPlaybookResponse:
-      example:
-        playbook:
-          file_path: file_path
-          updated_at: updated_at
-          hosts: hosts
-          name: name
-          created_at: created_at
-          id: id
-          become: true
       properties:
         playbook:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Playbook"
       type: object
     internal_ansible.exportPlaybookResponse:
-      example:
-        yaml: yaml
       properties:
         yaml:
           type: string
       type: object
     internal_ansible.getPlaybookResponse:
-      example:
-        tasks:
-        - module: module
-          name: name
-          created_at: created_at
-          id: id
-          position: 0
-          params:
-            key: "{}"
-          playbook_id: playbook_id
-        - module: module
-          name: name
-          created_at: created_at
-          id: id
-          position: 0
-          params:
-            key: "{}"
-          playbook_id: playbook_id
-        playbook:
-          file_path: file_path
-          updated_at: updated_at
-          hosts: hosts
-          name: name
-          created_at: created_at
-          id: id
-          become: true
       properties:
         playbook:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Playbook"
@@ -1401,23 +1385,6 @@ components:
           type: array
       type: object
     internal_ansible.listPlaybooksResponse:
-      example:
-        total: 0
-        playbooks:
-        - file_path: file_path
-          updated_at: updated_at
-          hosts: hosts
-          name: name
-          created_at: created_at
-          id: id
-          become: true
-        - file_path: file_path
-          updated_at: updated_at
-          hosts: hosts
-          name: name
-          created_at: created_at
-          id: id
-          become: true
       properties:
         playbooks:
           items:
@@ -1445,16 +1412,6 @@ components:
           type: object
       type: object
     internal_ansible.updateTaskResponse:
-      example:
-        task:
-          module: module
-          name: name
-          created_at: created_at
-          id: id
-          position: 0
-          params:
-            key: "{}"
-          playbook_id: playbook_id
       properties:
         task:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.PlaybookTask"
@@ -1599,6 +1556,11 @@ components:
       properties:
         diff:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Diff"
+      type: object
+    internal_rest.discoverIPResponse:
+      properties:
+        ip_address:
+          type: string
       type: object
     internal_rest.generateResponse:
       properties:
@@ -2001,6 +1963,12 @@ components:
       - Minute
       - Hour
     virsh-sandbox_internal_ansible.Job:
+      example:
+        check: true
+        id: id
+        vm_name: vm_name
+        playbook: playbook
+        status: pending
       properties:
         check:
           type: boolean
@@ -2023,6 +1991,9 @@ components:
           type: string
       type: object
     virsh-sandbox_internal_ansible.JobResponse:
+      example:
+        job_id: job_id
+        ws_url: ws_url
       properties:
         job_id:
           type: string
@@ -2053,6 +2024,16 @@ components:
           type: object
       type: object
     virsh-sandbox_internal_ansible.addTaskResponse:
+      example:
+        task:
+          module: module
+          name: name
+          created_at: created_at
+          id: id
+          position: 0
+          params:
+            key: "{}"
+          playbook_id: playbook_id
       properties:
         task:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.PlaybookTask"
@@ -2067,16 +2048,53 @@ components:
           type: string
       type: object
     virsh-sandbox_internal_ansible.createPlaybookResponse:
+      example:
+        playbook:
+          file_path: file_path
+          updated_at: updated_at
+          hosts: hosts
+          name: name
+          created_at: created_at
+          id: id
+          become: true
       properties:
         playbook:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Playbook"
       type: object
     virsh-sandbox_internal_ansible.exportPlaybookResponse:
+      example:
+        yaml: yaml
       properties:
         yaml:
           type: string
       type: object
     virsh-sandbox_internal_ansible.getPlaybookResponse:
+      example:
+        tasks:
+        - module: module
+          name: name
+          created_at: created_at
+          id: id
+          position: 0
+          params:
+            key: "{}"
+          playbook_id: playbook_id
+        - module: module
+          name: name
+          created_at: created_at
+          id: id
+          position: 0
+          params:
+            key: "{}"
+          playbook_id: playbook_id
+        playbook:
+          file_path: file_path
+          updated_at: updated_at
+          hosts: hosts
+          name: name
+          created_at: created_at
+          id: id
+          become: true
       properties:
         playbook:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Playbook"
@@ -2086,6 +2104,23 @@ components:
           type: array
       type: object
     virsh-sandbox_internal_ansible.listPlaybooksResponse:
+      example:
+        total: 0
+        playbooks:
+        - file_path: file_path
+          updated_at: updated_at
+          hosts: hosts
+          name: name
+          created_at: created_at
+          id: id
+          become: true
+        - file_path: file_path
+          updated_at: updated_at
+          hosts: hosts
+          name: name
+          created_at: created_at
+          id: id
+          become: true
       properties:
         playbooks:
           items:
@@ -2113,6 +2148,16 @@ components:
           type: object
       type: object
     virsh-sandbox_internal_ansible.updateTaskResponse:
+      example:
+        task:
+          module: module
+          name: name
+          created_at: created_at
+          id: id
+          position: 0
+          params:
+            key: "{}"
+          playbook_id: playbook_id
       properties:
         task:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.PlaybookTask"
@@ -2279,6 +2324,13 @@ components:
       properties:
         diff:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Diff"
+      type: object
+    virsh-sandbox_internal_rest.discoverIPResponse:
+      example:
+        ip_address: ip_address
+      properties:
+        ip_address:
+          type: string
       type: object
     virsh-sandbox_internal_rest.generateResponse:
       example:

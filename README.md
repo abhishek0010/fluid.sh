@@ -107,6 +107,9 @@ client.sandbox.destroy_sandbox(sandbox.id)
 
 - **Docker & Docker Compose** - For containerized deployment
 - **libvirt/KVM** - For virtual machine management (or Lima on macOS)
+- **macOS**:
+  - **libvirt** - `brew install libvirt`
+  - **socket_vmnet** - `brew install socket_vmnet`
 
 ### 30-Second Start
 
@@ -506,6 +509,15 @@ virsh-sandbox/
 - [Examples](./examples/) - Working examples
 
 ## 🛠️ Development
+
+To run the API locally, first build the `virsh-sandbox` binary:
+
+```bash
+# Build the API binary
+cd virsh-sandbox && make build
+```
+
+Then, use `mprocs` to run all the services together for local development.
 
 ```bash
 # Install mprocs for multi-service development

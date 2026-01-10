@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_types_api_error import \
-    TmuxClientInternalTypesAPIError
+from virsh_sandbox.models.tmux_client_internal_types_api_error import (
+    TmuxClientInternalTypesAPIError,
+)
 
 
 class TestTmuxClientInternalTypesAPIError(unittest.TestCase):

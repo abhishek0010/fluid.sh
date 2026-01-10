@@ -46,6 +46,11 @@ type Config struct {
 
 	// IPDiscoveryTimeout controls how long StartSandbox waits for the VM IP (when requested).
 	IPDiscoveryTimeout time.Duration
+
+	// SSHProxyJump specifies a jump host for SSH connections to VMs.
+	// Format: "user@host:port" or just "host" for default user/port.
+	// Required when VMs are on an isolated network not directly reachable.
+	SSHProxyJump string
 }
 
 // Option configures the Service during construction.
@@ -90,7 +95,7 @@ func NewService(mgr libvirt.Manager, st store.Store, cfg Config, opts ...Option)
 		mgr:       mgr,
 		store:     st,
 		cfg:       cfg,
-		ssh:       &DefaultSSHRunner{},
+		ssh:       &DefaultSSHRunner{ProxyJump: cfg.SSHProxyJump},
 		timeNowFn: time.Now,
 		logger:    slog.Default(),
 	}
@@ -112,21 +117,36 @@ func NewService(mgr libvirt.Manager, st store.Store, cfg Config, opts ...Option)
 // validateIPUniqueness checks if the given IP is already assigned to another running sandbox.
 // Returns an error if the IP is assigned to a different sandbox that is still running.
 func (s *Service) validateIPUniqueness(ctx context.Context, currentSandboxID, ip string) error {
-	// List all running sandboxes
-	runningState := store.SandboxStateRunning
-	sandboxes, err := s.store.ListSandboxes(ctx, store.SandboxFilter{
-		State: &runningState,
-	}, nil)
-	if err != nil {
-		return fmt.Errorf("list sandboxes for IP validation: %w", err)
+	// Check both RUNNING and STARTING sandboxes to prevent race conditions
+	// where two sandboxes might discover the same IP simultaneously
+	statesToCheck := []store.SandboxState{
+		store.SandboxStateRunning,
+		store.SandboxStateStarting,
 	}
 
-	for _, sb := range sandboxes {
-		if sb.ID == currentSandboxID {
-			continue // Skip the current sandbox
+	for _, state := range statesToCheck {
+		stateFilter := state
+		sandboxes, err := s.store.ListSandboxes(ctx, store.SandboxFilter{
+			State: &stateFilter,
+		}, nil)
+		if err != nil {
+			return fmt.Errorf("list sandboxes (state=%s) for IP validation: %w", state, err)
 		}
-		if sb.IPAddress != nil && *sb.IPAddress == ip {
-			return fmt.Errorf("IP %s is already assigned to sandbox %s (vm: %s)", ip, sb.ID, sb.SandboxName)
+
+		for _, sb := range sandboxes {
+			if sb.ID == currentSandboxID {
+				continue // Skip the current sandbox
+			}
+			if sb.IPAddress != nil && *sb.IPAddress == ip {
+				s.logger.Error("IP address conflict detected",
+					"conflict_ip", ip,
+					"current_sandbox_id", currentSandboxID,
+					"conflicting_sandbox_id", sb.ID,
+					"conflicting_sandbox_name", sb.SandboxName,
+					"conflicting_sandbox_state", sb.State,
+				)
+				return fmt.Errorf("IP %s is already assigned to sandbox %s (vm: %s, state: %s)", ip, sb.ID, sb.SandboxName, sb.State)
+			}
 		}
 	}
 	return nil
@@ -406,6 +426,59 @@ func (s *Service) StartSandbox(ctx context.Context, sandboxID string, waitForIP 
 	return ip, nil
 }
 
+// DiscoverIP attempts to discover the IP address for a sandbox.
+// This is useful for async workflows where wait_for_ip was false during start.
+// Returns the discovered IP address, or an error if discovery fails.
+func (s *Service) DiscoverIP(ctx context.Context, sandboxID string) (string, error) {
+	if strings.TrimSpace(sandboxID) == "" {
+		return "", fmt.Errorf("sandboxID is required")
+	}
+
+	sb, err := s.store.GetSandbox(ctx, sandboxID)
+	if err != nil {
+		return "", err
+	}
+
+	// Check if VM is in a state where IP discovery makes sense
+	if sb.State != store.SandboxStateRunning && sb.State != store.SandboxStateStarting {
+		return "", fmt.Errorf("sandbox is in state %s, must be running or starting for IP discovery", sb.State)
+	}
+
+	s.logger.Info("discovering IP for sandbox",
+		"sandbox_id", sandboxID,
+		"sandbox_name", sb.SandboxName,
+	)
+
+	ip, mac, err := s.mgr.GetIPAddress(ctx, sb.SandboxName, s.cfg.IPDiscoveryTimeout)
+	if err != nil {
+		return "", fmt.Errorf("ip discovery failed: %w", err)
+	}
+
+	// Validate IP uniqueness
+	if err := s.validateIPUniqueness(ctx, sb.ID, ip); err != nil {
+		s.logger.Warn("IP conflict during discovery",
+			"sandbox_id", sb.ID,
+			"ip_address", ip,
+			"mac_address", mac,
+			"error", err,
+		)
+		return "", fmt.Errorf("ip conflict: %w", err)
+	}
+
+	// Update the sandbox with the discovered IP
+	if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, &ip); err != nil {
+		return "", fmt.Errorf("persist ip: %w", err)
+	}
+
+	s.logger.Info("IP discovered and stored",
+		"sandbox_id", sandboxID,
+		"ip_address", ip,
+		"mac_address", mac,
+	)
+
+	return ip, nil
+}
+
 // StopSandbox gracefully shuts down the VM or forces if force is true.
 func (s *Service) StopSandbox(ctx context.Context, sandboxID string, force bool) error {
 	if strings.TrimSpace(sandboxID) == "" {
@@ -665,7 +738,12 @@ type SSHRunner interface {
 }
 
 // DefaultSSHRunner is a simple implementation backed by the system's ssh binary.
-type DefaultSSHRunner struct{}
+type DefaultSSHRunner struct {
+	// ProxyJump specifies a jump host for SSH connections.
+	// Format: "user@host:port" or just "host" for default user/port.
+	// If empty, direct connections are made.
+	ProxyJump string
+}
 
 // Run implements SSHRunner.Run using the local ssh client.
 // It disables strict host key checking and sets a connect timeout.
@@ -695,10 +773,16 @@ func (r *DefaultSSHRunner) Run(ctx context.Context, addr, user, privateKeyPath, 
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "UserKnownHostsFile=/dev/null",
 		"-o", "ConnectTimeout=15",
+	}
+	// Add ProxyJump if configured
+	if r.ProxyJump != "" {
+		args = append(args, "-J", r.ProxyJump)
+	}
+	args = append(args,
 		fmt.Sprintf("%s@%s", user, addr),
 		"--",
 		command,
-	}
+	)
 
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, "ssh", args...)
@@ -762,10 +846,16 @@ func (r *DefaultSSHRunner) RunWithCert(ctx context.Context, addr, user, privateK
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "UserKnownHostsFile=/dev/null",
 		"-o", "ConnectTimeout=15",
+	}
+	// Add ProxyJump if configured
+	if r.ProxyJump != "" {
+		args = append(args, "-J", r.ProxyJump)
+	}
+	args = append(args,
 		fmt.Sprintf("%s@%s", user, addr),
 		"--",
 		command,
-	}
+	)
 
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, "ssh", args...)

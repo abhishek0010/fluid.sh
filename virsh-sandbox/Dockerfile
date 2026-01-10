@@ -63,7 +63,8 @@ RUN apt-get update && \
     genisoimage \
     openssh-client \
     curl \
-    ca-certificates && \
+    ca-certificates \
+    dnsmasq-utils && \
     rm -rf /var/lib/apt/lists/*
 
 # Create common directories (can be mounted from host in docker-compose)

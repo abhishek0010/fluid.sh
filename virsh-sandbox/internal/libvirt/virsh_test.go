@@ -345,6 +345,193 @@ func TestCloudInitSeedForClone_UniqueInstanceID(t *testing.T) {
 	}
 }
 
+func TestRenderDomainXML_UserModeNetworking(t *testing.T) {
+	tests := []struct {
+		name     string
+		network  string
+		wantUser bool // true if we expect user-mode networking
+	}{
+		{
+			name:     "user network value",
+			network:  "user",
+			wantUser: true,
+		},
+		{
+			name:     "empty network value",
+			network:  "",
+			wantUser: true,
+		},
+		{
+			name:     "default network value",
+			network:  "default",
+			wantUser: false,
+		},
+		{
+			name:     "custom network value",
+			network:  "br0",
+			wantUser: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params := domainXMLParams{
+				Name:       "test-vm",
+				MemoryMB:   2048,
+				VCPUs:      2,
+				DiskPath:   "/var/lib/libvirt/images/test.qcow2",
+				Network:    tt.network,
+				Arch:       "aarch64",
+				Machine:    "virt",
+				DomainType: "qemu",
+			}
+
+			xml, err := renderDomainXML(params)
+			if err != nil {
+				t.Fatalf("renderDomainXML() error = %v", err)
+			}
+
+			hasUserInterface := strings.Contains(xml, `<interface type="user">`)
+			hasNetworkInterface := strings.Contains(xml, `<interface type="network">`)
+
+			if tt.wantUser {
+				if !hasUserInterface {
+					t.Errorf("expected user-mode networking but got network interface in XML:\n%s", xml)
+				}
+				if hasNetworkInterface {
+					t.Errorf("expected user-mode networking but found network interface in XML:\n%s", xml)
+				}
+			} else {
+				if hasUserInterface {
+					t.Errorf("expected network interface but got user-mode networking in XML:\n%s", xml)
+				}
+				if !hasNetworkInterface {
+					t.Errorf("expected network interface but not found in XML:\n%s", xml)
+				}
+				// Also verify the network name is correct
+				expectedSource := `<source network="` + tt.network + `"/>`
+				if !strings.Contains(xml, expectedSource) {
+					t.Errorf("expected network source %q not found in XML:\n%s", expectedSource, xml)
+				}
+			}
+		})
+	}
+}
+
+func TestRenderDomainXML_SocketVMNet(t *testing.T) {
+	params := domainXMLParams{
+		Name:            "test-socket-vmnet",
+		MemoryMB:        2048,
+		VCPUs:           2,
+		DiskPath:        "/var/lib/libvirt/images/test.qcow2",
+		Network:         "socket_vmnet",
+		SocketVMNetPath: "/opt/homebrew/var/run/socket_vmnet",
+		Emulator:        "/path/to/qemu-wrapper.sh",
+		MACAddress:      "52:54:00:ab:cd:ef",
+		Arch:            "aarch64",
+		Machine:         "virt",
+		DomainType:      "qemu",
+	}
+
+	xml, err := renderDomainXML(params)
+	if err != nil {
+		t.Fatalf("renderDomainXML() error = %v", err)
+	}
+
+	// Should have qemu namespace
+	if !strings.Contains(xml, `xmlns:qemu="http://libvirt.org/schemas/domain/qemu/1.0"`) {
+		t.Error("expected qemu namespace for socket_vmnet")
+	}
+
+	// Should have custom emulator
+	if !strings.Contains(xml, `<emulator>/path/to/qemu-wrapper.sh</emulator>`) {
+		t.Errorf("expected custom emulator in XML:\n%s", xml)
+	}
+
+	// Should have qemu:commandline with socket networking
+	if !strings.Contains(xml, `<qemu:commandline>`) {
+		t.Error("expected qemu:commandline for socket_vmnet")
+	}
+
+	// Should have socket,fd=3 netdev
+	if !strings.Contains(xml, `socket,id=vnet,fd=3`) {
+		t.Errorf("expected socket,fd=3 netdev in XML:\n%s", xml)
+	}
+
+	// Should have MAC address
+	if !strings.Contains(xml, `mac=52:54:00:ab:cd:ef`) {
+		t.Errorf("expected MAC address in XML:\n%s", xml)
+	}
+
+	// Should NOT have standard interface element
+	if strings.Contains(xml, `<interface type="network">`) || strings.Contains(xml, `<interface type="user">`) {
+		t.Errorf("unexpected standard interface in socket_vmnet XML:\n%s", xml)
+	}
+}
+
+func TestNormalizeMAC(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "already normalized",
+			input:    "52:54:00:ab:cd:ef",
+			expected: "52:54:00:ab:cd:ef",
+		},
+		{
+			name:     "shortened octets",
+			input:    "52:54:0:ab:cd:ef",
+			expected: "52:54:00:ab:cd:ef",
+		},
+		{
+			name:     "multiple shortened octets",
+			input:    "52:54:0:a:c:e",
+			expected: "52:54:00:0a:0c:0e",
+		},
+		{
+			name:     "invalid format",
+			input:    "not-a-mac",
+			expected: "not-a-mac",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := normalizeMAC(tt.input)
+			if result != tt.expected {
+				t.Errorf("normalizeMAC(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGenerateMACAddress(t *testing.T) {
+	mac := generateMACAddress()
+
+	// Should start with QEMU prefix
+	if !strings.HasPrefix(mac, "52:54:00:") {
+		t.Errorf("generateMACAddress() = %q, want prefix '52:54:00:'", mac)
+	}
+
+	// Should be valid format (17 chars: xx:xx:xx:xx:xx:xx)
+	if len(mac) != 17 {
+		t.Errorf("generateMACAddress() = %q, want 17 chars", mac)
+	}
+
+	// Should have 5 colons
+	if strings.Count(mac, ":") != 5 {
+		t.Errorf("generateMACAddress() = %q, want 5 colons", mac)
+	}
+
+	// Generate another one - should be different (random)
+	mac2 := generateMACAddress()
+	if mac == mac2 {
+		t.Errorf("generateMACAddress() returned same MAC twice: %q", mac)
+	}
+}
+
 func TestParseVMState(t *testing.T) {
 	tests := []struct {
 		name     string

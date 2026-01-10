@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.tmux_client_internal_api_create_sandbox_session_request import \
-    TmuxClientInternalApiCreateSandboxSessionRequest
+from virsh_sandbox.models.tmux_client_internal_api_create_sandbox_session_request import (
+    TmuxClientInternalApiCreateSandboxSessionRequest,
+)
 
 
 class TestTmuxClientInternalApiCreateSandboxSessionRequest(unittest.TestCase):

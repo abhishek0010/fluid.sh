@@ -6,6 +6,7 @@ package libvirt
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log"
 	"log/slog"
@@ -15,7 +16,17 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/beevik/etree"
 )
+
+// generateMACAddress generates a random MAC address with the locally administered bit set.
+// Uses the 52:54:00 prefix which is commonly used by QEMU/KVM.
+func generateMACAddress() string {
+	buf := make([]byte, 3)
+	_, _ = rand.Read(buf)
+	return fmt.Sprintf("52:54:00:%02x:%02x:%02x", buf[0], buf[1], buf[2])
+}
 
 // Manager defines the VM orchestration operations we support against libvirt/KVM via virsh.
 type Manager interface {
@@ -79,11 +90,26 @@ type Config struct {
 	SSHKeyInjectMethod    string // "virt-customize" or "cloud-init"
 	CloudInitMetaTemplate string // optional meta-data template for cloud-init seed
 
+	// SSH CA public key for managed credentials.
+	// If set, this will be injected into VMs via cloud-init so they trust
+	// certificates signed by this CA.
+	SSHCAPubKey string
+
+	// SSH ProxyJump host for reaching VMs on an isolated network.
+	// Format: "user@host:port" or just "host" for default user/port.
+	// If set, SSH commands will use -J flag to proxy through this host.
+	SSHProxyJump string
+
 	// Optional explicit paths to binaries; if empty these are looked up in PATH.
 	VirshPath         string
 	QemuImgPath       string
 	VirtCustomizePath string
 	QemuNbdPath       string
+
+	// Socket VMNet configuration (macOS only)
+	// If DefaultNetwork is "socket_vmnet", this wrapper script is used as the emulator.
+	// The wrapper should invoke qemu through socket_vmnet_client.
+	SocketVMNetWrapper string // e.g., /path/to/qemu-socket-vmnet-wrapper.sh
 
 	// Domain defaults
 	DefaultVCPUs    int
@@ -154,6 +180,8 @@ func NewFromEnv() *VirshManager {
 		WorkDir:            getenvDefault("SANDBOX_WORKDIR", "/var/lib/libvirt/images/jobs"),
 		DefaultNetwork:     getenvDefault("LIBVIRT_NETWORK", "default"),
 		SSHKeyInjectMethod: getenvDefault("SSH_KEY_INJECT_METHOD", "virt-customize"),
+		SSHCAPubKey:        readSSHCAPubKey(getenvDefault("SSH_CA_PUB_KEY_PATH", "")),
+		SSHProxyJump:       getenvDefault("SSH_PROXY_JUMP", ""),
 		DefaultVCPUs:       intFromEnv("DEFAULT_VCPUS", 2),
 		DefaultMemoryMB:    intFromEnv("DEFAULT_MEMORY_MB", 2048),
 	}
@@ -168,9 +196,25 @@ func ConfigFromEnv() Config {
 		WorkDir:            getenvDefault("SANDBOX_WORKDIR", "/var/lib/libvirt/images/jobs"),
 		DefaultNetwork:     getenvDefault("LIBVIRT_NETWORK", "default"),
 		SSHKeyInjectMethod: getenvDefault("SSH_KEY_INJECT_METHOD", "virt-customize"),
+		SSHCAPubKey:        readSSHCAPubKey(getenvDefault("SSH_CA_PUB_KEY_PATH", "")),
+		SSHProxyJump:       getenvDefault("SSH_PROXY_JUMP", ""),
+		SocketVMNetWrapper: getenvDefault("SOCKET_VMNET_WRAPPER", ""),
 		DefaultVCPUs:       intFromEnv("DEFAULT_VCPUS", 2),
 		DefaultMemoryMB:    intFromEnv("DEFAULT_MEMORY_MB", 2048),
 	}
+}
+
+// readSSHCAPubKey reads the SSH CA public key from a file path.
+// Returns empty string if path is empty or file cannot be read.
+func readSSHCAPubKey(path string) string {
+	if path == "" {
+		return ""
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
 }
 
 func (m *VirshManager) CloneVM(ctx context.Context, baseImage, newVMName string, cpu, memoryMB int, network string) (DomainRef, error) {
@@ -265,25 +309,14 @@ func (m *VirshManager) CloneFromVM(ctx context.Context, sourceVMName, newVMName 
 		return DomainRef{}, fmt.Errorf("lookup source VM %q: %w", sourceVMName, err)
 	}
 
-	// Parse domblklist output to find the disk path and cloud-init CDROM
-	// Format: Type   Device   Target   Source
-	//         file   disk     vda      /path/to/disk.qcow2
-	//         file   cdrom    sda      /path/to/cloud-init.iso
+	// Parse domblklist output to find the disk path
 	basePath := ""
-	sourceCloudInitISO := ""
 	lines := strings.Split(out, "\n")
 	for _, line := range lines {
 		fields := strings.Fields(line)
-		if len(fields) >= 4 && fields[0] == "file" {
-			if fields[1] == "disk" && basePath == "" {
-				basePath = fields[3]
-			} else if fields[1] == "cdrom" {
-				// Check if this looks like a cloud-init ISO
-				src := fields[3]
-				if strings.Contains(src, "cloud-init") || strings.HasSuffix(src, ".iso") {
-					sourceCloudInitISO = src
-				}
-			}
+		if len(fields) >= 4 && fields[0] == "file" && fields[1] == "disk" {
+			basePath = fields[3]
+			break
 		}
 	}
 	if basePath == "" {
@@ -294,15 +327,6 @@ func (m *VirshManager) CloneFromVM(ctx context.Context, sourceVMName, newVMName 
 	if _, err := os.Stat(basePath); err != nil {
 		return DomainRef{}, fmt.Errorf("source VM disk not accessible: %s: %w", basePath, err)
 	}
-
-	// Get architecture info from source VM
-	archInfo, err := m.getVMArchitecture(ctx, sourceVMName)
-	if err != nil {
-		// Log warning but continue with defaults
-		log.Printf("WARNING: failed to get architecture from source VM %s: %v, using defaults", sourceVMName, err)
-		archInfo = vmArchInfo{}
-	}
-	log.Printf("CloneFromVM: source=%s arch=%s machine=%s", sourceVMName, archInfo.Arch, archInfo.Machine)
 
 	jobDir := filepath.Join(m.cfg.WorkDir, newVMName)
 	if err := os.MkdirAll(jobDir, 0o755); err != nil {
@@ -315,44 +339,19 @@ func (m *VirshManager) CloneFromVM(ctx context.Context, sourceVMName, newVMName 
 		return DomainRef{}, fmt.Errorf("create overlay: %w", err)
 	}
 
-	// Generate a new cloud-init ISO for this sandbox with a unique instance-id.
-	// This is critical: when cloning from a VM, the disk already has cloud-init state
-	// from the source VM's instance-id. If we reuse the same cloud-init ISO, cloud-init
-	// will see the same instance-id and skip re-initialization, including network setup.
-	// By creating a new ISO with a unique instance-id, we force cloud-init to re-run
-	// and configure networking for this clone's MAC address.
-	cloudInitISO := ""
-	if sourceCloudInitISO != "" {
-		// Source VM has cloud-init - create a new seed ISO for this sandbox
-		cloudInitISO = filepath.Join(jobDir, "cloud-init.iso")
-		if err := m.buildCloudInitSeedForClone(ctx, newVMName, cloudInitISO); err != nil {
-			log.Printf("WARNING: failed to build cloud-init seed for clone %s: %v, networking may not work", newVMName, err)
-			// Fall back to source ISO if we can't create a new one
-			cloudInitISO = sourceCloudInitISO
-		} else {
-			log.Printf("CloneFromVM: created new cloud-init ISO with instance-id=%s", newVMName)
-		}
+	// Dump the source VM's XML and modify it for the new VM
+	sourceXML, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "dumpxml", sourceVMName)
+	if err != nil {
+		return DomainRef{}, fmt.Errorf("dumpxml source vm: %w", err)
 	}
 
-	// Create minimal domain XML referencing overlay disk, cloud-init ISO (if present), and network.
-	xmlPath := filepath.Join(jobDir, "domain.xml")
-	xml, err := renderDomainXML(domainXMLParams{
-		Name:         newVMName,
-		MemoryMB:     memoryMB,
-		VCPUs:        cpu,
-		DiskPath:     overlayPath,
-		CloudInitISO: cloudInitISO,
-		Network:      network,
-		BootOrder:    []string{"hd", "cdrom", "network"},
-		Arch:         archInfo.Arch,
-		Machine:      archInfo.Machine,
-		DomainType:   archInfo.DomainType,
-	})
+	newXML, err := modifyClonedXML(sourceXML, newVMName, overlayPath)
 	if err != nil {
-		return DomainRef{}, fmt.Errorf("render domain xml: %w", err)
+		return DomainRef{}, fmt.Errorf("modify cloned xml: %w", err)
 	}
-	log.Printf("CloneFromVM: Generated domain XML:\n%s", xml)
-	if err := os.WriteFile(xmlPath, []byte(xml), 0o644); err != nil {
+
+	xmlPath := filepath.Join(jobDir, "domain.xml")
+	if err := os.WriteFile(xmlPath, []byte(newXML), 0o644); err != nil {
 		return DomainRef{}, fmt.Errorf("write domain xml: %w", err)
 	}
 
@@ -364,10 +363,130 @@ func (m *VirshManager) CloneFromVM(ctx context.Context, sourceVMName, newVMName 
 	// Fetch UUID
 	out, err = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "domuuid", newVMName)
 	if err != nil {
-		// Best-effort: If domuuid fails, we still return Name.
 		return DomainRef{Name: newVMName}, nil
 	}
 	return DomainRef{Name: newVMName, UUID: strings.TrimSpace(out)}, nil
+}
+
+// modifyClonedXML takes the XML from a source domain and adapts it for a new cloned domain.
+// It sets a new name, UUID, disk path, and MAC address, and critically, it removes the
+// <address> element from the network interface to prevent PCI slot conflicts.
+func modifyClonedXML(sourceXML, newName, newDiskPath string) (string, error) {
+	doc := etree.NewDocument()
+	if err := doc.ReadFromString(sourceXML); err != nil {
+		return "", fmt.Errorf("parse source XML: %w", err)
+	}
+
+	root := doc.Root()
+	if root == nil {
+		return "", fmt.Errorf("invalid XML: no root element")
+	}
+
+	// Update VM name
+	nameElem := root.SelectElement("name")
+	if nameElem == nil {
+		return "", fmt.Errorf("invalid XML: missing <name> element")
+	}
+	nameElem.SetText(newName)
+
+	// Remove UUID
+	if uuidElem := root.SelectElement("uuid"); uuidElem != nil {
+		root.RemoveChild(uuidElem)
+	}
+
+	// Update disk path for the main virtual disk (vda)
+	// This finds the first disk with a virtio bus and assumes it's the one to replace.
+	// This might need to be more robust if multiple virtio disks are present.
+	var diskReplaced bool
+	for _, disk := range root.FindElements("./devices/disk[@device='disk']") {
+		if target := disk.SelectElement("target"); target != nil {
+			if bus := target.SelectAttr("bus"); bus != nil && bus.Value == "virtio" {
+				if source := disk.SelectElement("source"); source != nil {
+					source.SelectAttr("file").Value = newDiskPath
+					diskReplaced = true
+					break
+				}
+			}
+		}
+	}
+	if !diskReplaced {
+		return "", fmt.Errorf("could not find a virtio disk in the source XML to replace")
+	}
+
+	// Update network interface: set new MAC and remove PCI address
+	if iface := root.FindElement("./devices/interface"); iface != nil {
+		// This handles standard libvirt network interfaces.
+		// Set a new MAC address
+		macElem := iface.SelectElement("mac")
+		if macElem != nil {
+			if addrAttr := macElem.SelectAttr("address"); addrAttr != nil {
+				addrAttr.Value = generateMACAddress()
+			}
+		} else {
+			// If no <mac> element, create one
+			macElem = iface.CreateElement("mac")
+			macElem.CreateAttr("address", generateMACAddress())
+		}
+
+		// Remove the address element to let libvirt assign a new one
+		if addrElem := iface.SelectElement("address"); addrElem != nil {
+			iface.RemoveChild(addrElem)
+		}
+	} else {
+		// Handle socket_vmnet case (qemu:commandline)
+		// The namespace makes selection tricky, so we iterate.
+		var cmdline *etree.Element
+		for _, child := range root.ChildElements() {
+			if child.Tag == "commandline" && child.Space == "qemu" {
+				cmdline = child
+				break
+			}
+		}
+
+		if cmdline != nil {
+			for _, child := range cmdline.ChildElements() {
+				if child.Tag == "arg" && child.Space == "qemu" {
+					if valAttr := child.SelectAttr("value"); valAttr != nil {
+						if strings.HasPrefix(valAttr.Value, "virtio-net-pci") && strings.Contains(valAttr.Value, "mac=") {
+							parts := strings.Split(valAttr.Value, ",")
+							newParts := make([]string, 0, len(parts))
+							macUpdated := false
+							for _, part := range parts {
+								if strings.HasPrefix(part, "mac=") {
+									newParts = append(newParts, "mac="+generateMACAddress())
+									macUpdated = true
+								} else {
+									newParts = append(newParts, part)
+								}
+							}
+							if macUpdated {
+								valAttr.Value = strings.Join(newParts, ",")
+								break // Assuming only one network device per command line
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Remove existing graphics password
+	if graphics := root.FindElement("./devices/graphics"); graphics != nil {
+		graphics.RemoveAttr("passwd")
+	}
+
+	// Remove existing sound devices
+	for _, sound := range root.FindElements("./devices/sound") {
+		root.SelectElement("devices").RemoveChild(sound)
+	}
+
+	doc.Indent(2)
+	newXML, err := doc.WriteToString()
+	if err != nil {
+		return "", fmt.Errorf("failed to write modified XML: %w", err)
+	}
+
+	return newXML, nil
 }
 
 func (m *VirshManager) InjectSSHKey(ctx context.Context, sandboxName, username, publicKey string) error {
@@ -504,6 +623,181 @@ func parseVMState(output string) VMState {
 	}
 }
 
+// GetVMMAC returns the MAC address of the VM's primary network interface.
+// This is useful for DHCP lease management.
+func (m *VirshManager) GetVMMAC(ctx context.Context, vmName string) (string, error) {
+	if vmName == "" {
+		return "", fmt.Errorf("vmName is required")
+	}
+	virsh := m.binPath("virsh", m.cfg.VirshPath)
+
+	// Use domiflist to get interface info (works even if VM is not running)
+	out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "domiflist", vmName)
+	if err != nil {
+		return "", fmt.Errorf("get vm interfaces: %w", err)
+	}
+
+	// Parse domiflist output:
+	// Interface  Type       Source     Model       MAC
+	// -------------------------------------------------------
+	// -          network    default    virtio      52:54:00:6b:3c:86
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "Interface") || strings.HasPrefix(line, "-") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) >= 5 {
+			mac := fields[4]
+			// Validate MAC format
+			if strings.Count(mac, ":") == 5 {
+				return mac, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no MAC address found for VM %s", vmName)
+}
+
+// ReleaseDHCPLease attempts to release the DHCP lease for a given MAC address.
+// This helps prevent IP conflicts when VMs are rapidly created and destroyed.
+// It tries multiple methods:
+// 1. Remove static DHCP host entry (if any)
+// 2. Use dhcp_release utility to release dynamic lease
+// 3. Remove from lease file directly as fallback
+func (m *VirshManager) ReleaseDHCPLease(ctx context.Context, network, mac string) error {
+	if network == "" {
+		network = m.cfg.DefaultNetwork
+	}
+	if mac == "" {
+		return fmt.Errorf("MAC address is required")
+	}
+
+	virsh := m.binPath("virsh", m.cfg.VirshPath)
+
+	// Try to remove any static DHCP host entry (if exists)
+	// This is a best-effort operation - it may fail if no static entry exists
+	hostXML := fmt.Sprintf("<host mac='%s'/>", mac)
+	_, _ = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI,
+		"net-update", network, "delete", "ip-dhcp-host", hostXML, "--live", "--config")
+
+	// Get the bridge interface name for the network (e.g., virbr0)
+	bridgeName, ip := m.getNetworkBridgeAndLeaseIP(ctx, network, mac)
+
+	if bridgeName != "" && ip != "" {
+		// Try dhcp_release utility first (cleanest method)
+		// dhcp_release <interface> <ip> <mac>
+		if _, err := m.run(ctx, "dhcp_release", bridgeName, ip, mac); err == nil {
+			m.logger.Info("released DHCP lease via dhcp_release",
+				"network", network,
+				"bridge", bridgeName,
+				"ip", ip,
+				"mac", mac,
+			)
+			return nil
+		}
+
+		// Fallback: try to remove from lease file directly
+		if err := m.removeLeaseFromFile(network, mac); err == nil {
+			m.logger.Info("removed DHCP lease from lease file",
+				"network", network,
+				"mac", mac,
+			)
+			return nil
+		}
+	}
+
+	m.logger.Debug("DHCP lease release attempted (may not have fully succeeded)",
+		"network", network,
+		"mac", mac,
+	)
+
+	return nil
+}
+
+// getNetworkBridgeAndLeaseIP returns the bridge interface name and leased IP for a MAC address.
+func (m *VirshManager) getNetworkBridgeAndLeaseIP(ctx context.Context, network, mac string) (bridge, ip string) {
+	virsh := m.binPath("virsh", m.cfg.VirshPath)
+
+	// Get bridge name from network XML
+	out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "net-info", network)
+	if err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			if strings.HasPrefix(line, "Bridge:") {
+				parts := strings.Fields(line)
+				if len(parts) >= 2 {
+					bridge = parts[1]
+				}
+			}
+		}
+	}
+
+	// Get IP from DHCP leases
+	out, err = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "net-dhcp-leases", network)
+	if err == nil {
+		// Parse output:
+		// Expiry Time           MAC address         Protocol   IP address          Hostname   Client ID
+		// 2024-01-08 12:00:00   52:54:00:6b:3c:86   ipv4       192.168.122.63/24   vm-name    -
+		for _, line := range strings.Split(out, "\n") {
+			if strings.Contains(line, mac) {
+				fields := strings.Fields(line)
+				// Fields: [date, time, mac, protocol, ip/cidr, hostname, clientid]
+				if len(fields) >= 5 {
+					ipCIDR := fields[4]
+					if idx := strings.Index(ipCIDR, "/"); idx > 0 {
+						ip = ipCIDR[:idx]
+					} else {
+						ip = ipCIDR
+					}
+				}
+			}
+		}
+	}
+
+	return bridge, ip
+}
+
+// removeLeaseFromFile removes a DHCP lease entry from the dnsmasq lease file.
+func (m *VirshManager) removeLeaseFromFile(network, mac string) error {
+	// Lease file is typically at /var/lib/libvirt/dnsmasq/<network>.leases
+	leaseFile := fmt.Sprintf("/var/lib/libvirt/dnsmasq/%s.leases", network)
+
+	data, err := os.ReadFile(leaseFile)
+	if err != nil {
+		return fmt.Errorf("read lease file: %w", err)
+	}
+
+	// Lease file format: <expiry> <mac> <ip> <hostname> <client-id>
+	// Example: 1704672000 52:54:00:6b:3c:86 192.168.122.63 vm-name *
+	var newLines []string
+	found := false
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		if strings.Contains(line, mac) {
+			found = true
+			continue // Skip this line (remove the lease)
+		}
+		newLines = append(newLines, line)
+	}
+
+	if !found {
+		return fmt.Errorf("lease not found for MAC %s", mac)
+	}
+
+	// Write back the modified lease file
+	newData := strings.Join(newLines, "\n")
+	if len(newLines) > 0 {
+		newData += "\n"
+	}
+	if err := os.WriteFile(leaseFile, []byte(newData), 0o644); err != nil {
+		return fmt.Errorf("write lease file: %w", err)
+	}
+
+	return nil
+}
+
 func (m *VirshManager) StopVM(ctx context.Context, vmName string, force bool) error {
 	if vmName == "" {
 		return fmt.Errorf("vmName is required")
@@ -521,6 +815,16 @@ func (m *VirshManager) DestroyVM(ctx context.Context, vmName string) error {
 	if vmName == "" {
 		return fmt.Errorf("vmName is required")
 	}
+
+	// Get MAC address before destroying (for DHCP lease cleanup)
+	mac, macErr := m.GetVMMAC(ctx, vmName)
+	if macErr != nil {
+		m.logger.Debug("could not get MAC address for DHCP cleanup",
+			"vm_name", vmName,
+			"error", macErr,
+		)
+	}
+
 	virsh := m.binPath("virsh", m.cfg.VirshPath)
 	// Best-effort destroy if running
 	_, _ = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "destroy", vmName)
@@ -529,6 +833,23 @@ func (m *VirshManager) DestroyVM(ctx context.Context, vmName string) error {
 		// continue to remove files even if undefine fails
 		_ = err
 	}
+
+	// Release DHCP lease to prevent IP conflicts with future VMs
+	if mac != "" {
+		if err := m.ReleaseDHCPLease(ctx, m.cfg.DefaultNetwork, mac); err != nil {
+			m.logger.Debug("failed to release DHCP lease",
+				"vm_name", vmName,
+				"mac", mac,
+				"error", err,
+			)
+		} else {
+			m.logger.Info("released DHCP lease",
+				"vm_name", vmName,
+				"mac", mac,
+			)
+		}
+	}
+
 	// Remove workspace
 	jobDir := filepath.Join(m.cfg.WorkDir, vmName)
 	if err := os.RemoveAll(jobDir); err != nil {
@@ -620,6 +941,7 @@ func (m *VirshManager) GetIPAddress(ctx context.Context, vmName string, timeout 
 	m.logger.Info("discovering IP address",
 		"vm_name", vmName,
 		"timeout", timeout,
+		"network", m.cfg.DefaultNetwork,
 	)
 
 	// First check VM state - if not running, IP discovery will definitely fail
@@ -632,6 +954,18 @@ func (m *VirshManager) GetIPAddress(ctx context.Context, vmName string, timeout 
 		)
 	}
 
+	// For socket_vmnet, use ARP-based discovery
+	if m.cfg.DefaultNetwork == "socket_vmnet" {
+		return m.getIPAddressViaARP(ctx, vmName, timeout)
+	}
+
+	// For regular libvirt networks, use lease-based discovery
+	return m.getIPAddressViaLease(ctx, vmName, timeout)
+}
+
+// getIPAddressViaLease discovers IP using libvirt DHCP lease information.
+// This works for libvirt-managed networks (default, NAT, etc.)
+func (m *VirshManager) getIPAddressViaLease(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
 	virsh := m.binPath("virsh", m.cfg.VirshPath)
 	deadline := time.Now().Add(timeout)
 	startTime := time.Now()
@@ -642,7 +976,7 @@ func (m *VirshManager) GetIPAddress(ctx context.Context, vmName string, timeout 
 		if err == nil {
 			ip, mac := parseDomIfAddrIPv4WithMAC(out)
 			if ip != "" {
-				m.logger.Info("IP address discovered",
+				m.logger.Info("IP address discovered via lease",
 					"vm_name", vmName,
 					"ip_address", ip,
 					"mac_address", mac,
@@ -655,7 +989,7 @@ func (m *VirshManager) GetIPAddress(ctx context.Context, vmName string, timeout 
 
 		// Log progress every 10 attempts (20 seconds)
 		if attempt%10 == 0 {
-			m.logger.Debug("IP discovery in progress",
+			m.logger.Debug("IP discovery in progress (lease)",
 				"vm_name", vmName,
 				"attempts", attempt,
 				"elapsed", time.Since(startTime),
@@ -671,7 +1005,7 @@ func (m *VirshManager) GetIPAddress(ctx context.Context, vmName string, timeout 
 
 	// Final state check for better error message
 	finalState, _ := m.GetVMState(ctx, vmName)
-	m.logger.Error("IP address discovery failed",
+	m.logger.Error("IP address discovery failed (lease)",
 		"vm_name", vmName,
 		"timeout", timeout,
 		"attempts", attempt,
@@ -679,6 +1013,71 @@ func (m *VirshManager) GetIPAddress(ctx context.Context, vmName string, timeout 
 	)
 
 	return "", "", fmt.Errorf("ip address not found within timeout (VM state: %s)", finalState)
+}
+
+// getIPAddressViaARP discovers IP using ARP table lookup.
+// This is used for socket_vmnet on macOS where libvirt doesn't manage DHCP.
+func (m *VirshManager) getIPAddressViaARP(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
+	// First, get the VM's MAC address from the domain XML
+	mac, err := m.getVMMAC(ctx, vmName)
+	if err != nil {
+		m.logger.Error("failed to get VM MAC address for ARP lookup",
+			"vm_name", vmName,
+			"error", err,
+		)
+		return "", "", fmt.Errorf("failed to get VM MAC address: %w", err)
+	}
+
+	m.logger.Info("starting ARP-based IP discovery",
+		"vm_name", vmName,
+		"mac_address", mac,
+		"timeout", timeout,
+	)
+
+	deadline := time.Now().Add(timeout)
+	startTime := time.Now()
+	attempt := 0
+	for {
+		attempt++
+		ip, err := lookupIPByMAC(mac)
+		if err == nil && ip != "" {
+			m.logger.Info("IP address discovered via ARP",
+				"vm_name", vmName,
+				"ip_address", ip,
+				"mac_address", mac,
+				"attempts", attempt,
+				"elapsed", time.Since(startTime),
+			)
+			return ip, mac, nil
+		}
+
+		// Log progress every 10 attempts (20 seconds)
+		if attempt%10 == 0 {
+			m.logger.Debug("IP discovery in progress (ARP)",
+				"vm_name", vmName,
+				"mac_address", mac,
+				"attempts", attempt,
+				"elapsed", time.Since(startTime),
+			)
+		}
+
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+
+	// Final state check for better error message
+	finalState, _ := m.GetVMState(ctx, vmName)
+	m.logger.Error("IP address discovery failed (ARP)",
+		"vm_name", vmName,
+		"mac_address", mac,
+		"timeout", timeout,
+		"attempts", attempt,
+		"final_vm_state", finalState,
+	)
+
+	return "", "", fmt.Errorf("ip address not found in ARP table within timeout (VM state: %s, MAC: %s)", finalState, mac)
 }
 
 // --- Helpers ---
@@ -797,6 +1196,144 @@ func parseDomIfAddrIPv4WithMAC(s string) (ip string, mac string) {
 	return "", ""
 }
 
+// getVMMAC extracts the MAC address from a VM's domain XML.
+// For socket_vmnet VMs, the MAC is in the qemu:commandline section.
+// For regular VMs, it's in the interface element.
+func (m *VirshManager) getVMMAC(ctx context.Context, vmName string) (string, error) {
+	virsh := m.binPath("virsh", m.cfg.VirshPath)
+	out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "dumpxml", vmName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get domain XML: %w", err)
+	}
+
+	// Try to find MAC in qemu:commandline (socket_vmnet)
+	// Look for: <qemu:arg value="virtio-net-pci,netdev=vnet,mac=52:54:00:xx:xx:xx"/>
+	if strings.Contains(out, "qemu:commandline") {
+		lines := strings.Split(out, "\n")
+		for _, line := range lines {
+			if strings.Contains(line, "virtio-net-pci") && strings.Contains(line, "mac=") {
+				// Extract MAC from value="...mac=52:54:00:xx:xx:xx..."
+				start := strings.Index(line, "mac=")
+				if start != -1 {
+					start += 4        // skip "mac="
+					end := start + 17 // MAC address is 17 chars (xx:xx:xx:xx:xx:xx)
+					if end <= len(line) {
+						mac := line[start:end]
+						// Validate it looks like a MAC
+						if strings.Count(mac, ":") == 5 {
+							return mac, nil
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Try to find MAC in regular interface element
+	// Look for: <mac address='52:54:00:xx:xx:xx'/>
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "<mac address=") {
+			// Extract MAC from <mac address='52:54:00:xx:xx:xx'/>
+			start := strings.Index(line, "'")
+			if start != -1 {
+				end := strings.Index(line[start+1:], "'")
+				if end != -1 {
+					return line[start+1 : start+1+end], nil
+				}
+			}
+			// Try double quotes
+			start = strings.Index(line, `"`)
+			if start != -1 {
+				end := strings.Index(line[start+1:], `"`)
+				if end != -1 {
+					return line[start+1 : start+1+end], nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("MAC address not found in domain XML")
+}
+
+// lookupIPByMAC looks up an IP address in the system ARP table by MAC address.
+// This is used for socket_vmnet where libvirt doesn't track DHCP leases.
+// On macOS, this parses the output of `arp -an`.
+func lookupIPByMAC(mac string) (string, error) {
+	// Normalize MAC to lowercase for comparison
+	mac = strings.ToLower(mac)
+
+	// Run arp -an to get the ARP table
+	cmd := exec.Command("arp", "-an")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to run arp -an: %w", err)
+	}
+
+	// Parse ARP output
+	// macOS format: ? (192.168.105.2) at 52:54:0:ab:cd:ef on bridge100 ifscope [ethernet]
+	// Note: macOS may omit leading zeros in MAC (52:54:0:ab:cd:ef instead of 52:54:00:ab:cd:ef)
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Extract MAC from the line
+		parts := strings.Fields(line)
+		if len(parts) < 4 {
+			continue
+		}
+
+		// Find the MAC address in the line (after "at")
+		var arpMAC string
+		for i, p := range parts {
+			if p == "at" && i+1 < len(parts) {
+				arpMAC = strings.ToLower(parts[i+1])
+				break
+			}
+		}
+		if arpMAC == "" {
+			continue
+		}
+
+		// Normalize the ARP MAC (expand shortened octets like 0 -> 00)
+		normalizedArpMAC := normalizeMAC(arpMAC)
+
+		if normalizedArpMAC == mac {
+			// Extract IP from (x.x.x.x)
+			for _, p := range parts {
+				if strings.HasPrefix(p, "(") && strings.HasSuffix(p, ")") {
+					ip := p[1 : len(p)-1]
+					// Validate it looks like an IP
+					if strings.Count(ip, ".") == 3 {
+						return ip, nil
+					}
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("MAC %s not found in ARP table", mac)
+}
+
+// normalizeMAC normalizes a MAC address by ensuring each octet has two digits.
+// e.g., "52:54:0:ab:cd:ef" -> "52:54:00:ab:cd:ef"
+func normalizeMAC(mac string) string {
+	parts := strings.Split(mac, ":")
+	if len(parts) != 6 {
+		return mac
+	}
+	for i, p := range parts {
+		if len(p) == 1 {
+			parts[i] = "0" + p
+		}
+	}
+	return strings.Join(parts, ":")
+}
+
 // vmArchInfo holds architecture details extracted from a VM's XML.
 type vmArchInfo struct {
 	Arch       string // e.g., "x86_64" or "aarch64"
@@ -871,16 +1408,19 @@ func (m *VirshManager) getVMArchitecture(ctx context.Context, vmName string) (vm
 // --- Domain XML rendering ---
 
 type domainXMLParams struct {
-	Name         string
-	MemoryMB     int
-	VCPUs        int
-	DiskPath     string
-	CloudInitISO string // Optional path to cloud-init ISO for networking config
-	Network      string
-	BootOrder    []string
-	Arch         string // e.g., "x86_64" or "aarch64"
-	Machine      string // e.g., "pc-q35-6.2" or "virt"
-	DomainType   string // e.g., "kvm" or "qemu"
+	Name            string
+	MemoryMB        int
+	VCPUs           int
+	DiskPath        string
+	CloudInitISO    string // Optional path to cloud-init ISO for networking config
+	Network         string // "default", "user", "socket_vmnet", or custom network name
+	SocketVMNetPath string // Path to socket_vmnet socket (used when Network="socket_vmnet")
+	Emulator        string // Optional custom emulator path (e.g., wrapper script for socket_vmnet)
+	BootOrder       []string
+	Arch            string // e.g., "x86_64" or "aarch64"
+	Machine         string // e.g., "pc-q35-6.2" or "virt"
+	DomainType      string // e.g., "kvm" or "qemu"
+	MACAddress      string // Optional MAC address for the network interface
 }
 
 func renderDomainXML(p domainXMLParams) (string, error) {
@@ -898,11 +1438,20 @@ func renderDomainXML(p domainXMLParams) (string, error) {
 	if p.DomainType == "" {
 		p.DomainType = "kvm"
 	}
+	// Generate MAC address if not provided and using socket_vmnet
+	if p.MACAddress == "" {
+		p.MACAddress = generateMACAddress()
+	}
+	// Default socket_vmnet path
+	if p.Network == "socket_vmnet" && p.SocketVMNetPath == "" {
+		p.SocketVMNetPath = "/opt/homebrew/var/run/socket_vmnet"
+	}
 
 	// A minimal domain XML; adjust virtio model as needed by your environment.
 	// Use conditional sections for architecture-specific elements.
+	// For socket_vmnet, we need the qemu namespace for commandline passthrough.
 	const tpl = `<?xml version="1.0" encoding="utf-8"?>
-<domain type="{{ .DomainType }}">
+<domain type="{{ .DomainType }}"{{ if eq .Network "socket_vmnet" }} xmlns:qemu="http://libvirt.org/schemas/domain/qemu/1.0"{{ end }}>
   <name>{{ .Name }}</name>
   <memory unit="MiB">{{ .MemoryMB }}</memory>
   <vcpu placement="static">{{ .VCPUs }}</vcpu>
@@ -936,6 +1485,9 @@ func renderDomainXML(p domainXMLParams) (string, error) {
   <cpu mode="host-passthrough"/>
 {{- end }}
   <devices>
+{{- if .Emulator }}
+    <emulator>{{ .Emulator }}</emulator>
+{{- end }}
     <disk type="file" device="disk">
       <driver name="qemu" type="qcow2" cache="none"/>
       <source file="{{ .DiskPath }}"/>
@@ -954,10 +1506,18 @@ func renderDomainXML(p domainXMLParams) (string, error) {
 {{- if eq .Arch "aarch64" }}
     <controller type="usb" model="qemu-xhci"/>
 {{- end }}
+{{- if eq .Network "socket_vmnet" }}
+    <!-- Network configured via qemu:commandline for socket_vmnet -->
+{{- else if or (eq .Network "user") (eq .Network "") }}
+    <interface type="user">
+      <model type="virtio"/>
+    </interface>
+{{- else }}
     <interface type="network">
       <source network="{{ .Network }}"/>
       <model type="virtio"/>
     </interface>
+{{- end }}
     <graphics type="vnc" autoport="yes" listen="0.0.0.0"/>
     <console type="pty"/>
 {{- if ne .Arch "aarch64" }}
@@ -967,6 +1527,14 @@ func renderDomainXML(p domainXMLParams) (string, error) {
       <backend model="random">/dev/urandom</backend>
     </rng>
   </devices>
+{{- if eq .Network "socket_vmnet" }}
+  <qemu:commandline>
+    <qemu:arg value="-netdev"/>
+    <qemu:arg value="socket,id=vnet,fd=3"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="virtio-net-pci,netdev=vnet,mac={{ .MACAddress }}"/>
+  </qemu:commandline>
+{{- end }}
 </domain>
 `
 	var b bytes.Buffer
@@ -1050,24 +1618,22 @@ local-hostname: %s
 	return fmt.Errorf("cloud-init seed build tools not found: need cloud-localds or genisoimage/mkisofs")
 }
 
-// buildCloudInitSeedForClone creates a minimal cloud-init ISO for a cloned VM.
+// buildCloudInitSeedForClone creates a cloud-init ISO for a cloned VM.
 // The key purpose is to provide a NEW instance-id that differs from what's stored
 // on the cloned disk. This forces cloud-init to re-run its initialization,
 // including network configuration for the clone's new MAC address.
 //
-// Unlike buildCloudInitSeed which creates users and SSH keys, this function
-// preserves the existing user configuration from the base image and only
-// triggers cloud-init to re-run network setup.
+// If SSHCAPubKey is configured, this function also:
+// - Creates a 'sandbox' user with sudo access for managed SSH credentials
+// - Injects the SSH CA public key and configures sshd to trust it
 func (m *VirshManager) buildCloudInitSeedForClone(ctx context.Context, vmName, outISO string) error {
 	jobDir := filepath.Dir(outISO)
 
-	// Minimal user-data that preserves existing users but ensures cloud-init runs
-	// The empty users list with 'default' tells cloud-init to use the default user
-	// from the base image while still processing network configuration.
-	userData := `#cloud-config
-# Minimal cloud-init config for cloned VMs
+	// Build cloud-init user-data
+	var userDataBuilder strings.Builder
+	userDataBuilder.WriteString(`#cloud-config
+# Cloud-init config for cloned VMs
 # This triggers cloud-init to re-run network configuration
-# while preserving existing user accounts from the base image
 
 # Ensure networking is configured via DHCP
 network:
@@ -1077,7 +1643,42 @@ network:
       match:
         driver: virtio*
       dhcp4: true
-`
+`)
+
+	// If SSH CA is configured, add sandbox user and SSH CA trust
+	if m.cfg.SSHCAPubKey != "" {
+		userDataBuilder.WriteString(`
+# Create sandbox user for managed SSH credentials
+users:
+  - default
+  - name: sandbox
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: true
+
+# Write SSH CA public key
+write_files:
+  - path: /etc/ssh/ssh_ca.pub
+    content: |
+      `)
+		userDataBuilder.WriteString(m.cfg.SSHCAPubKey)
+		userDataBuilder.WriteString(`
+    permissions: '0644'
+    owner: root:root
+
+# Configure sshd to trust the CA
+runcmd:
+  - |
+    if [ -s /etc/ssh/ssh_ca.pub ]; then
+      if ! grep -q "TrustedUserCAKeys" /etc/ssh/sshd_config; then
+        echo "TrustedUserCAKeys /etc/ssh/ssh_ca.pub" >> /etc/ssh/sshd_config
+        systemctl restart sshd || systemctl restart ssh || true
+      fi
+    fi
+`)
+	}
+
+	userData := userDataBuilder.String()
 
 	// Use a unique instance-id based on the VM name
 	// This is the critical part: cloud-init checks if instance-id has changed
@@ -1098,18 +1699,41 @@ local-hostname: %s
 	// Try cloud-localds if available
 	if hasBin("cloud-localds") {
 		if _, err := m.run(ctx, "cloud-localds", outISO, userDataPath, metaDataPath); err == nil {
-			return nil
+			// Verify the ISO was actually created
+			if _, statErr := os.Stat(outISO); statErr == nil {
+				return nil
+			} else {
+				log.Printf("WARNING: cloud-localds succeeded but ISO not found at %s: %v", outISO, statErr)
+			}
+		} else {
+			log.Printf("WARNING: cloud-localds failed: %v, trying fallback tools", err)
 		}
 	}
 
 	// Fallback to genisoimage/mkisofs
 	if hasBin("genisoimage") {
 		_, err := m.run(ctx, "genisoimage", "-output", outISO, "-volid", "cidata", "-joliet", "-rock", userDataPath, metaDataPath)
-		return err
+		if err != nil {
+			log.Printf("WARNING: genisoimage failed: %v", err)
+			return err
+		}
+		// Verify the ISO was actually created
+		if _, statErr := os.Stat(outISO); statErr != nil {
+			return fmt.Errorf("genisoimage succeeded but ISO not found at %s: %w", outISO, statErr)
+		}
+		return nil
 	}
 	if hasBin("mkisofs") {
 		_, err := m.run(ctx, "mkisofs", "-output", outISO, "-V", "cidata", "-J", "-R", userDataPath, metaDataPath)
-		return err
+		if err != nil {
+			log.Printf("WARNING: mkisofs failed: %v", err)
+			return err
+		}
+		// Verify the ISO was actually created
+		if _, statErr := os.Stat(outISO); statErr != nil {
+			return fmt.Errorf("mkisofs succeeded but ISO not found at %s: %w", outISO, statErr)
+		}
+		return nil
 	}
 
 	return fmt.Errorf("cloud-init seed build tools not found: need cloud-localds or genisoimage/mkisofs")
