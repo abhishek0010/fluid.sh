@@ -4,19 +4,19 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**add_playbook_task**](AnsiblePlaybooksApi.md#add_playbook_task) | **POST** /v1/ansible/playbooks/{name}/tasks | Add task to playbook
+[**add_playbook_task**](AnsiblePlaybooksApi.md#add_playbook_task) | **POST** /v1/ansible/playbooks/{playbook_name}/tasks | Add task to playbook
 [**create_playbook**](AnsiblePlaybooksApi.md#create_playbook) | **POST** /v1/ansible/playbooks | Create playbook
-[**delete_playbook**](AnsiblePlaybooksApi.md#delete_playbook) | **DELETE** /v1/ansible/playbooks/{name} | Delete playbook
-[**delete_playbook_task**](AnsiblePlaybooksApi.md#delete_playbook_task) | **DELETE** /v1/ansible/playbooks/{name}/tasks/{task_id} | Delete task
-[**export_playbook**](AnsiblePlaybooksApi.md#export_playbook) | **GET** /v1/ansible/playbooks/{name}/export | Export playbook
-[**get_playbook**](AnsiblePlaybooksApi.md#get_playbook) | **GET** /v1/ansible/playbooks/{name} | Get playbook
+[**delete_playbook**](AnsiblePlaybooksApi.md#delete_playbook) | **DELETE** /v1/ansible/playbooks/{playbook_name} | Delete playbook
+[**delete_playbook_task**](AnsiblePlaybooksApi.md#delete_playbook_task) | **DELETE** /v1/ansible/playbooks/{playbook_name}/tasks/{task_id} | Delete task
+[**export_playbook**](AnsiblePlaybooksApi.md#export_playbook) | **GET** /v1/ansible/playbooks/{playbook_name}/export | Export playbook
+[**get_playbook**](AnsiblePlaybooksApi.md#get_playbook) | **GET** /v1/ansible/playbooks/{playbook_name} | Get playbook
 [**list_playbooks**](AnsiblePlaybooksApi.md#list_playbooks) | **GET** /v1/ansible/playbooks | List playbooks
-[**reorder_playbook_tasks**](AnsiblePlaybooksApi.md#reorder_playbook_tasks) | **PATCH** /v1/ansible/playbooks/{name}/tasks/reorder | Reorder tasks
-[**update_playbook_task**](AnsiblePlaybooksApi.md#update_playbook_task) | **PUT** /v1/ansible/playbooks/{name}/tasks/{task_id} | Update task
+[**reorder_playbook_tasks**](AnsiblePlaybooksApi.md#reorder_playbook_tasks) | **PATCH** /v1/ansible/playbooks/{playbook_name}/tasks/reorder | Reorder tasks
+[**update_playbook_task**](AnsiblePlaybooksApi.md#update_playbook_task) | **PUT** /v1/ansible/playbooks/{playbook_name}/tasks/{task_id} | Update task
 
 
 # **add_playbook_task**
-> InternalAnsibleAddTaskResponse add_playbook_task(name, request)
+> VirshSandboxInternalAnsibleAddTaskResponse add_playbook_task(playbook_name, request)
 
 Add task to playbook
 
@@ -27,8 +27,8 @@ Adds a new task to an existing playbook
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.internal_ansible_add_task_request import InternalAnsibleAddTaskRequest
-from virsh_sandbox.models.internal_ansible_add_task_response import InternalAnsibleAddTaskResponse
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_request import VirshSandboxInternalAnsibleAddTaskRequest
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_response import VirshSandboxInternalAnsibleAddTaskResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -43,12 +43,12 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AnsiblePlaybooksApi(api_client)
-    name = 'name_example' # str | Playbook name
-    request = virsh_sandbox.InternalAnsibleAddTaskRequest() # InternalAnsibleAddTaskRequest | Task parameters
+    playbook_name = 'playbook_name_example' # str | Playbook name
+    request = virsh_sandbox.VirshSandboxInternalAnsibleAddTaskRequest() # VirshSandboxInternalAnsibleAddTaskRequest | Task parameters
 
     try:
         # Add task to playbook
-        api_response = api_instance.add_playbook_task(name, request)
+        api_response = api_instance.add_playbook_task(playbook_name, request)
         print("The response of AnsiblePlaybooksApi->add_playbook_task:\n")
         pprint(api_response)
     except Exception as e:
@@ -62,12 +62,12 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **name** | **str**| Playbook name | 
- **request** | [**InternalAnsibleAddTaskRequest**](InternalAnsibleAddTaskRequest.md)| Task parameters | 
+ **playbook_name** | **str**| Playbook name | 
+ **request** | [**VirshSandboxInternalAnsibleAddTaskRequest**](VirshSandboxInternalAnsibleAddTaskRequest.md)| Task parameters | 
 
 ### Return type
 
-[**InternalAnsibleAddTaskResponse**](InternalAnsibleAddTaskResponse.md)
+[**VirshSandboxInternalAnsibleAddTaskResponse**](VirshSandboxInternalAnsibleAddTaskResponse.md)
 
 ### Authorization
 
@@ -89,7 +89,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **create_playbook**
-> InternalAnsibleCreatePlaybookResponse create_playbook(request)
+> VirshSandboxInternalAnsibleCreatePlaybookResponse create_playbook(request)
 
 Create playbook
 
@@ -100,8 +100,8 @@ Creates a new Ansible playbook
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.internal_ansible_create_playbook_request import InternalAnsibleCreatePlaybookRequest
-from virsh_sandbox.models.internal_ansible_create_playbook_response import InternalAnsibleCreatePlaybookResponse
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_request import VirshSandboxInternalAnsibleCreatePlaybookRequest
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_response import VirshSandboxInternalAnsibleCreatePlaybookResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -116,7 +116,7 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AnsiblePlaybooksApi(api_client)
-    request = virsh_sandbox.InternalAnsibleCreatePlaybookRequest() # InternalAnsibleCreatePlaybookRequest | Playbook creation parameters
+    request = virsh_sandbox.VirshSandboxInternalAnsibleCreatePlaybookRequest() # VirshSandboxInternalAnsibleCreatePlaybookRequest | Playbook creation parameters
 
     try:
         # Create playbook
@@ -134,11 +134,11 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request** | [**InternalAnsibleCreatePlaybookRequest**](InternalAnsibleCreatePlaybookRequest.md)| Playbook creation parameters | 
+ **request** | [**VirshSandboxInternalAnsibleCreatePlaybookRequest**](VirshSandboxInternalAnsibleCreatePlaybookRequest.md)| Playbook creation parameters | 
 
 ### Return type
 
-[**InternalAnsibleCreatePlaybookResponse**](InternalAnsibleCreatePlaybookResponse.md)
+[**VirshSandboxInternalAnsibleCreatePlaybookResponse**](VirshSandboxInternalAnsibleCreatePlaybookResponse.md)
 
 ### Authorization
 
@@ -160,7 +160,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **delete_playbook**
-> delete_playbook(name)
+> delete_playbook(playbook_name)
 
 Delete playbook
 
@@ -185,11 +185,11 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AnsiblePlaybooksApi(api_client)
-    name = 'name_example' # str | Playbook name
+    playbook_name = 'playbook_name_example' # str | Playbook name
 
     try:
         # Delete playbook
-        api_instance.delete_playbook(name)
+        api_instance.delete_playbook(playbook_name)
     except Exception as e:
         print("Exception when calling AnsiblePlaybooksApi->delete_playbook: %s\n" % e)
 ```
@@ -201,7 +201,7 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **name** | **str**| Playbook name | 
+ **playbook_name** | **str**| Playbook name | 
 
 ### Return type
 
@@ -226,7 +226,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **delete_playbook_task**
-> delete_playbook_task(name, task_id)
+> delete_playbook_task(playbook_name, task_id)
 
 Delete task
 
@@ -251,12 +251,12 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AnsiblePlaybooksApi(api_client)
-    name = 'name_example' # str | Playbook name
+    playbook_name = 'playbook_name_example' # str | Playbook name
     task_id = 'task_id_example' # str | Task ID
 
     try:
         # Delete task
-        api_instance.delete_playbook_task(name, task_id)
+        api_instance.delete_playbook_task(playbook_name, task_id)
     except Exception as e:
         print("Exception when calling AnsiblePlaybooksApi->delete_playbook_task: %s\n" % e)
 ```
@@ -268,7 +268,7 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **name** | **str**| Playbook name | 
+ **playbook_name** | **str**| Playbook name | 
  **task_id** | **str**| Task ID | 
 
 ### Return type
@@ -294,7 +294,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **export_playbook**
-> InternalAnsibleExportPlaybookResponse export_playbook(name)
+> VirshSandboxInternalAnsibleExportPlaybookResponse export_playbook(playbook_name)
 
 Export playbook
 
@@ -305,7 +305,7 @@ Exports a playbook as raw YAML
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.internal_ansible_export_playbook_response import InternalAnsibleExportPlaybookResponse
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_export_playbook_response import VirshSandboxInternalAnsibleExportPlaybookResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -320,11 +320,11 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AnsiblePlaybooksApi(api_client)
-    name = 'name_example' # str | Playbook name
+    playbook_name = 'playbook_name_example' # str | Playbook name
 
     try:
         # Export playbook
-        api_response = api_instance.export_playbook(name)
+        api_response = api_instance.export_playbook(playbook_name)
         print("The response of AnsiblePlaybooksApi->export_playbook:\n")
         pprint(api_response)
     except Exception as e:
@@ -338,11 +338,11 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **name** | **str**| Playbook name | 
+ **playbook_name** | **str**| Playbook name | 
 
 ### Return type
 
-[**InternalAnsibleExportPlaybookResponse**](InternalAnsibleExportPlaybookResponse.md)
+[**VirshSandboxInternalAnsibleExportPlaybookResponse**](VirshSandboxInternalAnsibleExportPlaybookResponse.md)
 
 ### Authorization
 
@@ -363,7 +363,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_playbook**
-> InternalAnsibleGetPlaybookResponse get_playbook(name)
+> VirshSandboxInternalAnsibleGetPlaybookResponse get_playbook(playbook_name)
 
 Get playbook
 
@@ -374,7 +374,7 @@ Gets a playbook and its tasks by name
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.internal_ansible_get_playbook_response import InternalAnsibleGetPlaybookResponse
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_get_playbook_response import VirshSandboxInternalAnsibleGetPlaybookResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -389,11 +389,11 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AnsiblePlaybooksApi(api_client)
-    name = 'name_example' # str | Playbook name
+    playbook_name = 'playbook_name_example' # str | Playbook name
 
     try:
         # Get playbook
-        api_response = api_instance.get_playbook(name)
+        api_response = api_instance.get_playbook(playbook_name)
         print("The response of AnsiblePlaybooksApi->get_playbook:\n")
         pprint(api_response)
     except Exception as e:
@@ -407,11 +407,11 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **name** | **str**| Playbook name | 
+ **playbook_name** | **str**| Playbook name | 
 
 ### Return type
 
-[**InternalAnsibleGetPlaybookResponse**](InternalAnsibleGetPlaybookResponse.md)
+[**VirshSandboxInternalAnsibleGetPlaybookResponse**](VirshSandboxInternalAnsibleGetPlaybookResponse.md)
 
 ### Authorization
 
@@ -432,7 +432,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_playbooks**
-> InternalAnsibleListPlaybooksResponse list_playbooks()
+> VirshSandboxInternalAnsibleListPlaybooksResponse list_playbooks()
 
 List playbooks
 
@@ -443,7 +443,7 @@ Lists all Ansible playbooks
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.internal_ansible_list_playbooks_response import InternalAnsibleListPlaybooksResponse
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_list_playbooks_response import VirshSandboxInternalAnsibleListPlaybooksResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -476,7 +476,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**InternalAnsibleListPlaybooksResponse**](InternalAnsibleListPlaybooksResponse.md)
+[**VirshSandboxInternalAnsibleListPlaybooksResponse**](VirshSandboxInternalAnsibleListPlaybooksResponse.md)
 
 ### Authorization
 
@@ -496,7 +496,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **reorder_playbook_tasks**
-> reorder_playbook_tasks(name, request)
+> reorder_playbook_tasks(playbook_name, request)
 
 Reorder tasks
 
@@ -507,7 +507,7 @@ Reorders tasks in a playbook
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.internal_ansible_reorder_tasks_request import InternalAnsibleReorderTasksRequest
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_reorder_tasks_request import VirshSandboxInternalAnsibleReorderTasksRequest
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -522,12 +522,12 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AnsiblePlaybooksApi(api_client)
-    name = 'name_example' # str | Playbook name
-    request = virsh_sandbox.InternalAnsibleReorderTasksRequest() # InternalAnsibleReorderTasksRequest | New task order
+    playbook_name = 'playbook_name_example' # str | Playbook name
+    request = virsh_sandbox.VirshSandboxInternalAnsibleReorderTasksRequest() # VirshSandboxInternalAnsibleReorderTasksRequest | New task order
 
     try:
         # Reorder tasks
-        api_instance.reorder_playbook_tasks(name, request)
+        api_instance.reorder_playbook_tasks(playbook_name, request)
     except Exception as e:
         print("Exception when calling AnsiblePlaybooksApi->reorder_playbook_tasks: %s\n" % e)
 ```
@@ -539,8 +539,8 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **name** | **str**| Playbook name | 
- **request** | [**InternalAnsibleReorderTasksRequest**](InternalAnsibleReorderTasksRequest.md)| New task order | 
+ **playbook_name** | **str**| Playbook name | 
+ **request** | [**VirshSandboxInternalAnsibleReorderTasksRequest**](VirshSandboxInternalAnsibleReorderTasksRequest.md)| New task order | 
 
 ### Return type
 
@@ -566,7 +566,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **update_playbook_task**
-> InternalAnsibleUpdateTaskResponse update_playbook_task(name, task_id, request)
+> VirshSandboxInternalAnsibleUpdateTaskResponse update_playbook_task(playbook_name, task_id, request)
 
 Update task
 
@@ -577,8 +577,8 @@ Updates an existing task in a playbook
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.internal_ansible_update_task_request import InternalAnsibleUpdateTaskRequest
-from virsh_sandbox.models.internal_ansible_update_task_response import InternalAnsibleUpdateTaskResponse
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_request import VirshSandboxInternalAnsibleUpdateTaskRequest
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_response import VirshSandboxInternalAnsibleUpdateTaskResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -593,13 +593,13 @@ configuration = virsh_sandbox.Configuration(
 with virsh_sandbox.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = virsh_sandbox.AnsiblePlaybooksApi(api_client)
-    name = 'name_example' # str | Playbook name
+    playbook_name = 'playbook_name_example' # str | Playbook name
     task_id = 'task_id_example' # str | Task ID
-    request = virsh_sandbox.InternalAnsibleUpdateTaskRequest() # InternalAnsibleUpdateTaskRequest | Task update parameters
+    request = virsh_sandbox.VirshSandboxInternalAnsibleUpdateTaskRequest() # VirshSandboxInternalAnsibleUpdateTaskRequest | Task update parameters
 
     try:
         # Update task
-        api_response = api_instance.update_playbook_task(name, task_id, request)
+        api_response = api_instance.update_playbook_task(playbook_name, task_id, request)
         print("The response of AnsiblePlaybooksApi->update_playbook_task:\n")
         pprint(api_response)
     except Exception as e:
@@ -613,13 +613,13 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **name** | **str**| Playbook name | 
+ **playbook_name** | **str**| Playbook name | 
  **task_id** | **str**| Task ID | 
- **request** | [**InternalAnsibleUpdateTaskRequest**](InternalAnsibleUpdateTaskRequest.md)| Task update parameters | 
+ **request** | [**VirshSandboxInternalAnsibleUpdateTaskRequest**](VirshSandboxInternalAnsibleUpdateTaskRequest.md)| Task update parameters | 
 
 ### Return type
 
-[**InternalAnsibleUpdateTaskResponse**](InternalAnsibleUpdateTaskResponse.md)
+[**VirshSandboxInternalAnsibleUpdateTaskResponse**](VirshSandboxInternalAnsibleUpdateTaskResponse.md)
 
 ### Authorization
 

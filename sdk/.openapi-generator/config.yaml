@@ -1,7 +1,7 @@
 # config.yaml
 packageName: virsh_sandbox
 projectName: Virsh Sandbox
-packageVersion: 0.0.16-beta
+packageVersion: 0.0.18-beta
 packageUrl: https://github.com/aspectrr/fluid.sh
 
 # Better naming

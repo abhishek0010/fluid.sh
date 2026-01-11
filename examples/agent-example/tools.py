@@ -263,4 +263,182 @@ TOOLS = [
     #         },
     #     },
     # },
+    # Ansible Playbooks
+    {
+        "type": "function",
+        "function": {
+            "name": "create_playbook",
+            "description": "Create a new Ansible playbook",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name of the playbook",
+                    },
+                    "hosts": {
+                        "type": "string",
+                        "description": "Hosts to target",
+                    },
+                    "become": {
+                        "type": "boolean",
+                        "description": "Whether to use privilege escalation (e.g., sudo)",
+                    },
+                },
+                "required": ["name", "hosts"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_playbook",
+            "description": "Get a playbook and its tasks by name",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "playbook_name": {
+                        "type": "string",
+                        "description": "Name of the playbook",
+                    },
+                },
+                "required": ["playbook_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_playbooks",
+            "description": "List all Ansible playbooks",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_playbook_task",
+            "description": "Add a new task to an existing playbook",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "playbook_name": {
+                        "type": "string",
+                        "description": "Name of the playbook",
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Name of the task",
+                    },
+                    "module": {
+                        "type": "string",
+                        "description": "Ansible module to use",
+                    },
+                    "params": {
+                        "type": "object",
+                        "description": "Parameters for the module",
+                        "properties": {},
+                        "additionalProperties": True,
+                    },
+                },
+                "required": ["playbook_name", "name", "module"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_playbook_task",
+            "description": "Update an existing task in a playbook",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "playbook_name": {
+                        "type": "string",
+                        "description": "Name of the playbook",
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "description": "ID of the task to update",
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "New name for the task",
+                    },
+                    "module": {
+                        "type": "string",
+                        "description": "New Ansible module to use",
+                    },
+                    "params": {
+                        "type": "object",
+                        "description": "New parameters for the module",
+                        "properties": {},
+                        "additionalProperties": True,
+                    },
+                },
+                "required": ["playbook_name", "task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_playbook_task",
+            "description": "Remove a task from a playbook",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "playbook_name": {
+                        "type": "string",
+                        "description": "Name of the playbook",
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "description": "ID of the task to delete",
+                    },
+                },
+                "required": ["playbook_name", "task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "reorder_playbook_tasks",
+            "description": "Reorder tasks in a playbook",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "playbook_name": {
+                        "type": "string",
+                        "description": "Name of the playbook",
+                    },
+                    "task_ids": {
+                        "type": "array",
+                        "description": "List of task IDs in the new order",
+                        "items": {
+                            "type": "string",
+                        },
+                    },
+                },
+                "required": ["playbook_name", "task_ids"],
+            },
+        },
+    },
+    {
+    "type": "function",
+        "function": {
+            "name": "exit",
+            "description": "Exit the agent",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        }
+    }
 ]

@@ -333,7 +333,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/internal_ansible.JobRequest'
+              $ref: '#/components/schemas/virsh-sandbox_internal_ansible.JobRequest'
         description: Job creation parameters
         required: true
       responses:
@@ -341,7 +341,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/internal_ansible.JobResponse'
+                $ref: >-
+                  #/components/schemas/virsh-sandbox_internal_ansible.JobResponse
           description: OK
         '400':
           content:
@@ -370,7 +371,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/internal_ansible.Job'
+                $ref: '#/components/schemas/virsh-sandbox_internal_ansible.Job'
           description: OK
         '404':
           content:
@@ -424,7 +425,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/internal_ansible.listPlaybooksResponse'
+                $ref: >-
+                  #/components/schemas/virsh-sandbox_internal_ansible.listPlaybooksResponse
           description: OK
       summary: List playbooks
       tags:
@@ -436,7 +438,8 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/internal_ansible.createPlaybookRequest'
+              $ref: >-
+                #/components/schemas/virsh-sandbox_internal_ansible.createPlaybookRequest
         description: Playbook creation parameters
         required: true
       responses:
@@ -444,7 +447,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/internal_ansible.createPlaybookResponse'
+                $ref: >-
+                  #/components/schemas/virsh-sandbox_internal_ansible.createPlaybookResponse
           description: Created
         '400':
           content:
@@ -464,14 +468,14 @@ paths:
       tags:
         - Ansible Playbooks
       x-codegen-request-body-name: request
-  '/v1/ansible/playbooks/{name}':
+  '/v1/ansible/playbooks/{playbook_name}':
     delete:
       description: Deletes a playbook and all its tasks
       operationId: deletePlaybook
       parameters:
         - description: Playbook name
           in: path
-          name: name
+          name: playbook_name
           required: true
           schema:
             type: string
@@ -495,7 +499,7 @@ paths:
       parameters:
         - description: Playbook name
           in: path
-          name: name
+          name: playbook_name
           required: true
           schema:
             type: string
@@ -504,7 +508,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/internal_ansible.getPlaybookResponse'
+                $ref: >-
+                  #/components/schemas/virsh-sandbox_internal_ansible.getPlaybookResponse
           description: OK
         '404':
           content:
@@ -516,14 +521,14 @@ paths:
       summary: Get playbook
       tags:
         - Ansible Playbooks
-  '/v1/ansible/playbooks/{name}/export':
+  '/v1/ansible/playbooks/{playbook_name}/export':
     get:
       description: Exports a playbook as raw YAML
       operationId: exportPlaybook
       parameters:
         - description: Playbook name
           in: path
-          name: name
+          name: playbook_name
           required: true
           schema:
             type: string
@@ -532,7 +537,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/internal_ansible.exportPlaybookResponse'
+                $ref: >-
+                  #/components/schemas/virsh-sandbox_internal_ansible.exportPlaybookResponse
           description: OK
         '404':
           content:
@@ -544,14 +550,14 @@ paths:
       summary: Export playbook
       tags:
         - Ansible Playbooks
-  '/v1/ansible/playbooks/{name}/tasks':
+  '/v1/ansible/playbooks/{playbook_name}/tasks':
     post:
       description: Adds a new task to an existing playbook
       operationId: addPlaybookTask
       parameters:
         - description: Playbook name
           in: path
-          name: name
+          name: playbook_name
           required: true
           schema:
             type: string
@@ -559,7 +565,8 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/internal_ansible.addTaskRequest'
+              $ref: >-
+                #/components/schemas/virsh-sandbox_internal_ansible.addTaskRequest
         description: Task parameters
         required: true
       responses:
@@ -567,7 +574,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/internal_ansible.addTaskResponse'
+                $ref: >-
+                  #/components/schemas/virsh-sandbox_internal_ansible.addTaskResponse
           description: Created
         '400':
           content:
@@ -587,14 +595,14 @@ paths:
       tags:
         - Ansible Playbooks
       x-codegen-request-body-name: request
-  '/v1/ansible/playbooks/{name}/tasks/{task_id}':
+  '/v1/ansible/playbooks/{playbook_name}/tasks/{task_id}':
     delete:
       description: Removes a task from a playbook
       operationId: deletePlaybookTask
       parameters:
         - description: Playbook name
           in: path
-          name: name
+          name: playbook_name
           required: true
           schema:
             type: string
@@ -624,7 +632,7 @@ paths:
       parameters:
         - description: Playbook name
           in: path
-          name: name
+          name: playbook_name
           required: true
           schema:
             type: string
@@ -638,7 +646,8 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/internal_ansible.updateTaskRequest'
+              $ref: >-
+                #/components/schemas/virsh-sandbox_internal_ansible.updateTaskRequest
         description: Task update parameters
         required: true
       responses:
@@ -646,7 +655,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/internal_ansible.updateTaskResponse'
+                $ref: >-
+                  #/components/schemas/virsh-sandbox_internal_ansible.updateTaskResponse
           description: OK
         '400':
           content:
@@ -666,14 +676,14 @@ paths:
       tags:
         - Ansible Playbooks
       x-codegen-request-body-name: request
-  '/v1/ansible/playbooks/{name}/tasks/reorder':
+  '/v1/ansible/playbooks/{playbook_name}/tasks/reorder':
     patch:
       description: Reorders tasks in a playbook
       operationId: reorderPlaybookTasks
       parameters:
         - description: Playbook name
           in: path
-          name: name
+          name: playbook_name
           required: true
           schema:
             type: string
@@ -681,7 +691,8 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/internal_ansible.reorderTasksRequest'
+              $ref: >-
+                #/components/schemas/virsh-sandbox_internal_ansible.reorderTasksRequest
         description: New task order
         required: true
       responses:
@@ -755,14 +766,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  #/components/schemas/virsh-sandbox_internal_rest.listSandboxesResponse
+                $ref: '#/components/schemas/internal_rest.listSandboxesResponse'
           description: OK
         '500':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Internal Server Error
       summary: List sandboxes
       tags:
@@ -774,8 +784,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: >-
-                #/components/schemas/virsh-sandbox_internal_rest.createSandboxRequest
+              $ref: '#/components/schemas/internal_rest.createSandboxRequest'
         description: Sandbox creation parameters
         required: true
       responses:
@@ -783,20 +792,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  #/components/schemas/virsh-sandbox_internal_rest.createSandboxResponse
+                $ref: '#/components/schemas/internal_rest.createSandboxResponse'
           description: Created
         '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Bad Request
         '500':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Internal Server Error
       summary: Create a new sandbox
       tags:
@@ -818,26 +826,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  #/components/schemas/virsh-sandbox_internal_rest.destroySandboxResponse
+                $ref: '#/components/schemas/internal_rest.destroySandboxResponse'
           description: OK
         '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Bad Request
         '404':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Not Found
         '500':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Internal Server Error
       summary: Destroy sandbox
       tags:
@@ -864,26 +871,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  #/components/schemas/virsh-sandbox_internal_rest.getSandboxResponse
+                $ref: '#/components/schemas/internal_rest.getSandboxResponse'
           description: OK
         '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Bad Request
         '404':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Not Found
         '500':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Internal Server Error
       summary: Get sandbox details
       tags:
@@ -914,26 +920,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  #/components/schemas/virsh-sandbox_internal_rest.listSandboxCommandsResponse
+                $ref: '#/components/schemas/internal_rest.listSandboxCommandsResponse'
           description: OK
         '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Bad Request
         '404':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Not Found
         '500':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Internal Server Error
       summary: List sandbox commands
       tags:
@@ -953,7 +958,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/virsh-sandbox_internal_rest.diffRequest'
+              $ref: '#/components/schemas/internal_rest.diffRequest'
         description: Diff parameters
         required: true
       responses:
@@ -961,19 +966,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.diffResponse'
+                $ref: '#/components/schemas/internal_rest.diffResponse'
           description: OK
         '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Bad Request
         '500':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Internal Server Error
       summary: Diff snapshots
       tags:
@@ -1001,16 +1006,56 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Bad Request
         '501':
           content:
             application/json:
               schema:
-                $ref: >-
-                  #/components/schemas/virsh-sandbox_internal_rest.generateResponse
+                $ref: '#/components/schemas/internal_rest.generateResponse'
           description: Not Implemented
       summary: Generate configuration
+      tags:
+        - Sandbox
+  '/v1/sandboxes/{id}/ip':
+    get:
+      description: >-
+        Discovers and returns the IP address for a running sandbox. Use this for
+        async workflows where wait_for_ip was false during start.
+      operationId: discoverSandboxIP
+      parameters:
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.discoverIPResponse'
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Not Found
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
+          description: Internal Server Error
+      summary: Discover sandbox IP
       tags:
         - Sandbox
   '/v1/sandboxes/{id}/publish':
@@ -1028,7 +1073,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/virsh-sandbox_internal_rest.publishRequest'
+              $ref: '#/components/schemas/internal_rest.publishRequest'
         description: Publish parameters
         required: true
       responses:
@@ -1036,14 +1081,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Bad Request
         '501':
           content:
             application/json:
               schema:
-                $ref: >-
-                  #/components/schemas/virsh-sandbox_internal_rest.publishResponse
+                $ref: '#/components/schemas/internal_rest.publishResponse'
           description: Not Implemented
       summary: Publish changes
       tags:
@@ -1067,8 +1111,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: >-
-                #/components/schemas/virsh-sandbox_internal_rest.runCommandRequest
+              $ref: '#/components/schemas/internal_rest.runCommandRequest'
         description: Command execution parameters
         required: true
       responses:
@@ -1076,20 +1119,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  #/components/schemas/virsh-sandbox_internal_rest.runCommandResponse
+                $ref: '#/components/schemas/internal_rest.runCommandResponse'
           description: OK
         '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Bad Request
         '500':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Internal Server Error
       summary: Run command in sandbox
       tags:
@@ -1110,7 +1152,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/virsh-sandbox_internal_rest.snapshotRequest'
+              $ref: '#/components/schemas/internal_rest.snapshotRequest'
         description: Snapshot parameters
         required: true
       responses:
@@ -1118,20 +1160,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  #/components/schemas/virsh-sandbox_internal_rest.snapshotResponse
+                $ref: '#/components/schemas/internal_rest.snapshotResponse'
           description: Created
         '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Bad Request
         '500':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Internal Server Error
       summary: Create snapshot
       tags:
@@ -1152,8 +1193,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: >-
-                #/components/schemas/virsh-sandbox_internal_rest.injectSSHKeyRequest
+              $ref: '#/components/schemas/internal_rest.injectSSHKeyRequest'
         description: SSH key injection parameters
         required: true
       responses:
@@ -1164,13 +1204,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Bad Request
         '500':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Internal Server Error
       summary: Inject SSH key into sandbox
       tags:
@@ -1191,8 +1231,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: >-
-                #/components/schemas/virsh-sandbox_internal_rest.startSandboxRequest
+              $ref: '#/components/schemas/internal_rest.startSandboxRequest'
         description: Start parameters
         required: false
       responses:
@@ -1200,20 +1239,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  #/components/schemas/virsh-sandbox_internal_rest.startSandboxResponse
+                $ref: '#/components/schemas/internal_rest.startSandboxResponse'
           description: OK
         '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Bad Request
         '500':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Internal Server Error
       summary: Start sandbox
       tags:
@@ -1263,14 +1301,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  #/components/schemas/virsh-sandbox_internal_rest.listVMsResponse
+                $ref: '#/components/schemas/internal_rest.listVMsResponse'
           description: OK
         '500':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse'
+                $ref: '#/components/schemas/internal_rest.ErrorResponse'
           description: Internal Server Error
       summary: List all VMs
       tags:
@@ -2676,44 +2713,6 @@ paths:
         - Tmux
 components:
   schemas:
-    internal_ansible.Job:
-      example:
-        check: true
-        id: id
-        vm_name: vm_name
-        playbook: playbook
-        status: pending
-      properties:
-        check:
-          type: boolean
-        id:
-          type: string
-        playbook:
-          type: string
-        status:
-          $ref: '#/components/schemas/internal_ansible.JobStatus'
-        vm_name:
-          type: string
-      type: object
-    internal_ansible.JobRequest:
-      properties:
-        check:
-          type: boolean
-        playbook:
-          type: string
-        vm_name:
-          type: string
-      type: object
-    internal_ansible.JobResponse:
-      example:
-        job_id: job_id
-        ws_url: ws_url
-      properties:
-        job_id:
-          type: string
-        ws_url:
-          type: string
-      type: object
     internal_ansible.JobStatus:
       enum:
         - pending
@@ -2726,155 +2725,18 @@ components:
         - JobStatusRunning
         - JobStatusFinished
         - JobStatusFailed
-    internal_ansible.addTaskRequest:
-      properties:
-        module:
-          type: string
-        name:
-          type: string
-        params:
-          additionalProperties:
-            type: object
-          type: object
-      type: object
-    internal_ansible.addTaskResponse:
+    internal_rest.ErrorResponse:
       example:
-        task:
-          module: module
-          name: name
-          created_at: created_at
-          id: id
-          position: 0
-          params:
-            key: '{}'
-          playbook_id: playbook_id
+        code: 1
+        details: details
+        error: error
       properties:
-        task:
-          $ref: '#/components/schemas/virsh-sandbox_internal_store.PlaybookTask'
-      type: object
-    internal_ansible.createPlaybookRequest:
-      properties:
-        become:
-          type: boolean
-        hosts:
-          type: string
-        name:
-          type: string
-      type: object
-    internal_ansible.createPlaybookResponse:
-      example:
-        playbook:
-          file_path: file_path
-          updated_at: updated_at
-          hosts: hosts
-          name: name
-          created_at: created_at
-          id: id
-          become: true
-      properties:
-        playbook:
-          $ref: '#/components/schemas/virsh-sandbox_internal_store.Playbook'
-      type: object
-    internal_ansible.exportPlaybookResponse:
-      example:
-        yaml: yaml
-      properties:
-        yaml:
-          type: string
-      type: object
-    internal_ansible.getPlaybookResponse:
-      example:
-        tasks:
-          - module: module
-            name: name
-            created_at: created_at
-            id: id
-            position: 0
-            params:
-              key: '{}'
-            playbook_id: playbook_id
-          - module: module
-            name: name
-            created_at: created_at
-            id: id
-            position: 0
-            params:
-              key: '{}'
-            playbook_id: playbook_id
-        playbook:
-          file_path: file_path
-          updated_at: updated_at
-          hosts: hosts
-          name: name
-          created_at: created_at
-          id: id
-          become: true
-      properties:
-        playbook:
-          $ref: '#/components/schemas/virsh-sandbox_internal_store.Playbook'
-        tasks:
-          items:
-            $ref: '#/components/schemas/virsh-sandbox_internal_store.PlaybookTask'
-          type: array
-      type: object
-    internal_ansible.listPlaybooksResponse:
-      example:
-        total: 0
-        playbooks:
-          - file_path: file_path
-            updated_at: updated_at
-            hosts: hosts
-            name: name
-            created_at: created_at
-            id: id
-            become: true
-          - file_path: file_path
-            updated_at: updated_at
-            hosts: hosts
-            name: name
-            created_at: created_at
-            id: id
-            become: true
-      properties:
-        playbooks:
-          items:
-            $ref: '#/components/schemas/virsh-sandbox_internal_store.Playbook'
-          type: array
-        total:
+        code:
           type: integer
-      type: object
-    internal_ansible.reorderTasksRequest:
-      properties:
-        task_ids:
-          items:
-            type: string
-          type: array
-      type: object
-    internal_ansible.updateTaskRequest:
-      properties:
-        module:
+        details:
           type: string
-        name:
+        error:
           type: string
-        params:
-          additionalProperties:
-            type: object
-          type: object
-      type: object
-    internal_ansible.updateTaskResponse:
-      example:
-        task:
-          module: module
-          name: name
-          created_at: created_at
-          id: id
-          position: 0
-          params:
-            key: '{}'
-          playbook_id: playbook_id
-      properties:
-        task:
-          $ref: '#/components/schemas/virsh-sandbox_internal_store.PlaybookTask'
       type: object
     internal_rest.accessErrorResponse:
       example:
@@ -2948,6 +2810,174 @@ components:
         vm_id:
           type: string
       type: object
+    internal_rest.createSandboxRequest:
+      properties:
+        agent_id:
+          description: required
+          type: string
+        auto_start:
+          description: 'optional; if true, start the VM immediately after creation'
+          type: boolean
+        cpu:
+          description: optional; default from service config if <=0
+          type: integer
+        memory_mb:
+          description: optional; default from service config if <=0
+          type: integer
+        source_vm_name:
+          description: required; name of existing VM in libvirt to clone from
+          type: string
+        ttl_seconds:
+          description: optional; TTL for auto garbage collection
+          type: integer
+        vm_name:
+          description: optional; generated if empty
+          type: string
+        wait_for_ip:
+          description: 'optional; if true and auto_start, wait for IP discovery'
+          type: boolean
+      type: object
+    internal_rest.createSandboxResponse:
+      example:
+        sandbox:
+          base_image: base_image
+          agent_id: agent_id
+          updated_at: updated_at
+          job_id: job_id
+          ttl_seconds: 0
+          created_at: created_at
+          sandbox_name: sandbox_name
+          id: id
+          ip_address: ip_address
+          state: CREATED
+          deleted_at: deleted_at
+          network: network
+        ip_address: ip_address
+      properties:
+        ip_address:
+          description: populated when auto_start and wait_for_ip are true
+          type: string
+        sandbox:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Sandbox'
+      type: object
+    internal_rest.destroySandboxResponse:
+      example:
+        base_image: base_image
+        ttl_seconds: 0
+        sandbox_name: sandbox_name
+        state: CREATED
+      properties:
+        base_image:
+          type: string
+        sandbox_name:
+          type: string
+        state:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.SandboxState'
+        ttl_seconds:
+          type: integer
+      type: object
+    internal_rest.diffRequest:
+      properties:
+        from_snapshot:
+          description: required
+          type: string
+        to_snapshot:
+          description: required
+          type: string
+      type: object
+    internal_rest.diffResponse:
+      example:
+        diff:
+          to_snapshot: to_snapshot
+          from_snapshot: from_snapshot
+          sandbox_id: sandbox_id
+          created_at: created_at
+          id: id
+          diff_json: '{}'
+      properties:
+        diff:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Diff'
+      type: object
+    internal_rest.discoverIPResponse:
+      example:
+        ip_address: ip_address
+      properties:
+        ip_address:
+          type: string
+      type: object
+    internal_rest.generateResponse:
+      example:
+        note: note
+        message: message
+      properties:
+        message:
+          type: string
+        note:
+          type: string
+      type: object
+    internal_rest.getSandboxResponse:
+      example:
+        sandbox:
+          base_image: base_image
+          agent_id: agent_id
+          updated_at: updated_at
+          job_id: job_id
+          ttl_seconds: 0
+          created_at: created_at
+          sandbox_name: sandbox_name
+          id: id
+          ip_address: ip_address
+          state: CREATED
+          deleted_at: deleted_at
+          network: network
+        commands:
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
+      properties:
+        commands:
+          items:
+            $ref: '#/components/schemas/virsh-sandbox_internal_store.Command'
+          type: array
+        sandbox:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Sandbox'
+      type: object
+    internal_rest.injectSSHKeyRequest:
+      properties:
+        public_key:
+          description: required
+          type: string
+        username:
+          description: 'required (explicit); typical: "ubuntu" or "centos"'
+          type: string
+      type: object
     internal_rest.listCertificatesResponse:
       example:
         total: 0
@@ -2990,6 +3020,82 @@ components:
         total:
           type: integer
       type: object
+    internal_rest.listSandboxCommandsResponse:
+      example:
+        total: 0
+        commands:
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
+      properties:
+        commands:
+          items:
+            $ref: '#/components/schemas/virsh-sandbox_internal_store.Command'
+          type: array
+        total:
+          type: integer
+      type: object
+    internal_rest.listSandboxesResponse:
+      example:
+        total: 6
+        sandboxes:
+          - base_image: base_image
+            agent_id: agent_id
+            updated_at: updated_at
+            job_id: job_id
+            ttl_seconds: 0
+            created_at: created_at
+            sandbox_name: sandbox_name
+            id: id
+            ip_address: ip_address
+            state: state
+            network: network
+          - base_image: base_image
+            agent_id: agent_id
+            updated_at: updated_at
+            job_id: job_id
+            ttl_seconds: 0
+            created_at: created_at
+            sandbox_name: sandbox_name
+            id: id
+            ip_address: ip_address
+            state: state
+            network: network
+      properties:
+        sandboxes:
+          items:
+            $ref: '#/components/schemas/internal_rest.sandboxInfo'
+          type: array
+        total:
+          type: integer
+      type: object
     internal_rest.listSessionsResponse:
       example:
         sessions:
@@ -3023,6 +3129,49 @@ components:
           type: array
         total:
           type: integer
+      type: object
+    internal_rest.listVMsResponse:
+      example:
+        vms:
+          - name: name
+            state: state
+            persistent: true
+            uuid: uuid
+            disk_path: disk_path
+          - name: name
+            state: state
+            persistent: true
+            uuid: uuid
+            disk_path: disk_path
+      properties:
+        vms:
+          items:
+            $ref: '#/components/schemas/internal_rest.vmInfo'
+          type: array
+      type: object
+    internal_rest.publishRequest:
+      properties:
+        job_id:
+          description: required
+          type: string
+        message:
+          description: optional commit/PR message
+          type: string
+        reviewers:
+          description: optional
+          items:
+            type: string
+          type: array
+      type: object
+    internal_rest.publishResponse:
+      example:
+        note: note
+        message: message
+      properties:
+        message:
+          type: string
+        note:
+          type: string
       type: object
     internal_rest.requestAccessRequest:
       properties:
@@ -3094,7 +3243,61 @@ components:
         message:
           type: string
       type: object
+    internal_rest.runCommandRequest:
+      properties:
+        command:
+          description: required
+          type: string
+        env:
+          additionalProperties:
+            type: string
+          description: optional
+          type: object
+        private_key_path:
+          description: 'optional; if empty, uses managed credentials (requires SSH CA)'
+          type: string
+        timeout_sec:
+          description: optional; default from service config
+          type: integer
+        user:
+          description: optional; defaults to "sandbox" when using managed credentials
+          type: string
+      type: object
+    internal_rest.runCommandResponse:
+      example:
+        command:
+          metadata:
+            redacted:
+              key: redacted
+            work_dir: work_dir
+            user: user
+            timeout: 6
+          stdout: stdout
+          env_json: env_json
+          exit_code: 0
+          sandbox_id: sandbox_id
+          started_at: started_at
+          id: id
+          stderr: stderr
+          command: command
+          ended_at: ended_at
+      properties:
+        command:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Command'
+      type: object
     internal_rest.sandboxInfo:
+      example:
+        base_image: base_image
+        agent_id: agent_id
+        updated_at: updated_at
+        job_id: job_id
+        ttl_seconds: 0
+        created_at: created_at
+        sandbox_name: sandbox_name
+        id: id
+        ip_address: ip_address
+        state: state
+        network: network
       properties:
         agent_id:
           type: string
@@ -3187,7 +3390,49 @@ components:
         session_id:
           type: string
       type: object
+    internal_rest.snapshotRequest:
+      properties:
+        external:
+          description: optional; default false (internal snapshot)
+          type: boolean
+        name:
+          description: required
+          type: string
+      type: object
+    internal_rest.snapshotResponse:
+      example:
+        snapshot:
+          ref: ref
+          kind: INTERNAL
+          name: name
+          sandbox_id: sandbox_id
+          created_at: created_at
+          id: id
+          meta_json: meta_json
+      properties:
+        snapshot:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Snapshot'
+      type: object
+    internal_rest.startSandboxRequest:
+      properties:
+        wait_for_ip:
+          description: optional; default false
+          type: boolean
+      type: object
+    internal_rest.startSandboxResponse:
+      example:
+        ip_address: ip_address
+      properties:
+        ip_address:
+          type: string
+      type: object
     internal_rest.vmInfo:
+      example:
+        name: name
+        state: state
+        persistent: true
+        uuid: uuid
+        disk_path: disk_path
       properties:
         disk_path:
           type: string
@@ -3221,6 +3466,44 @@ components:
         - Second
         - Minute
         - Hour
+    virsh-sandbox_internal_ansible.Job:
+      example:
+        check: true
+        id: id
+        vm_name: vm_name
+        playbook: playbook
+        status: pending
+      properties:
+        check:
+          type: boolean
+        id:
+          type: string
+        playbook:
+          type: string
+        status:
+          $ref: '#/components/schemas/virsh-sandbox_internal_ansible.JobStatus'
+        vm_name:
+          type: string
+      type: object
+    virsh-sandbox_internal_ansible.JobRequest:
+      properties:
+        check:
+          type: boolean
+        playbook:
+          type: string
+        vm_name:
+          type: string
+      type: object
+    virsh-sandbox_internal_ansible.JobResponse:
+      example:
+        job_id: job_id
+        ws_url: ws_url
+      properties:
+        job_id:
+          type: string
+        ws_url:
+          type: string
+      type: object
     virsh-sandbox_internal_ansible.JobStatus:
       enum:
         - pending
@@ -3233,22 +3516,159 @@ components:
         - JobStatusRunning
         - JobStatusFinished
         - JobStatusFailed
+    virsh-sandbox_internal_ansible.addTaskRequest:
+      properties:
+        module:
+          type: string
+        name:
+          type: string
+        params:
+          additionalProperties:
+            type: object
+          type: object
+      type: object
+    virsh-sandbox_internal_ansible.addTaskResponse:
+      example:
+        task:
+          module: module
+          name: name
+          created_at: created_at
+          id: id
+          position: 0
+          params:
+            key: '{}'
+          playbook_id: playbook_id
+      properties:
+        task:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.PlaybookTask'
+      type: object
+    virsh-sandbox_internal_ansible.createPlaybookRequest:
+      properties:
+        become:
+          type: boolean
+        hosts:
+          type: string
+        name:
+          type: string
+      type: object
+    virsh-sandbox_internal_ansible.createPlaybookResponse:
+      example:
+        playbook:
+          file_path: file_path
+          updated_at: updated_at
+          hosts: hosts
+          name: name
+          created_at: created_at
+          id: id
+          become: true
+      properties:
+        playbook:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Playbook'
+      type: object
+    virsh-sandbox_internal_ansible.exportPlaybookResponse:
+      example:
+        yaml: yaml
+      properties:
+        yaml:
+          type: string
+      type: object
+    virsh-sandbox_internal_ansible.getPlaybookResponse:
+      example:
+        tasks:
+          - module: module
+            name: name
+            created_at: created_at
+            id: id
+            position: 0
+            params:
+              key: '{}'
+            playbook_id: playbook_id
+          - module: module
+            name: name
+            created_at: created_at
+            id: id
+            position: 0
+            params:
+              key: '{}'
+            playbook_id: playbook_id
+        playbook:
+          file_path: file_path
+          updated_at: updated_at
+          hosts: hosts
+          name: name
+          created_at: created_at
+          id: id
+          become: true
+      properties:
+        playbook:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.Playbook'
+        tasks:
+          items:
+            $ref: '#/components/schemas/virsh-sandbox_internal_store.PlaybookTask'
+          type: array
+      type: object
+    virsh-sandbox_internal_ansible.listPlaybooksResponse:
+      example:
+        total: 0
+        playbooks:
+          - file_path: file_path
+            updated_at: updated_at
+            hosts: hosts
+            name: name
+            created_at: created_at
+            id: id
+            become: true
+          - file_path: file_path
+            updated_at: updated_at
+            hosts: hosts
+            name: name
+            created_at: created_at
+            id: id
+            become: true
+      properties:
+        playbooks:
+          items:
+            $ref: '#/components/schemas/virsh-sandbox_internal_store.Playbook'
+          type: array
+        total:
+          type: integer
+      type: object
+    virsh-sandbox_internal_ansible.reorderTasksRequest:
+      properties:
+        task_ids:
+          items:
+            type: string
+          type: array
+      type: object
+    virsh-sandbox_internal_ansible.updateTaskRequest:
+      properties:
+        module:
+          type: string
+        name:
+          type: string
+        params:
+          additionalProperties:
+            type: object
+          type: object
+      type: object
+    virsh-sandbox_internal_ansible.updateTaskResponse:
+      example:
+        task:
+          module: module
+          name: name
+          created_at: created_at
+          id: id
+          position: 0
+          params:
+            key: '{}'
+          playbook_id: playbook_id
+      properties:
+        task:
+          $ref: '#/components/schemas/virsh-sandbox_internal_store.PlaybookTask'
+      type: object
     virsh-sandbox_internal_error.ErrorResponse:
       example:
         code: 0
-        details: details
-        error: error
-      properties:
-        code:
-          type: integer
-        details:
-          type: string
-        error:
-          type: string
-      type: object
-    virsh-sandbox_internal_rest.ErrorResponse:
-      example:
-        code: 1
         details: details
         error: error
       properties:
@@ -3290,341 +3710,7 @@ components:
         vm_id:
           type: string
       type: object
-    virsh-sandbox_internal_rest.createSandboxRequest:
-      properties:
-        agent_id:
-          description: required
-          type: string
-        auto_start:
-          description: 'optional; if true, start the VM immediately after creation'
-          type: boolean
-        cpu:
-          description: optional; default from service config if <=0
-          type: integer
-        memory_mb:
-          description: optional; default from service config if <=0
-          type: integer
-        source_vm_name:
-          description: required; name of existing VM in libvirt to clone from
-          type: string
-        ttl_seconds:
-          description: optional; TTL for auto garbage collection
-          type: integer
-        vm_name:
-          description: optional; generated if empty
-          type: string
-        wait_for_ip:
-          description: 'optional; if true and auto_start, wait for IP discovery'
-          type: boolean
-      type: object
-    virsh-sandbox_internal_rest.createSandboxResponse:
-      example:
-        sandbox:
-          base_image: base_image
-          agent_id: agent_id
-          updated_at: updated_at
-          job_id: job_id
-          ttl_seconds: 0
-          created_at: created_at
-          sandbox_name: sandbox_name
-          id: id
-          ip_address: ip_address
-          state: CREATED
-          deleted_at: deleted_at
-          network: network
-        ip_address: ip_address
-      properties:
-        ip_address:
-          description: populated when auto_start and wait_for_ip are true
-          type: string
-        sandbox:
-          $ref: '#/components/schemas/virsh-sandbox_internal_store.Sandbox'
-      type: object
-    virsh-sandbox_internal_rest.destroySandboxResponse:
-      example:
-        base_image: base_image
-        ttl_seconds: 0
-        sandbox_name: sandbox_name
-        state: CREATED
-      properties:
-        base_image:
-          type: string
-        sandbox_name:
-          type: string
-        state:
-          $ref: '#/components/schemas/virsh-sandbox_internal_store.SandboxState'
-        ttl_seconds:
-          type: integer
-      type: object
-    virsh-sandbox_internal_rest.diffRequest:
-      properties:
-        from_snapshot:
-          description: required
-          type: string
-        to_snapshot:
-          description: required
-          type: string
-      type: object
-    virsh-sandbox_internal_rest.diffResponse:
-      example:
-        diff:
-          to_snapshot: to_snapshot
-          from_snapshot: from_snapshot
-          sandbox_id: sandbox_id
-          created_at: created_at
-          id: id
-          diff_json: '{}'
-      properties:
-        diff:
-          $ref: '#/components/schemas/virsh-sandbox_internal_store.Diff'
-      type: object
-    virsh-sandbox_internal_rest.generateResponse:
-      example:
-        note: note
-        message: message
-      properties:
-        message:
-          type: string
-        note:
-          type: string
-      type: object
-    virsh-sandbox_internal_rest.getSandboxResponse:
-      example:
-        sandbox:
-          base_image: base_image
-          agent_id: agent_id
-          updated_at: updated_at
-          job_id: job_id
-          ttl_seconds: 0
-          created_at: created_at
-          sandbox_name: sandbox_name
-          id: id
-          ip_address: ip_address
-          state: CREATED
-          deleted_at: deleted_at
-          network: network
-        commands:
-          - metadata:
-              redacted:
-                key: redacted
-              work_dir: work_dir
-              user: user
-              timeout: 6
-            stdout: stdout
-            env_json: env_json
-            exit_code: 0
-            sandbox_id: sandbox_id
-            started_at: started_at
-            id: id
-            stderr: stderr
-            command: command
-            ended_at: ended_at
-          - metadata:
-              redacted:
-                key: redacted
-              work_dir: work_dir
-              user: user
-              timeout: 6
-            stdout: stdout
-            env_json: env_json
-            exit_code: 0
-            sandbox_id: sandbox_id
-            started_at: started_at
-            id: id
-            stderr: stderr
-            command: command
-            ended_at: ended_at
-      properties:
-        commands:
-          items:
-            $ref: '#/components/schemas/virsh-sandbox_internal_store.Command'
-          type: array
-        sandbox:
-          $ref: '#/components/schemas/virsh-sandbox_internal_store.Sandbox'
-      type: object
-    virsh-sandbox_internal_rest.injectSSHKeyRequest:
-      properties:
-        public_key:
-          description: required
-          type: string
-        username:
-          description: 'required (explicit); typical: "ubuntu" or "centos"'
-          type: string
-      type: object
-    virsh-sandbox_internal_rest.listSandboxCommandsResponse:
-      example:
-        total: 0
-        commands:
-          - metadata:
-              redacted:
-                key: redacted
-              work_dir: work_dir
-              user: user
-              timeout: 6
-            stdout: stdout
-            env_json: env_json
-            exit_code: 0
-            sandbox_id: sandbox_id
-            started_at: started_at
-            id: id
-            stderr: stderr
-            command: command
-            ended_at: ended_at
-          - metadata:
-              redacted:
-                key: redacted
-              work_dir: work_dir
-              user: user
-              timeout: 6
-            stdout: stdout
-            env_json: env_json
-            exit_code: 0
-            sandbox_id: sandbox_id
-            started_at: started_at
-            id: id
-            stderr: stderr
-            command: command
-            ended_at: ended_at
-      properties:
-        commands:
-          items:
-            $ref: '#/components/schemas/virsh-sandbox_internal_store.Command'
-          type: array
-        total:
-          type: integer
-      type: object
-    virsh-sandbox_internal_rest.listSandboxesResponse:
-      example:
-        total: 6
-        sandboxes:
-          - base_image: base_image
-            agent_id: agent_id
-            updated_at: updated_at
-            job_id: job_id
-            ttl_seconds: 0
-            created_at: created_at
-            sandbox_name: sandbox_name
-            id: id
-            ip_address: ip_address
-            state: state
-            network: network
-          - base_image: base_image
-            agent_id: agent_id
-            updated_at: updated_at
-            job_id: job_id
-            ttl_seconds: 0
-            created_at: created_at
-            sandbox_name: sandbox_name
-            id: id
-            ip_address: ip_address
-            state: state
-            network: network
-      properties:
-        sandboxes:
-          items:
-            $ref: '#/components/schemas/virsh-sandbox_internal_rest.sandboxInfo'
-          type: array
-        total:
-          type: integer
-      type: object
-    virsh-sandbox_internal_rest.listVMsResponse:
-      example:
-        vms:
-          - name: name
-            state: state
-            persistent: true
-            uuid: uuid
-            disk_path: disk_path
-          - name: name
-            state: state
-            persistent: true
-            uuid: uuid
-            disk_path: disk_path
-      properties:
-        vms:
-          items:
-            $ref: '#/components/schemas/virsh-sandbox_internal_rest.vmInfo'
-          type: array
-      type: object
-    virsh-sandbox_internal_rest.publishRequest:
-      properties:
-        job_id:
-          description: required
-          type: string
-        message:
-          description: optional commit/PR message
-          type: string
-        reviewers:
-          description: optional
-          items:
-            type: string
-          type: array
-      type: object
-    virsh-sandbox_internal_rest.publishResponse:
-      example:
-        note: note
-        message: message
-      properties:
-        message:
-          type: string
-        note:
-          type: string
-      type: object
-    virsh-sandbox_internal_rest.runCommandRequest:
-      properties:
-        command:
-          description: required
-          type: string
-        env:
-          additionalProperties:
-            type: string
-          description: optional
-          type: object
-        private_key_path:
-          description: 'optional; if empty, uses managed credentials (requires SSH CA)'
-          type: string
-        timeout_sec:
-          description: optional; default from service config
-          type: integer
-        user:
-          description: optional; defaults to "sandbox" when using managed credentials
-          type: string
-      type: object
-    virsh-sandbox_internal_rest.runCommandResponse:
-      example:
-        command:
-          metadata:
-            redacted:
-              key: redacted
-            work_dir: work_dir
-            user: user
-            timeout: 6
-          stdout: stdout
-          env_json: env_json
-          exit_code: 0
-          sandbox_id: sandbox_id
-          started_at: started_at
-          id: id
-          stderr: stderr
-          command: command
-          ended_at: ended_at
-      properties:
-        command:
-          $ref: '#/components/schemas/virsh-sandbox_internal_store.Command'
-      type: object
     virsh-sandbox_internal_rest.sandboxInfo:
-      example:
-        base_image: base_image
-        agent_id: agent_id
-        updated_at: updated_at
-        job_id: job_id
-        ttl_seconds: 0
-        created_at: created_at
-        sandbox_name: sandbox_name
-        id: id
-        ip_address: ip_address
-        state: state
-        network: network
       properties:
         agent_id:
           type: string
@@ -3674,49 +3760,7 @@ components:
         vm_ip_address:
           type: string
       type: object
-    virsh-sandbox_internal_rest.snapshotRequest:
-      properties:
-        external:
-          description: optional; default false (internal snapshot)
-          type: boolean
-        name:
-          description: required
-          type: string
-      type: object
-    virsh-sandbox_internal_rest.snapshotResponse:
-      example:
-        snapshot:
-          ref: ref
-          kind: INTERNAL
-          name: name
-          sandbox_id: sandbox_id
-          created_at: created_at
-          id: id
-          meta_json: meta_json
-      properties:
-        snapshot:
-          $ref: '#/components/schemas/virsh-sandbox_internal_store.Snapshot'
-      type: object
-    virsh-sandbox_internal_rest.startSandboxRequest:
-      properties:
-        wait_for_ip:
-          description: optional; default false
-          type: boolean
-      type: object
-    virsh-sandbox_internal_rest.startSandboxResponse:
-      example:
-        ip_address: ip_address
-      properties:
-        ip_address:
-          type: string
-      type: object
     virsh-sandbox_internal_rest.vmInfo:
-      example:
-        name: name
-        state: state
-        persistent: true
-        uuid: uuid
-        disk_path: disk_path
       properties:
         disk_path:
           type: string

@@ -1,7 +1,7 @@
 [project]
 name = "virsh-sandbox-agent"
 version = "0.1.0"
-description = "AI Agent for working on sys-admin tasks"
+description = "AI Agent for working on infrastructure tasks"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -11,6 +11,6 @@ dependencies = [
     "python-dateutil>=2.8.2",
     "pydantic>=2",
     "typing-extensions>=4.7.1",
-    "virsh-sandbox>=0.0.16b0",
+    "virsh-sandbox>=0.0.18b0",
     "dotenv>=0.9.9",
 ]

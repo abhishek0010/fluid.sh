@@ -27,6 +27,7 @@ go.work.sum
 # env file
 .env
 .env.lima
+.ssh-ca
 
 # Editor/IDE
 # .idea/

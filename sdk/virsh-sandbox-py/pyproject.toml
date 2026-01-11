@@ -1,6 +1,6 @@
 [project]
 name = "virsh_sandbox"
-version = "0.0.16-beta"
+version = "0.0.18-beta"
 description = "virsh-sandbox API"
 authors = [
   {name = "OpenAPI Generator Community",email = "team@openapitools.org"},

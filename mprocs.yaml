@@ -30,6 +30,7 @@ procs:
 
   tmux-client:
     cwd: "."
+    autostart: false
     shell: "docker-compose up tmux-client --build"
 
   frontend:
