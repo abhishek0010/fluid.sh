@@ -29,7 +29,7 @@ class VirshSandboxInternalAnsibleAddTaskRequest(BaseModel):
 
     module: Optional[StrictStr] = None
     name: Optional[StrictStr] = None
-    params: Optional[Dict[str, Dict[str, Any]]] = None
+    params: Optional[Dict[str, Any]] = None
     __properties: ClassVar[List[str]] = ["module", "name", "params"]
 
     model_config = ConfigDict(

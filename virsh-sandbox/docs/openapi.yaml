@@ -703,7 +703,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.healthResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.healthResponse"
           description: OK
       summary: Health check
       tags:
@@ -755,13 +755,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.listSandboxesResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.listSandboxesResponse"
           description: OK
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: List sandboxes
       tags:
@@ -774,7 +774,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_rest.createSandboxRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_rest.createSandboxRequest"
         description: Sandbox creation parameters
         required: true
       responses:
@@ -782,19 +782,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.createSandboxResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.createSandboxResponse"
           description: Created
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Create a new sandbox
       tags:
@@ -816,25 +816,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.destroySandboxResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.destroySandboxResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Destroy sandbox
       tags:
@@ -860,25 +860,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.getSandboxResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.getSandboxResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Get sandbox details
       tags:
@@ -909,25 +909,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.listSandboxCommandsResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.listSandboxCommandsResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: List sandbox commands
       tags:
@@ -947,7 +947,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_rest.diffRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_rest.diffRequest"
         description: Diff parameters
         required: true
       responses:
@@ -955,19 +955,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.diffResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.diffResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Diff snapshots
       tags:
@@ -995,13 +995,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "501":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.generateResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.generateResponse"
           description: Not Implemented
       summary: Generate configuration
       tags:
@@ -1023,25 +1023,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.discoverIPResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.discoverIPResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Discover sandbox IP
       tags:
@@ -1061,7 +1061,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_rest.publishRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_rest.publishRequest"
         description: Publish parameters
         required: true
       responses:
@@ -1069,13 +1069,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "501":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.publishResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.publishResponse"
           description: Not Implemented
       summary: Publish changes
       tags:
@@ -1097,7 +1097,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_rest.runCommandRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_rest.runCommandRequest"
         description: Command execution parameters
         required: true
       responses:
@@ -1105,19 +1105,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.runCommandResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.runCommandResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Run command in sandbox
       tags:
@@ -1138,7 +1138,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_rest.snapshotRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_rest.snapshotRequest"
         description: Snapshot parameters
         required: true
       responses:
@@ -1146,19 +1146,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.snapshotResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.snapshotResponse"
           description: Created
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Create snapshot
       tags:
@@ -1179,7 +1179,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_rest.injectSSHKeyRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_rest.injectSSHKeyRequest"
         description: SSH key injection parameters
         required: true
       responses:
@@ -1190,13 +1190,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Inject SSH key into sandbox
       tags:
@@ -1217,7 +1217,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_rest.startSandboxRequest"
+              $ref: "#/components/schemas/virsh-sandbox_internal_rest.startSandboxRequest"
         description: Start parameters
         required: false
       responses:
@@ -1225,19 +1225,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.startSandboxResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.startSandboxResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Start sandbox
       tags:
@@ -1286,13 +1286,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.listVMsResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.listVMsResponse"
           description: OK
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: List all VMs
       tags:
@@ -1347,8 +1347,7 @@ components:
         name:
           type: string
         params:
-          additionalProperties:
-            type: object
+          properties: {}
           type: object
       type: object
     internal_ansible.addTaskResponse:
@@ -1407,8 +1406,7 @@ components:
         name:
           type: string
         params:
-          additionalProperties:
-            type: object
+          properties: {}
           type: object
       type: object
     internal_ansible.updateTaskResponse:
@@ -1417,10 +1415,6 @@ components:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.PlaybookTask"
       type: object
     internal_rest.ErrorResponse:
-      example:
-        code: 1
-        details: details
-        error: error
       properties:
         code:
           type: integer
@@ -1529,21 +1523,6 @@ components:
           type: boolean
       type: object
     internal_rest.createSandboxResponse:
-      example:
-        sandbox:
-          base_image: base_image
-          agent_id: agent_id
-          updated_at: updated_at
-          job_id: job_id
-          ttl_seconds: 0
-          created_at: created_at
-          sandbox_name: sandbox_name
-          id: id
-          ip_address: ip_address
-          state: CREATED
-          deleted_at: deleted_at
-          network: network
-        ip_address: ip_address
       properties:
         ip_address:
           description: populated when auto_start and wait_for_ip are true
@@ -1552,11 +1531,6 @@ components:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Sandbox"
       type: object
     internal_rest.destroySandboxResponse:
-      example:
-        base_image: base_image
-        ttl_seconds: 0
-        sandbox_name: sandbox_name
-        state: CREATED
       properties:
         base_image:
           type: string
@@ -1577,29 +1551,16 @@ components:
           type: string
       type: object
     internal_rest.diffResponse:
-      example:
-        diff:
-          to_snapshot: to_snapshot
-          from_snapshot: from_snapshot
-          sandbox_id: sandbox_id
-          created_at: created_at
-          id: id
-          diff_json: "{}"
       properties:
         diff:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Diff"
       type: object
     internal_rest.discoverIPResponse:
-      example:
-        ip_address: ip_address
       properties:
         ip_address:
           type: string
       type: object
     internal_rest.generateResponse:
-      example:
-        note: note
-        message: message
       properties:
         message:
           type: string
@@ -1607,51 +1568,6 @@ components:
           type: string
       type: object
     internal_rest.getSandboxResponse:
-      example:
-        sandbox:
-          base_image: base_image
-          agent_id: agent_id
-          updated_at: updated_at
-          job_id: job_id
-          ttl_seconds: 0
-          created_at: created_at
-          sandbox_name: sandbox_name
-          id: id
-          ip_address: ip_address
-          state: CREATED
-          deleted_at: deleted_at
-          network: network
-        commands:
-        - metadata:
-            redacted:
-              key: redacted
-            work_dir: work_dir
-            user: user
-            timeout: 6
-          stdout: stdout
-          env_json: env_json
-          exit_code: 0
-          sandbox_id: sandbox_id
-          started_at: started_at
-          id: id
-          stderr: stderr
-          command: command
-          ended_at: ended_at
-        - metadata:
-            redacted:
-              key: redacted
-            work_dir: work_dir
-            user: user
-            timeout: 6
-          stdout: stdout
-          env_json: env_json
-          exit_code: 0
-          sandbox_id: sandbox_id
-          started_at: started_at
-          id: id
-          stderr: stderr
-          command: command
-          ended_at: ended_at
       properties:
         commands:
           items:
@@ -1661,8 +1577,6 @@ components:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Sandbox"
       type: object
     internal_rest.healthResponse:
-      example:
-        status: status
       properties:
         status:
           type: string
@@ -1719,39 +1633,6 @@ components:
           type: integer
       type: object
     internal_rest.listSandboxCommandsResponse:
-      example:
-        total: 0
-        commands:
-        - metadata:
-            redacted:
-              key: redacted
-            work_dir: work_dir
-            user: user
-            timeout: 6
-          stdout: stdout
-          env_json: env_json
-          exit_code: 0
-          sandbox_id: sandbox_id
-          started_at: started_at
-          id: id
-          stderr: stderr
-          command: command
-          ended_at: ended_at
-        - metadata:
-            redacted:
-              key: redacted
-            work_dir: work_dir
-            user: user
-            timeout: 6
-          stdout: stdout
-          env_json: env_json
-          exit_code: 0
-          sandbox_id: sandbox_id
-          started_at: started_at
-          id: id
-          stderr: stderr
-          command: command
-          ended_at: ended_at
       properties:
         commands:
           items:
@@ -1761,31 +1642,6 @@ components:
           type: integer
       type: object
     internal_rest.listSandboxesResponse:
-      example:
-        total: 6
-        sandboxes:
-        - base_image: base_image
-          agent_id: agent_id
-          updated_at: updated_at
-          job_id: job_id
-          ttl_seconds: 0
-          created_at: created_at
-          sandbox_name: sandbox_name
-          id: id
-          ip_address: ip_address
-          state: state
-          network: network
-        - base_image: base_image
-          agent_id: agent_id
-          updated_at: updated_at
-          job_id: job_id
-          ttl_seconds: 0
-          created_at: created_at
-          sandbox_name: sandbox_name
-          id: id
-          ip_address: ip_address
-          state: state
-          network: network
       properties:
         sandboxes:
           items:
@@ -1829,18 +1685,6 @@ components:
           type: integer
       type: object
     internal_rest.listVMsResponse:
-      example:
-        vms:
-        - name: name
-          state: state
-          persistent: true
-          uuid: uuid
-          disk_path: disk_path
-        - name: name
-          state: state
-          persistent: true
-          uuid: uuid
-          disk_path: disk_path
       properties:
         vms:
           items:
@@ -1862,9 +1706,6 @@ components:
           type: array
       type: object
     internal_rest.publishResponse:
-      example:
-        note: note
-        message: message
       properties:
         message:
           type: string
@@ -1963,40 +1804,11 @@ components:
           type: string
       type: object
     internal_rest.runCommandResponse:
-      example:
-        command:
-          metadata:
-            redacted:
-              key: redacted
-            work_dir: work_dir
-            user: user
-            timeout: 6
-          stdout: stdout
-          env_json: env_json
-          exit_code: 0
-          sandbox_id: sandbox_id
-          started_at: started_at
-          id: id
-          stderr: stderr
-          command: command
-          ended_at: ended_at
       properties:
         command:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Command"
       type: object
     internal_rest.sandboxInfo:
-      example:
-        base_image: base_image
-        agent_id: agent_id
-        updated_at: updated_at
-        job_id: job_id
-        ttl_seconds: 0
-        created_at: created_at
-        sandbox_name: sandbox_name
-        id: id
-        ip_address: ip_address
-        state: state
-        network: network
       properties:
         agent_id:
           type: string
@@ -2099,15 +1911,6 @@ components:
           type: string
       type: object
     internal_rest.snapshotResponse:
-      example:
-        snapshot:
-          ref: ref
-          kind: INTERNAL
-          name: name
-          sandbox_id: sandbox_id
-          created_at: created_at
-          id: id
-          meta_json: meta_json
       properties:
         snapshot:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Snapshot"
@@ -2119,19 +1922,11 @@ components:
           type: boolean
       type: object
     internal_rest.startSandboxResponse:
-      example:
-        ip_address: ip_address
       properties:
         ip_address:
           type: string
       type: object
     internal_rest.vmInfo:
-      example:
-        name: name
-        state: state
-        persistent: true
-        uuid: uuid
-        disk_path: disk_path
       properties:
         disk_path:
           type: string
@@ -2222,8 +2017,7 @@ components:
         name:
           type: string
         params:
-          additionalProperties:
-            type: object
+          properties: {}
           type: object
       type: object
     virsh-sandbox_internal_ansible.addTaskResponse:
@@ -2234,8 +2028,7 @@ components:
           created_at: created_at
           id: id
           position: 0
-          params:
-            key: "{}"
+          params: "{}"
           playbook_id: playbook_id
       properties:
         task:
@@ -2279,16 +2072,14 @@ components:
           created_at: created_at
           id: id
           position: 0
-          params:
-            key: "{}"
+          params: "{}"
           playbook_id: playbook_id
         - module: module
           name: name
           created_at: created_at
           id: id
           position: 0
-          params:
-            key: "{}"
+          params: "{}"
           playbook_id: playbook_id
         playbook:
           file_path: file_path
@@ -2346,8 +2137,7 @@ components:
         name:
           type: string
         params:
-          additionalProperties:
-            type: object
+          properties: {}
           type: object
       type: object
     virsh-sandbox_internal_ansible.updateTaskResponse:
@@ -2358,8 +2148,7 @@ components:
           created_at: created_at
           id: id
           position: 0
-          params:
-            key: "{}"
+          params: "{}"
           playbook_id: playbook_id
       properties:
         task:
@@ -2379,6 +2168,10 @@ components:
           type: string
       type: object
     virsh-sandbox_internal_rest.ErrorResponse:
+      example:
+        code: 1
+        details: details
+        error: error
       properties:
         code:
           type: integer
@@ -2464,6 +2257,21 @@ components:
           type: boolean
       type: object
     virsh-sandbox_internal_rest.createSandboxResponse:
+      example:
+        sandbox:
+          base_image: base_image
+          agent_id: agent_id
+          updated_at: updated_at
+          job_id: job_id
+          ttl_seconds: 0
+          created_at: created_at
+          sandbox_name: sandbox_name
+          id: id
+          ip_address: ip_address
+          state: CREATED
+          deleted_at: deleted_at
+          network: network
+        ip_address: ip_address
       properties:
         ip_address:
           description: populated when auto_start and wait_for_ip are true
@@ -2472,6 +2280,11 @@ components:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Sandbox"
       type: object
     virsh-sandbox_internal_rest.destroySandboxResponse:
+      example:
+        base_image: base_image
+        ttl_seconds: 0
+        sandbox_name: sandbox_name
+        state: CREATED
       properties:
         base_image:
           type: string
@@ -2492,16 +2305,29 @@ components:
           type: string
       type: object
     virsh-sandbox_internal_rest.diffResponse:
+      example:
+        diff:
+          to_snapshot: to_snapshot
+          from_snapshot: from_snapshot
+          sandbox_id: sandbox_id
+          created_at: created_at
+          id: id
+          diff_json: "{}"
       properties:
         diff:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Diff"
       type: object
     virsh-sandbox_internal_rest.discoverIPResponse:
+      example:
+        ip_address: ip_address
       properties:
         ip_address:
           type: string
       type: object
     virsh-sandbox_internal_rest.generateResponse:
+      example:
+        note: note
+        message: message
       properties:
         message:
           type: string
@@ -2509,6 +2335,51 @@ components:
           type: string
       type: object
     virsh-sandbox_internal_rest.getSandboxResponse:
+      example:
+        sandbox:
+          base_image: base_image
+          agent_id: agent_id
+          updated_at: updated_at
+          job_id: job_id
+          ttl_seconds: 0
+          created_at: created_at
+          sandbox_name: sandbox_name
+          id: id
+          ip_address: ip_address
+          state: CREATED
+          deleted_at: deleted_at
+          network: network
+        commands:
+        - metadata:
+            redacted:
+              key: redacted
+            work_dir: work_dir
+            user: user
+            timeout: 6
+          stdout: stdout
+          env_json: env_json
+          exit_code: 0
+          sandbox_id: sandbox_id
+          started_at: started_at
+          id: id
+          stderr: stderr
+          command: command
+          ended_at: ended_at
+        - metadata:
+            redacted:
+              key: redacted
+            work_dir: work_dir
+            user: user
+            timeout: 6
+          stdout: stdout
+          env_json: env_json
+          exit_code: 0
+          sandbox_id: sandbox_id
+          started_at: started_at
+          id: id
+          stderr: stderr
+          command: command
+          ended_at: ended_at
       properties:
         commands:
           items:
@@ -2518,6 +2389,8 @@ components:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Sandbox"
       type: object
     virsh-sandbox_internal_rest.healthResponse:
+      example:
+        status: status
       properties:
         status:
           type: string
@@ -2541,6 +2414,39 @@ components:
           type: integer
       type: object
     virsh-sandbox_internal_rest.listSandboxCommandsResponse:
+      example:
+        total: 0
+        commands:
+        - metadata:
+            redacted:
+              key: redacted
+            work_dir: work_dir
+            user: user
+            timeout: 6
+          stdout: stdout
+          env_json: env_json
+          exit_code: 0
+          sandbox_id: sandbox_id
+          started_at: started_at
+          id: id
+          stderr: stderr
+          command: command
+          ended_at: ended_at
+        - metadata:
+            redacted:
+              key: redacted
+            work_dir: work_dir
+            user: user
+            timeout: 6
+          stdout: stdout
+          env_json: env_json
+          exit_code: 0
+          sandbox_id: sandbox_id
+          started_at: started_at
+          id: id
+          stderr: stderr
+          command: command
+          ended_at: ended_at
       properties:
         commands:
           items:
@@ -2550,6 +2456,31 @@ components:
           type: integer
       type: object
     virsh-sandbox_internal_rest.listSandboxesResponse:
+      example:
+        total: 6
+        sandboxes:
+        - base_image: base_image
+          agent_id: agent_id
+          updated_at: updated_at
+          job_id: job_id
+          ttl_seconds: 0
+          created_at: created_at
+          sandbox_name: sandbox_name
+          id: id
+          ip_address: ip_address
+          state: state
+          network: network
+        - base_image: base_image
+          agent_id: agent_id
+          updated_at: updated_at
+          job_id: job_id
+          ttl_seconds: 0
+          created_at: created_at
+          sandbox_name: sandbox_name
+          id: id
+          ip_address: ip_address
+          state: state
+          network: network
       properties:
         sandboxes:
           items:
@@ -2568,6 +2499,18 @@ components:
           type: integer
       type: object
     virsh-sandbox_internal_rest.listVMsResponse:
+      example:
+        vms:
+        - name: name
+          state: state
+          persistent: true
+          uuid: uuid
+          disk_path: disk_path
+        - name: name
+          state: state
+          persistent: true
+          uuid: uuid
+          disk_path: disk_path
       properties:
         vms:
           items:
@@ -2589,6 +2532,9 @@ components:
           type: array
       type: object
     virsh-sandbox_internal_rest.publishResponse:
+      example:
+        note: note
+        message: message
       properties:
         message:
           type: string
@@ -2674,11 +2620,40 @@ components:
           type: string
       type: object
     virsh-sandbox_internal_rest.runCommandResponse:
+      example:
+        command:
+          metadata:
+            redacted:
+              key: redacted
+            work_dir: work_dir
+            user: user
+            timeout: 6
+          stdout: stdout
+          env_json: env_json
+          exit_code: 0
+          sandbox_id: sandbox_id
+          started_at: started_at
+          id: id
+          stderr: stderr
+          command: command
+          ended_at: ended_at
       properties:
         command:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Command"
       type: object
     virsh-sandbox_internal_rest.sandboxInfo:
+      example:
+        base_image: base_image
+        agent_id: agent_id
+        updated_at: updated_at
+        job_id: job_id
+        ttl_seconds: 0
+        created_at: created_at
+        sandbox_name: sandbox_name
+        id: id
+        ip_address: ip_address
+        state: state
+        network: network
       properties:
         agent_id:
           type: string
@@ -2764,6 +2739,15 @@ components:
           type: string
       type: object
     virsh-sandbox_internal_rest.snapshotResponse:
+      example:
+        snapshot:
+          ref: ref
+          kind: INTERNAL
+          name: name
+          sandbox_id: sandbox_id
+          created_at: created_at
+          id: id
+          meta_json: meta_json
       properties:
         snapshot:
           $ref: "#/components/schemas/virsh-sandbox_internal_store.Snapshot"
@@ -2775,11 +2759,19 @@ components:
           type: boolean
       type: object
     virsh-sandbox_internal_rest.startSandboxResponse:
+      example:
+        ip_address: ip_address
       properties:
         ip_address:
           type: string
       type: object
     virsh-sandbox_internal_rest.vmInfo:
+      example:
+        name: name
+        state: state
+        persistent: true
+        uuid: uuid
+        disk_path: disk_path
       properties:
         disk_path:
           type: string
@@ -2960,8 +2952,7 @@ components:
         created_at: created_at
         id: id
         position: 0
-        params:
-          key: "{}"
+        params: "{}"
         playbook_id: playbook_id
       properties:
         created_at:
@@ -2975,9 +2966,8 @@ components:
           description: task name/description
           type: string
         params:
-          additionalProperties:
-            type: object
           description: module-specific parameters
+          properties: {}
           type: object
         playbook_id:
           type: string

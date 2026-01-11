@@ -62,10 +62,10 @@ func main() {
 	sshProxyJump := getenv("SSH_PROXY_JUMP", "")
 
 	// Ansible configuration
-	ansibleInventoryPath := getenv("ANSIBLE_INVENTORY_PATH", "/ansible/inventory")
+	ansibleInventoryPath := getenv("ANSIBLE_INVENTORY_PATH", "/Users/collinpfeifer/GitHub/fluid.sh/.ansible/inventory")
 	ansibleImage := getenv("ANSIBLE_IMAGE", "ansible-sandbox")
 	ansiblePlaybooks := strings.Split(getenv("ANSIBLE_ALLOWED_PLAYBOOKS", "ping.yml"), ",")
-	ansiblePlaybooksDir := getenv("ANSIBLE_PLAYBOOKS_DIR", "/var/lib/ansible/playbooks")
+	ansiblePlaybooksDir := getenv("ANSIBLE_PLAYBOOKS_DIR", "/Users/collinpfeifer/GitHub/fluid.sh/.ansible/playbooks")
 
 	logger.Info("starting virsh-sandbox API",
 		"addr", apiAddr,

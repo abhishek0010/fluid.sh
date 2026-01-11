@@ -33,7 +33,7 @@ class VirshSandboxInternalStorePlaybookTask(BaseModel):
         default=None, description="ansible module (apt, shell, copy, etc.)"
     )
     name: Optional[StrictStr] = Field(default=None, description="task name/description")
-    params: Optional[Dict[str, Dict[str, Any]]] = Field(
+    params: Optional[Dict[str, Any]] = Field(
         default=None, description="module-specific parameters"
     )
     playbook_id: Optional[StrictStr] = None

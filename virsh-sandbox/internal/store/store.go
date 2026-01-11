@@ -227,10 +227,10 @@ type Playbook struct {
 type PlaybookTask struct {
 	ID         string         `json:"id" db:"id"`
 	PlaybookID string         `json:"playbook_id" db:"playbook_id"`
-	Position   int            `json:"position" db:"position"` // ordering within playbook
-	Name       string         `json:"name" db:"name"`         // task name/description
-	Module     string         `json:"module" db:"module"`     // ansible module (apt, shell, copy, etc.)
-	Params     map[string]any `json:"params" db:"params"`     // module-specific parameters
+	Position   int            `json:"position" db:"position"`                  // ordering within playbook
+	Name       string         `json:"name" db:"name"`                          // task name/description
+	Module     string         `json:"module" db:"module"`                      // ansible module (apt, shell, copy, etc.)
+	Params     map[string]any `json:"params" db:"params" swaggertype:"object"` // module-specific parameters
 	CreatedAt  time.Time      `json:"created_at" db:"created_at"`
 }
 

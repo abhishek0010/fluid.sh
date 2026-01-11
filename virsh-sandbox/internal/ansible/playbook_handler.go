@@ -46,7 +46,7 @@ type listPlaybooksResponse struct {
 type addTaskRequest struct {
 	Name   string         `json:"name"`
 	Module string         `json:"module"`
-	Params map[string]any `json:"params"`
+	Params map[string]any `json:"params" swaggertype:"object" `
 }
 
 type addTaskResponse struct {
@@ -56,7 +56,7 @@ type addTaskResponse struct {
 type updateTaskRequest struct {
 	Name   *string        `json:"name,omitempty"`
 	Module *string        `json:"module,omitempty"`
-	Params map[string]any `json:"params,omitempty"`
+	Params map[string]any `json:"params,omitempty" swaggertype:"object"`
 }
 
 type updateTaskResponse struct {

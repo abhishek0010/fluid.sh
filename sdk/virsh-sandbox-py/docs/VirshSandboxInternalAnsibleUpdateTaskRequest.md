@@ -7,7 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **module** | **str** |  | [optional] 
 **name** | **str** |  | [optional] 
-**params** | **Dict[str, object]** |  | [optional] 
+**params** | **object** |  | [optional] 
 
 ## Example
 

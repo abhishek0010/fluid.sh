@@ -9,7 +9,7 @@ Name | Type | Description | Notes
 **id** | **str** |  | [optional] 
 **module** | **str** | ansible module (apt, shell, copy, etc.) | [optional] 
 **name** | **str** | task name/description | [optional] 
-**params** | **Dict[str, object]** | module-specific parameters | [optional] 
+**params** | **object** | module-specific parameters | [optional] 
 **playbook_id** | **str** |  | [optional] 
 **position** | **int** | ordering within playbook | [optional] 
 
