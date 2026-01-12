@@ -5,13 +5,13 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="virsh_sandbox",
-    version="0.0.15-beta",
+    version="0.0.21-beta",
     author="Collin Pfeifer",
     author_email="cpfeifer@madcactus.org",
     description="API for managing virtual machine sandboxes using libvirt",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/aspectrr/virsh-sandbox",
+    url="https://github.com/aspectrr/fluid.sh",
     packages=find_packages(exclude=["tests", "tests.*"]),
     classifiers=[
         "Development Status :: 4 - Beta",

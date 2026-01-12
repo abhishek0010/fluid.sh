@@ -9,22 +9,44 @@
 
 set -euo pipefail
 
-VM_NAME="${1:-test-vm}"
-VM_MEMORY=1024
-VM_VCPUS=1
-VM_DISK_SIZE="5G"
-BASE_IMAGE_DIR="/var/lib/libvirt/images/base"
-CLOUD_IMAGE_URL="https://cloud-images.ubuntu.com/minimal/releases/jammy/release/ubuntu-22.04-minimal-cloudimg-amd64.img"
-
 # Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
+RED='\033[0;31m'
 NC='\033[0m'
 
+VM_NAME="${1:-test-vm}"
+VM_MEMORY=2048
+VM_VCPUS=2
+VM_DISK_SIZE="10G"
+BASE_IMAGE_DIR="/var/lib/libvirt/images/base"
+
+# Detect architecture and select appropriate cloud image and virt-install options
+ARCH=$(uname -m)
+case "${ARCH}" in
+    aarch64|arm64)
+        CLOUD_IMAGE_ARCH="arm64"
+        CLOUD_IMAGE_URL="https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-arm64.img"
+        # ARM64 requires specific virt-install options
+        VIRT_INSTALL_ARCH_OPTS="--arch aarch64 --machine virt --boot uefi"
+        ;;
+    x86_64|amd64)
+        CLOUD_IMAGE_ARCH="amd64"
+        CLOUD_IMAGE_URL="https://cloud-images.ubuntu.com/minimal/releases/jammy/release/ubuntu-22.04-minimal-cloudimg-amd64.img"
+        # x86_64 uses default options
+        VIRT_INSTALL_ARCH_OPTS=""
+        ;;
+    *)
+        echo -e "${RED}[ERROR]${NC} Unsupported architecture: ${ARCH}"
+        exit 1
+        ;;
+esac
+
+echo -e "${BLUE}[INFO]${NC} Detected architecture: ${ARCH} -> using ${CLOUD_IMAGE_ARCH} image"
 echo -e "${BLUE}[INFO]${NC} Creating test VM: ${VM_NAME}"
 
 # Download cloud image if not present
-CLOUD_IMAGE="${BASE_IMAGE_DIR}/ubuntu-22.04-minimal-cloudimg-amd64.img"
+CLOUD_IMAGE="${BASE_IMAGE_DIR}/ubuntu-22.04-cloudimg-${CLOUD_IMAGE_ARCH}.img"
 if [ ! -f "${CLOUD_IMAGE}" ]; then
     echo -e "${BLUE}[INFO]${NC} Downloading Ubuntu cloud image..."
     sudo mkdir -p "${BASE_IMAGE_DIR}"
@@ -106,19 +128,25 @@ fi
 
 # Create the VM using virt-install
 echo -e "${BLUE}[INFO]${NC} Creating VM with virt-install..."
+echo -e "${BLUE}[INFO]${NC} Architecture options: ${VIRT_INSTALL_ARCH_OPTS:-default}"
+
+# Build virt-install command with architecture-specific options
+# shellcheck disable=SC2086
 sudo virt-install \
     --name "${VM_NAME}" \
     --memory "${VM_MEMORY}" \
     --vcpus "${VM_VCPUS}" \
-    --disk "path=${VM_DISK},format=qcow2" \
-    --disk "path=${CLOUD_INIT_ISO},device=cdrom" \
+    --disk "path=${VM_DISK},format=qcow2,bus=virtio" \
+    --disk "path=${CLOUD_INIT_ISO},device=cdrom,bus=scsi" \
+    --controller scsi,model=virtio-scsi \
     --os-variant ubuntu22.04 \
-    --network network=default \
-    --graphics none \
+    --network network=default,model=virtio \
+    --graphics vnc \
     --console pty,target_type=serial \
     --import \
     --noautoconsole \
-    --wait 0
+    --wait 0 \
+    ${VIRT_INSTALL_ARCH_OPTS}
 
 echo -e "${GREEN}[SUCCESS]${NC} Test VM '${VM_NAME}' created successfully!"
 echo ""
@@ -134,4 +162,7 @@ echo ""
 echo "Default credentials:"
 echo "  Username: testuser"
 echo "  Password: testpassword"
+echo ""
+echo "  Username: root"
+echo "  Password: rootpassword"
 

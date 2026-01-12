@@ -39,10 +39,13 @@ class TestInternalRestCreateSandboxRequest(unittest.TestCase):
         if include_optional:
             return InternalRestCreateSandboxRequest(
                 agent_id = '',
+                auto_start = True,
                 cpu = 56,
                 memory_mb = 56,
                 source_vm_name = '',
-                vm_name = ''
+                ttl_seconds = 56,
+                vm_name = '',
+                wait_for_ip = True
             )
         else:
             return InternalRestCreateSandboxRequest(

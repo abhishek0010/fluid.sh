@@ -1,488 +1,573 @@
-# virsh-sandbox
+<div align="center">
 
-A secure, auditable platform for LLM-driven agent execution in isolated KVM/libvirt virtual machine sandboxes. This project provides a REST API for orchestrating virtual machines, a tmux-based client for interactive terminal access, and a web frontend for monitoring and management.
+# 🔒 virsh-sandbox
 
-## Overview
+### Autonomous AI Agents for Infrastructure
 
-virsh-sandbox enables AI agents to execute code and commands in fully isolated virtual machine environments. The platform provides:
+**Give AI agents root access to VMs, not your production servers**
 
-- **VM Isolation** - Each agent session runs in a dedicated KVM virtual machine
-- **Snapshot & Restore** - Create checkpoints and rollback to previous states
-- **SSH Command Execution** - Run commands securely via SSH
-- **Tmux Integration** - Interactive terminal sessions with audit logging
-- **Human Approval** - Blocking approval workflow for sensitive operations
-- **Full Audit Trail** - Every action is logged for forensic analysis
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://go.dev)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
+[![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black)](https://react.dev)
 
-## Architecture
+[Features](#-features) • [Quick Start](#-quick-start) • [Demo](#-demo) • [Documentation](#-documentation)
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Host Machine                                    │
-│                                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐ │
-│  │   Web UI     │  │ virsh-sandbox│  │ tmux-client  │  │   PostgreSQL     │ │
-│  │   (React)    │  │     API      │  │   (Go)       │  │                  │ │
-│  │   :5173      │  │   :8080      │  │   :8081      │  │   :5432          │ │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └────────┬─────────┘ │
-│         │                 │                 │                    │          │
-│         └─────────────────┴─────────────────┴────────────────────┘          │
-│                                   │                                          │
-│                     ┌─────────────▼─────────────┐                           │
-│                     │     libvirt / KVM         │                           │
-│                     │                           │                           │
-│                     │  ┌───────┐  ┌───────┐     │                           │
-│                     │  │ VM 1  │  │ VM 2  │ ... │                           │
-│                     │  └───────┘  └───────┘     │                           │
-│                     └───────────────────────────┘                           │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+</div>
 
-## Project Structure
+---
+
+## 🤔 The Problem
+
+AI agents are ready to do sysadmin work, but **we can't give them access to production**:
+
+- 🤖 Agents can install packages, configure services, write scripts—autonomously
+- 🔥 But one mistake on production and you're restoring from backups
+- 🚫 So we limit agents to "suggest mode" instead of letting them *do the work*
+- 📦 Containers aren't realistic enough—agents need full OS environments
+
+## 💡 The Solution
+
+**virsh-sandbox** lets AI agents work autonomously in isolated VMs, then a human approves before anything touches production:
 
 ```
-.
-├── docker-compose.yml       # Main Docker Compose orchestration
-├── mprocs.yaml              # Multi-process runner configuration
-├── nginx.conf               # Reverse proxy configuration
-├── lefthook.yaml            # Git hooks configuration
-├── virsh-sandbox/           # Main API server (Go)
-│   ├── cmd/api/             # API entry point
-│   ├── internal/            # Internal packages
-│   ├── scripts/             # Setup and utility scripts
-│   ├── docs/                # OpenAPI/Swagger docs
-│   ├── Makefile             # Build commands
-│   └── Dockerfile
-├── tmux-client/             # Tmux-based terminal API (Go)
-│   ├── cmd/server/          # Server entry point
-│   ├── internal/            # Internal packages
-│   ├── config.example.yaml  # Example configuration
-│   ├── Makefile             # Build commands
-│   └── Dockerfile
-├── web/                     # React frontend
-│   ├── src/                 # Source code
-│   ├── package.json         # Dependencies
-│   └── Dockerfile
-└── examples/
-    └── agent-example/       # Python SDK + AI agent example
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    Autonomous AI Sysadmin Workflow                      │
+│                                                                         │
+│  ┌─────────┐     ┌─────────────────┐     ┌──────────┐     ┌──────────┐  │
+│  │  Agent  │────►│  Sandbox VM     │────►│  Human   │────►│Production│  │
+│  │  Task   │     │  (autonomous)   │     │ Approval │     │  Server  │  │
+│  └─────────┘     └─────────────────┘     └──────────┘     └──────────┘  │
+│                         │                      │                        │
+│                    • Full root access     • Review diff                 │
+│                    • Install packages     • Approve Ansible             │
+│                    • Edit configs         • One-click apply             │
+│                    • Run services                                       │
+│                    • Snapshot/restore                                   │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Prerequisites
+**The agent does real work. The human just approves.**
 
-- **Go 1.21+** - For building the API and tmux-client
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🤖 **Autonomous Execution** | Agents run commands, install packages, edit configs—no hand-holding |
+| 🖥️ **Full VM Isolation** | Each agent gets a dedicated KVM virtual machine with root access |
+| 📸 **Snapshot & Restore** | Checkpoint progress, rollback mistakes, branch experiments |
+| 👤 **Human-in-the-Loop** | Blocking approval workflow before any production changes |
+| 📋 **Diff & Audit Trail** | See exactly what changed, every action logged |
+| 🔧 **Ansible Export** | Auto-generate playbooks from agent work for production apply |
+| 🖥️ **Tmux Integration** | Watch agent work in real-time, intervene if needed |
+| 🐍 **Python SDK** | First-class SDK for building autonomous agents |
+
+## 🎬 Demo
+
+```python
+from virsh_sandbox import VirshSandbox
+
+client = VirshSandbox("http://localhost:8080", "http://localhost:8081")
+
+# Agent gets its own VM with full root access
+sandbox = client.sandbox.create_sandbox(
+    source_vm_name="ubuntu-base",
+    agent_id="nginx-setup-agent",
+    auto_start=True,
+    wait_for_ip=True
+).sandbox
+
+# Agent works AUTONOMOUSLY - no human in the loop yet
+client.sandbox.run_sandbox_command(sandbox.id, "apt update && apt install -y nginx")
+client.sandbox.run_sandbox_command(sandbox.id, "systemctl enable nginx")
+client.sandbox.run_sandbox_command(sandbox.id, "ufw allow 80/tcp")
+
+# Checkpoint the work
+client.sandbox.create_snapshot(sandbox.id, name="nginx-installed")
+
+# Agent continues - configures nginx, sets up SSL, etc.
+client.sandbox.run_sandbox_command(sandbox.id, "certbot --nginx -d example.com")
+
+# Final checkpoint
+client.sandbox.create_snapshot(sandbox.id, name="nginx-configured")
+
+# NOW the human reviews:
+# - Diff between snapshots shows exactly what changed
+# - Auto-generated Ansible playbook ready to apply
+# - Human approves → playbook runs on production
+# - Human rejects → nothing happens, agent tries again
+
+# Clean up sandbox
+client.sandbox.destroy_sandbox(sandbox.id)
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+
 - **Docker & Docker Compose** - For containerized deployment
-- **libvirt/KVM** - For virtual machine management
-- **tmux** - For the tmux-client functionality
-- **Node.js/Bun** - For the web frontend
-- **PostgreSQL** - For state persistence
+- **libvirt/KVM** - For virtual machine management (or Lima on macOS)
+- **macOS**:
+  - **libvirt** - `brew install libvirt`
+  - **socket_vmnet** - `brew install socket_vmnet`
 
-### macOS Setup (Lima)
-
-On macOS, use Lima to run libvirt in a Linux VM:
+### 30-Second Start
 
 ```bash
-# Install Lima
-brew install lima libvirt
-
-# Set up Lima VM with libvirt
-cd virsh-sandbox
-./scripts/setup-lima-libvirt.sh --create-test-vm
-```
-
-## Quick Start
-
-### Option 1: Docker Compose (Recommended)
-
-The easiest way to get started is using Docker Compose:
-
-```bash
-# Clone the repository
+# Clone and start
 git clone https://github.com/your-org/virsh-sandbox.git
 cd virsh-sandbox
-
-# Create a .env file (optional, for customization)
-cat > .env << EOF
-LIBVIRT_URI=qemu:///system
-LIBVIRT_NETWORK=default
-DATABASE_URL=postgresql://virsh_sandbox:virsh_sandbox@postgres:5432/virsh_sandbox
-EOF
-
-# Start all services
 docker-compose up --build
 
-# Services will be available at:
-# - API:         http://localhost:8080
-# - Tmux Client: http://localhost:8081
-# - Web UI:      http://localhost:5173
-# - PostgreSQL:  localhost:5432
+# Services available at:
+# API:      http://localhost:8080
+# Web UI:   http://localhost:5173
+# Terminal: http://localhost:8081
 ```
 
-### Option 2: mprocs (Development)
+---
 
-For local development with hot-reload:
+## 🖥️ Platform Setup
 
-```bash
-# Install mprocs
-brew install mprocs  # macOS
-# or: cargo install mprocs
+<details>
+<summary><b>🍎 Apple Silicon Mac (M1/M2/M3/M4)</b></summary>
 
-# Start all services
-mprocs
-
-# This runs:
-# - PostgreSQL (via docker-compose)
-# - API server (with hot-reload)
-# - Tmux client (with hot-reload)
-# - Frontend dev server
-```
-
-### Option 3: Manual Setup
-
-#### 1. Start PostgreSQL
+Lima provides a Linux VM with nested virtualization on Apple Silicon:
 
 ```bash
-docker-compose up -d postgres
-```
+# Install Lima and libvirt client
+brew install lima libvirt
 
-#### 2. Build and Run the API
-
-```bash
+# Set up Lima VM with libvirt (ARM64 Ubuntu)
 cd virsh-sandbox
+./virsh-sandbox/scripts/setup-lima-libvirt.sh \
+    --cpus 4 \
+    --memory 8 \
+    --disk 50 \
+    --create-test-vm
 
-# Install dependencies
-go mod download
-
-# Run the API
-export LIBVIRT_URI="qemu:///system"
-export DATABASE_URL="postgresql://virsh_sandbox:virsh_sandbox@localhost:5432/virsh_sandbox"
-make run
-
-# Or build and run
-make build
-./bin/virsh-sandbox-api
-```
-
-#### 3. Build and Run the Tmux Client
-
-```bash
-cd tmux-client
-
-# Copy and configure
-cp config.example.yaml config.yaml
-# Edit config.yaml as needed
-
-# Run
-make run
-
-# Or build and run
-make build
-./bin/tmux-client
-```
-
-#### 4. Start the Frontend
-
-```bash
-cd web
-
-# Install dependencies
-bun install  # or: npm install
-
-# Start dev server
-bun run dev  # or: npm run dev
-```
-
-## Scripts Reference
-
-### virsh-sandbox/scripts/
-
-| Script | Description |
-|--------|-------------|
-| `setup-lima-libvirt.sh` | Sets up a Lima VM with libvirt/KVM on macOS |
-| `create-test-vm.sh` | Creates a test VM for development |
-| `fmt.sh` | Formats Go code with gofumpt |
-| `lint.sh` | Runs golangci-lint |
-| `vet.sh` | Runs go vet |
-| `generate-openapi.sh` | Generates OpenAPI documentation |
-
-### Makefile Targets
-
-Both `virsh-sandbox/` and `tmux-client/` have similar Makefile targets:
-
-```bash
-make build          # Build the binary
-make run            # Run the server
-make test           # Run tests
-make test-coverage  # Run tests with coverage
-make fmt            # Format code
-make lint           # Run linter
-make vet            # Run go vet
-make check          # Run all checks (fmt, vet, lint)
-make deps           # Download dependencies
-make tidy           # Tidy go.mod
-make generate-openapi  # Generate OpenAPI docs
-make install-tools  # Install dev tools
-make docker-build   # Build Docker image
-make help           # Show all targets
-```
-
-## Configuration
-
-### Environment Variables
-
-#### virsh-sandbox API
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LOG_FORMAT` | Log format (text/json) | `text` |
-| `LOG_LEVEL` | Log level (debug/info/warn/error) | `info` |
-| `API_HTTP_ADDR` | HTTP listen address | `:8080` |
-| `LIBVIRT_URI` | Libvirt connection URI | `qemu:///system` |
-| `LIBVIRT_NETWORK` | Libvirt network name | `default` |
-| `BASE_IMAGE_DIR` | Base VM images directory | `/var/lib/libvirt/images/base` |
-| `SANDBOX_WORKDIR` | Sandbox working directory | `/var/lib/libvirt/images/jobs` |
-| `DATABASE_URL` | PostgreSQL connection string | - |
-| `DEFAULT_VCPUS` | Default vCPUs per VM | `2` |
-| `DEFAULT_MEMORY_MB` | Default memory per VM (MB) | `2048` |
-| `COMMAND_TIMEOUT_SEC` | Command execution timeout | `600` |
-| `IP_DISCOVERY_TIMEOUT_SEC` | VM IP discovery timeout | `120` |
-
-#### Tmux Client
-
-See `tmux-client/config.example.yaml` for full configuration options including:
-
-- Server settings (host, port, TLS)
-- Tmux tool configuration (allowed keys, max lines)
-- File tool configuration (root directory, allowed/denied paths)
-- Command tool configuration (allowed/denied commands)
-- Human approval settings
-- Audit logging configuration
-
-## API Endpoints
-
-### virsh-sandbox API (port 8080)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/v1/health` | Health check |
-| GET | `/v1/vms` | List all VMs |
-| POST | `/v1/sandboxes` | Create a new sandbox |
-| GET | `/v1/sandboxes/{id}` | Get sandbox details |
-| POST | `/v1/sandboxes/{id}/start` | Start a sandbox |
-| POST | `/v1/sandboxes/{id}/stop` | Stop a sandbox |
-| DELETE | `/v1/sandboxes/{id}` | Destroy a sandbox |
-| POST | `/v1/sandboxes/{id}/command` | Run a command |
-| POST | `/v1/sandboxes/{id}/snapshots` | Create a snapshot |
-| GET | `/v1/sandboxes/{id}/snapshots` | List snapshots |
-| POST | `/v1/sandboxes/{id}/snapshots/{name}/restore` | Restore snapshot |
-
-### Tmux Client API (port 8081)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/v1/health` | Health check |
-| GET | `/api/v1/tmux/sessions` | List tmux sessions |
-| GET | `/api/v1/tmux/panes` | List panes |
-| POST | `/api/v1/tmux/panes/read` | Read pane content |
-| POST | `/api/v1/tmux/panes/send-keys` | Send keystrokes |
-| POST | `/api/v1/file/read` | Read file |
-| POST | `/api/v1/file/write` | Write file |
-| POST | `/api/v1/file/edit` | Edit file (patch) |
-| POST | `/api/v1/command/run` | Run command |
-| POST | `/api/v1/human/ask` | Request human approval |
-| POST | `/api/v1/plan/create` | Create execution plan |
-
-## Example Setups
-
-### Development Setup (macOS)
-
-```bash
-# 1. Set up Lima with libvirt
-./virsh-sandbox/scripts/setup-lima-libvirt.sh --cpus 4 --memory 8 --create-test-vm
-
-# 2. Source environment
+# Source the generated environment
 source .env.lima
 
-# 3. Start services with mprocs
-mprocs
+# Verify connection
+virsh -c "$LIBVIRT_URI" list --all
+
+# Start services
+docker-compose up --build
 ```
 
-### Production Setup (Linux with KVM)
+**What happens:**
+1. Lima creates an ARM64 Ubuntu VM with KVM support
+2. libvirt runs inside Lima, accessible via TCP (port 16509) or SSH
+3. The API connects to libvirt inside Lima
+4. Test VMs run nested inside the Lima VM
+
+**Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Apple Silicon Mac                               │
+│  ┌─────────────────┐     ┌────────────────────────────────────────┐ │
+│  │ virsh-sandbox   │     │           Lima VM (ARM64 Ubuntu)       │ │
+│  │ API + Web UI    │────►│  ┌──────────────────────────────────┐  │ │
+│  │                 │     │  │     libvirt/QEMU (ARM64)         │  │ │
+│  │ LIBVIRT_URI=    │     │  │  ┌──────────┐  ┌──────────┐      │  │ │
+│  │ qemu+tcp://     │     │  │  │ sandbox  │  │ sandbox  │ ...  │  │ │
+│  │ localhost:16509 │     │  │  │ VM (arm) │  │ VM (arm) │      │  │ │
+│  └─────────────────┘     │  │  └──────────┘  └──────────┘      │  │ │
+│                          │  └──────────────────────────────────┘  │ │
+│                          └────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Create ARM64 test VMs:**
+```bash
+limactl shell virsh-sandbox-dev -- bash /tmp/create-test-vm.sh test-vm-arm64
+```
+
+**Default test VM credentials:**
+- Username: `testuser` / Password: `testpassword`
+- Username: `root` / Password: `rootpassword`
+
+</details>
+
+<details>
+<summary><b>🍎 Intel Mac</b></summary>
+
+Lima provides a Linux VM with nested virtualization on Intel Macs:
 
 ```bash
-# 1. Ensure libvirt is installed and running
+# Install Lima and libvirt client
+brew install lima libvirt
+
+# Set up Lima VM with libvirt (x86_64 Ubuntu)
+cd virsh-sandbox
+./virsh-sandbox/scripts/setup-lima-libvirt.sh \
+    --cpus 4 \
+    --memory 8 \
+    --disk 50 \
+    --create-test-vm
+
+# Source the generated environment
+source .env.lima
+
+# Verify connection
+virsh -c "$LIBVIRT_URI" list --all
+
+# Start services
+docker-compose up --build
+```
+
+**Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Intel Mac                                    │
+│  ┌─────────────────┐     ┌────────────────────────────────────────┐ │
+│  │ virsh-sandbox   │     │          Lima VM (x86_64 Ubuntu)       │ │
+│  │ API + Web UI    │────►│  ┌──────────────────────────────────┐  │ │
+│  │                 │     │  │     libvirt/KVM (x86_64)         │  │ │
+│  │ LIBVIRT_URI=    │     │  │  ┌──────────┐  ┌──────────┐      │  │ │
+│  │ qemu+tcp://     │     │  │  │ sandbox  │  │ sandbox  │ ...  │  │ │
+│  │ localhost:16509 │     │  │  │VM (amd64)│  │VM (amd64)│      │  │ │
+│  └─────────────────┘     │  │  └──────────┘  └──────────┘      │  │ │
+│                          │  └──────────────────────────────────┘  │ │
+│                          └────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Note:** Intel Macs support proper nested KVM, so performance is better than ARM64 emulation.
+
+**Default test VM credentials:**
+- Username: `testuser` / Password: `testpassword`
+- Username: `root` / Password: `rootpassword`
+
+</details>
+
+<details>
+<summary><b>🐧 Linux x86_64 (On-Prem / Bare Metal)</b></summary>
+
+Direct libvirt access for best performance:
+
+```bash
+# Install libvirt and dependencies (Ubuntu/Debian)
+sudo apt update
+sudo apt install -y \
+    qemu-kvm qemu-utils libvirt-daemon-system \
+    libvirt-clients virtinst bridge-utils ovmf \
+    cpu-checker cloud-image-utils genisoimage
+
+# Or on Fedora/RHEL
+sudo dnf install -y \
+    qemu-kvm qemu-img libvirt libvirt-client \
+    virt-install bridge-utils edk2-ovmf \
+    cloud-utils genisoimage
+
+# Enable and start libvirtd
 sudo systemctl enable --now libvirtd
 
-# 2. Create base VM images
-sudo mkdir -p /var/lib/libvirt/images/base
-# Copy your golden images here
+# Add your user to libvirt group
+sudo usermod -aG libvirt,kvm $(whoami)
+newgrp libvirt  # or log out and back in
 
-# 3. Configure environment
-cat > .env << EOF
+# Verify KVM is available
+kvm-ok
+
+# Create image directories
+sudo mkdir -p /var/lib/libvirt/images/{base,jobs}
+
+# Create environment file
+cat > .env << 'EOF'
 LIBVIRT_URI=qemu:///system
 LIBVIRT_NETWORK=default
 DATABASE_URL=postgresql://virsh_sandbox:virsh_sandbox@localhost:5432/virsh_sandbox
-LOG_LEVEL=info
-LOG_FORMAT=json
+BASE_IMAGE_DIR=/var/lib/libvirt/images/base
+SANDBOX_WORKDIR=/var/lib/libvirt/images/jobs
 EOF
 
-# 4. Start with Docker Compose
-docker-compose up -d
+# Start the default network
+sudo virsh net-autostart default
+sudo virsh net-start default
+
+# Verify
+virsh -c qemu:///system list --all
+
+# Start services
+docker-compose up --build
 ```
 
-### AI Agent Integration
+**Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Linux x86_64 Host                                │
+│                                                                     │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────┐  │
+│  │ virsh-sandbox   │  │   PostgreSQL    │  │    Web UI           │  │
+│  │ API (Go)        │  │   (Docker)      │  │    (React)          │  │
+│  │ :8080           │  │   :5432         │  │    :5173            │  │
+│  └────────┬────────┘  └─────────────────┘  └─────────────────────┘  │
+│           │                                                         │
+│           │ LIBVIRT_URI=qemu:///system                              │
+│           ▼                                                         │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │                    libvirt/KVM (native)                      │   │
+│  │                                                              │   │
+│  │   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │   │
+│  │   │  sandbox-1   │  │  sandbox-2   │  │  sandbox-N   │  ...  │   │
+│  │   │  (x86_64)    │  │  (x86_64)    │  │  (x86_64)    │       │   │
+│  │   └──────────────┘  └──────────────┘  └──────────────┘       │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-See `examples/agent-example/` for a complete example using Python and OpenAI:
+**Create a base VM image:**
+```bash
+# Download Ubuntu cloud image
+cd /var/lib/libvirt/images/base
+sudo wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+
+# Create test VM using the provided script
+./virsh-sandbox/scripts/create-test-vm.sh --name ubuntu-base --start
+```
+
+**Default test VM credentials:**
+- Username: `testuser` / Password: `testpassword`
+- Username: `root` / Password: `rootpassword`
+
+</details>
+
+<details>
+<summary><b>🐧 Linux ARM64 (Ampere, Graviton, Raspberry Pi)</b></summary>
+
+Native ARM64 Linux with libvirt:
 
 ```bash
-cd examples/agent-example
+# Install libvirt and dependencies (Ubuntu/Debian ARM64)
+sudo apt update
+sudo apt install -y \
+    qemu-kvm qemu-utils qemu-efi-aarch64 \
+    libvirt-daemon-system libvirt-clients \
+    virtinst bridge-utils cloud-image-utils genisoimage
 
-# Install dependencies
-uv sync  # or: pip install -r requirements.txt
+# Enable and start libvirtd
+sudo systemctl enable --now libvirtd
 
-# Set OpenAI API key
-export OPENAI_API_KEY="your-key"
+# Add your user to libvirt group
+sudo usermod -aG libvirt,kvm $(whoami)
+newgrp libvirt
 
-# Run the agent
-uv run python main.py
+# Create environment file
+cat > .env << 'EOF'
+LIBVIRT_URI=qemu:///system
+LIBVIRT_NETWORK=default
+DATABASE_URL=postgresql://virsh_sandbox:virsh_sandbox@localhost:5432/virsh_sandbox
+BASE_IMAGE_DIR=/var/lib/libvirt/images/base
+SANDBOX_WORKDIR=/var/lib/libvirt/images/jobs
+EOF
+
+# Start the default network
+sudo virsh net-autostart default
+sudo virsh net-start default
+
+# Start services
+docker-compose up --build
 ```
 
-Example usage in Python:
-
-```python
-from client import VirshSandboxClient
-
-with VirshSandboxClient(host="http://localhost:8080") as client:
-    # Create a sandbox
-    sandbox = client.create_sandbox(
-        source_vm_name="ubuntu-base",
-        agent_id="my-agent",
-        cpu=2,
-        memory_mb=2048,
-    )
-    
-    # Start and wait for IP
-    client.start_sandbox(sandbox.sandbox.id, wait_for_ip=True)
-    
-    # Run commands
-    result = client.run_command(
-        sandbox_id=sandbox.sandbox.id,
-        command="echo 'Hello from sandbox!'",
-        username="root",
-        private_key_path="~/.ssh/id_rsa",
-    )
-    print(result.command.stdout)
-    
-    # Create checkpoint
-    client.create_snapshot(sandbox.sandbox.id, name="checkpoint-1")
-    
-    # Clean up
-    client.destroy_sandbox(sandbox.sandbox.id)
+**Download ARM64 cloud images:**
+```bash
+cd /var/lib/libvirt/images/base
+sudo wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img
 ```
 
-## Security Model
+**Architecture is the same as x86_64 but with ARM64 VMs.**
 
-### Assumptions
+**Default test VM credentials:**
+- Username: `testuser` / Password: `testpassword`
+- Username: `root` / Password: `rootpassword`
 
-1. **Isolated VMs** - Each sandbox runs in a separate KVM virtual machine
-2. **Network Isolation** - VMs are on isolated virtual networks
-3. **Non-root API** - The API runs as an unprivileged user
-4. **Human Oversight** - Sensitive actions require human approval
-5. **Audit Trail** - All actions are logged for forensic analysis
+</details>
+
+<details>
+<summary><b>☁️ Remote libvirt Server</b></summary>
+
+Connect to a remote libvirt host over SSH or TCP:
+
+```bash
+# SSH connection (recommended - secure)
+export LIBVIRT_URI="qemu+ssh://user@remote-host/system"
+
+# Or with specific SSH key
+export LIBVIRT_URI="qemu+ssh://user@remote-host/system?keyfile=/path/to/key"
+
+# TCP connection (less secure - ensure network is trusted)
+export LIBVIRT_URI="qemu+tcp://remote-host:16509/system"
+
+# Test connection
+virsh -c "$LIBVIRT_URI" list --all
+
+# Create .env file
+cat > .env << EOF
+LIBVIRT_URI=${LIBVIRT_URI}
+LIBVIRT_NETWORK=default
+DATABASE_URL=postgresql://virsh_sandbox:virsh_sandbox@localhost:5432/virsh_sandbox
+EOF
+
+# Start services
+docker-compose up --build
+```
+
+**Remote server setup (on the libvirt host):**
+```bash
+# For SSH access, ensure SSH is enabled and user has libvirt access
+sudo usermod -aG libvirt remote-user
+
+# For TCP access (development only!), configure /etc/libvirt/libvirtd.conf:
+#   listen_tls = 0
+#   listen_tcp = 1
+#   auth_tcp = "none"  # WARNING: No authentication!
+# Then restart: sudo systemctl restart libvirtd
+```
+
+</details>
+
+---
+
+## 📦 Project Structure
+
+```
+virsh-sandbox/
+├── virsh-sandbox/          # 🔧 Main API server (Go)
+│   ├── cmd/api/            #    Entry point
+│   ├── internal/           #    Business logic
+│   └── scripts/            #    Setup scripts
+├── tmux-client/            # 🖥️ Terminal API (Go)
+│   └── internal/           #    Tmux/file/command handlers
+├── web/                    # 🌐 React frontend
+│   └── src/                #    Components, hooks, routes
+├── sdk/                    # 🐍 Python SDK
+│   └── virsh-sandbox-py/   #    Auto-generated client
+├── examples/               # 📚 Example implementations
+│   └── agent-example/      #    AI agent with OpenAI
+└── docker-compose.yml      # 🐳 Container orchestration
+```
+
+## 🔌 API Reference
+
+### Sandbox Lifecycle
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/sandboxes` | Create a new sandbox |
+| `GET` | `/v1/sandboxes/{id}` | Get sandbox details |
+| `POST` | `/v1/sandboxes/{id}/start` | Start a sandbox |
+| `POST` | `/v1/sandboxes/{id}/stop` | Stop a sandbox |
+| `DELETE` | `/v1/sandboxes/{id}` | Destroy a sandbox |
+
+### Command Execution
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/sandboxes/{id}/command` | Run SSH command |
+| `POST` | `/api/v1/tmux/panes/send-keys` | Send keystrokes to tmux |
+| `POST` | `/api/v1/tmux/panes/read` | Read tmux pane content |
+
+### Snapshots
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/sandboxes/{id}/snapshots` | Create snapshot |
+| `GET` | `/v1/sandboxes/{id}/snapshots` | List snapshots |
+| `POST` | `/v1/sandboxes/{id}/snapshots/{name}/restore` | Restore snapshot |
+
+### Human Approval
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/human/ask` | Request approval (blocking) |
+
+## 🔒 Security Model
+
+### Isolation Layers
+
+1. **VM Isolation** - Each sandbox is a separate KVM virtual machine
+2. **Network Isolation** - VMs run on isolated virtual networks
+3. **SSH Certificates** - Ephemeral credentials that auto-expire (1-10 minutes)
+4. **Human Approval** - Gate sensitive operations
 
 ### Safety Features
 
-- **Command Allowlists/Denylists** - Control which commands can be executed
-- **Path Restrictions** - Limit file access to specific directories
-- **Snapshot Rollback** - Easily restore to known-good states
-- **Timeout Limits** - Prevent runaway processes
-- **Output Size Limits** - Prevent memory exhaustion
+- ✅ Command allowlists/denylists
+- ✅ Path restrictions for file access
+- ✅ Timeout limits on all operations
+- ✅ Output size limits
+- ✅ Full audit trail
+- ✅ Snapshot rollback
 
-## Development
+## 📖 Documentation
+
+- [Scripts Reference](./virsh-sandbox/scripts/README.md) - Setup and utility scripts
+- [SSH Certificates](./virsh-sandbox/scripts/README.md#ssh-certificate-based-access) - Ephemeral credential system
+- [Agent Connection Flow](./docs/agent-connection-flow.md) - How agents connect to sandboxes
+- [Examples](./examples/) - Working examples
+
+## 🛠️ Development
+
+To run the API locally, first build the `virsh-sandbox` binary:
+
+```bash
+# Build the API binary
+cd virsh-sandbox && make build
+```
+
+Then, use `mprocs` to run all the services together for local development.
+
+```bash
+# Install mprocs for multi-service development
+brew install mprocs  # macOS
+cargo install mprocs # Linux
+
+# Start all services with hot-reload
+mprocs
+
+# Or run individual services
+cd virsh-sandbox && make run
+cd tmux-client && make run
+cd web && bun run dev
+```
 
 ### Running Tests
 
 ```bash
-# API tests
-cd virsh-sandbox && make test
+# Go services
+(cd virsh-sandbox && make test)
+(cd tmux-client && make test)
 
-# Tmux client tests
-cd tmux-client && make test
+# Python SDK
+(cd sdk/virsh-sandbox-py && pytest)
 
-# With coverage
-make test-coverage
+# All checks
+(cd virsh-sandbox && make check)
+(cd tmux-client && make check)
 ```
 
-### Code Quality
-
-```bash
-# Format code
-make fmt
-
-# Run linter
-make lint
-
-# Run all checks
-make check
-```
-
-### Git Hooks
-
-The project uses Lefthook for Git hooks:
-
-```bash
-# Install lefthook
-brew install lefthook  # or: go install github.com/evilmartians/lefthook@latest
-
-# Install hooks
-lefthook install
-```
-
-## Troubleshooting
-
-### Cannot connect to libvirt
-
-```bash
-# Check libvirt status
-sudo systemctl status libvirtd
-
-# Test connection
-virsh -c qemu:///system list --all
-
-# For Lima on macOS
-limactl list
-limactl shell virsh-sandbox-dev -- systemctl status libvirtd
-```
-
-### VM has no IP address
-
-```bash
-# Check default network
-virsh net-list --all
-virsh net-start default
-
-# Check DHCP leases
-virsh net-dhcp-leases default
-```
-
-### Database connection issues
-
-```bash
-# Check PostgreSQL is running
-docker-compose ps postgres
-
-# Test connection
-psql postgresql://virsh_sandbox:virsh_sandbox@localhost:5432/virsh_sandbox
-```
-
-## License
-
-MIT License
-
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes with tests
-4. Run `make check` to ensure code quality
+3. Make changes with tests
+4. Run `make check` 
 5. Submit a pull request
 
 All contributions must maintain the security model and include appropriate tests.
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+<div align="center">
+
+**[⬆ Back to top](#-virsh-sandbox)**
+
+Built with ❤️ for the AI agent community
+
+</div>

@@ -23,7 +23,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.24"
           cache-dependency-path: virsh-sandbox/go.sum
 
       - name: Install tools
@@ -50,48 +50,6 @@ jobs:
 
       - name: Build
         run: go build -o bin/virsh-sandbox-api ./cmd/api
-
-  # Go services - tmux-client
-  tmux-client:
-    name: tmux-client
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: tmux-client
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.21"
-          cache-dependency-path: tmux-client/go.sum
-
-      - name: Install tools
-        run: |
-          go install mvdan.cc/gofumpt@latest
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
-      - name: Download dependencies
-        run: go mod download
-
-      - name: Format check
-        run: |
-          gofumpt -l .
-          test -z "$(gofumpt -l .)"
-
-      - name: Vet
-        run: go vet ./...
-
-      - name: Lint
-        run: golangci-lint run ./...
-
-      - name: Test
-        run: go test -v -race ./...
-
-      - name: Build
-        run: go build -o bin/tmux-client ./cmd/server
 
   # Python SDK
   sdk:
@@ -169,6 +127,11 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Install dependencies
         run: bun install
 
@@ -176,7 +139,7 @@ jobs:
         run: bun run lint
 
       - name: Type check
-        run: bunx tsc --noEmit
+        run: bunx tsc -b
 
       - name: Build
         run: bun run build

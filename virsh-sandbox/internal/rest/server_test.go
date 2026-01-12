@@ -35,11 +35,6 @@ func TestDestroySandbox_NotFound(t *testing.T) {
 		},
 	}
 
-	// Create the server with a nil vmSvc (we'll call the handler directly)
-	server := &Server{
-		Router: nil,
-	}
-
 	// Create a request
 	req := httptest.NewRequest(http.MethodDelete, "/v1/sandboxes/nonexistent-id", nil)
 	rec := httptest.NewRecorder()
@@ -62,11 +57,6 @@ func TestDestroySandbox_NotFound(t *testing.T) {
 	// Verify the response
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, rec.Code)
-	}
-
-	// Verify server is not nil (just to use it)
-	if server == nil {
-		t.Error("server should not be nil")
 	}
 
 	// sb should be nil for not found

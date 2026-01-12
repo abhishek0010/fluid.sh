@@ -46,7 +46,7 @@ class TestVirshSandboxInternalRestRunCommandRequest(unittest.TestCase):
                     },
                 private_key_path = '',
                 timeout_sec = 56,
-                username = ''
+                user = ''
             )
         else:
             return VirshSandboxInternalRestRunCommandRequest(

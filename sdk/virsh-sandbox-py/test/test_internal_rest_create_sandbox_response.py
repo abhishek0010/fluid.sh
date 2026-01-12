@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_create_sandbox_response import \
-    InternalRestCreateSandboxResponse
+from virsh_sandbox.models.internal_rest_create_sandbox_response import (
+    InternalRestCreateSandboxResponse,
+)
 
 
 class TestInternalRestCreateSandboxResponse(unittest.TestCase):
@@ -37,6 +38,7 @@ class TestInternalRestCreateSandboxResponse(unittest.TestCase):
         model = InternalRestCreateSandboxResponse()
         if include_optional:
             return InternalRestCreateSandboxResponse(
+                ip_address = '',
                 sandbox = {"base_image":"base_image","agent_id":"agent_id","updated_at":"updated_at","job_id":"job_id","ttl_seconds":0,"created_at":"created_at","sandbox_name":"sandbox_name","id":"id","ip_address":"ip_address","state":"CREATED","deleted_at":"deleted_at","network":"network"}
             )
         else:

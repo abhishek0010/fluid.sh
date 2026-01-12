@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"virsh-sandbox/internal/libvirt"
+	"virsh-sandbox/internal/sshkeys"
 	"virsh-sandbox/internal/store"
 )
 
@@ -23,8 +26,10 @@ type Service struct {
 	mgr       libvirt.Manager
 	store     store.Store
 	ssh       SSHRunner
+	keyMgr    sshkeys.KeyProvider // Optional: manages SSH keys for RunCommand
 	cfg       Config
 	timeNowFn func() time.Time
+	logger    *slog.Logger
 }
 
 // Config controls default VM parameters and timeouts used by the service.
@@ -41,6 +46,11 @@ type Config struct {
 
 	// IPDiscoveryTimeout controls how long StartSandbox waits for the VM IP (when requested).
 	IPDiscoveryTimeout time.Duration
+
+	// SSHProxyJump specifies a jump host for SSH connections to VMs.
+	// Format: "user@host:port" or just "host" for default user/port.
+	// Required when VMs are on an isolated network not directly reachable.
+	SSHProxyJump string
 }
 
 // Option configures the Service during construction.
@@ -54,6 +64,17 @@ func WithSSHRunner(r SSHRunner) Option {
 // WithTimeNow overrides the clock (useful for tests).
 func WithTimeNow(fn func() time.Time) Option {
 	return func(s *Service) { s.timeNowFn = fn }
+}
+
+// WithLogger sets a custom logger for the service.
+func WithLogger(l *slog.Logger) Option {
+	return func(s *Service) { s.logger = l }
+}
+
+// WithKeyManager sets a key manager for managed SSH credentials.
+// When set, RunCommand can be called without explicit privateKeyPath.
+func WithKeyManager(km sshkeys.KeyProvider) Option {
+	return func(s *Service) { s.keyMgr = km }
 }
 
 // NewService constructs a VM service with the provided libvirt manager, store and config.
@@ -74,8 +95,9 @@ func NewService(mgr libvirt.Manager, st store.Store, cfg Config, opts ...Option)
 		mgr:       mgr,
 		store:     st,
 		cfg:       cfg,
-		ssh:       &DefaultSSHRunner{},
+		ssh:       &DefaultSSHRunner{ProxyJump: cfg.SSHProxyJump},
 		timeNowFn: time.Now,
+		logger:    slog.Default(),
 	}
 	for _, o := range opts {
 		o(s)
@@ -92,6 +114,44 @@ func NewService(mgr libvirt.Manager, st store.Store, cfg Config, opts ...Option)
 // autoStart if true will start the VM immediately after creation.
 // waitForIP if true (and autoStart is true), will wait for IP discovery.
 // Returns the sandbox, the discovered IP (if autoStart and waitForIP), and any error.
+// validateIPUniqueness checks if the given IP is already assigned to another running sandbox.
+// Returns an error if the IP is assigned to a different sandbox that is still running.
+func (s *Service) validateIPUniqueness(ctx context.Context, currentSandboxID, ip string) error {
+	// Check both RUNNING and STARTING sandboxes to prevent race conditions
+	// where two sandboxes might discover the same IP simultaneously
+	statesToCheck := []store.SandboxState{
+		store.SandboxStateRunning,
+		store.SandboxStateStarting,
+	}
+
+	for _, state := range statesToCheck {
+		stateFilter := state
+		sandboxes, err := s.store.ListSandboxes(ctx, store.SandboxFilter{
+			State: &stateFilter,
+		}, nil)
+		if err != nil {
+			return fmt.Errorf("list sandboxes (state=%s) for IP validation: %w", state, err)
+		}
+
+		for _, sb := range sandboxes {
+			if sb.ID == currentSandboxID {
+				continue // Skip the current sandbox
+			}
+			if sb.IPAddress != nil && *sb.IPAddress == ip {
+				s.logger.Error("IP address conflict detected",
+					"conflict_ip", ip,
+					"current_sandbox_id", currentSandboxID,
+					"conflicting_sandbox_id", sb.ID,
+					"conflicting_sandbox_name", sb.SandboxName,
+					"conflicting_sandbox_state", sb.State,
+				)
+				return fmt.Errorf("IP %s is already assigned to sandbox %s (vm: %s, state: %s)", ip, sb.ID, sb.SandboxName, sb.State)
+			}
+		}
+	}
+	return nil
+}
+
 func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID, sandboxName string, cpu, memoryMB int, ttlSeconds *int, autoStart, waitForIP bool) (*store.Sandbox, string, error) {
 	if strings.TrimSpace(sourceSandboxName) == "" {
 		return nil, "", fmt.Errorf("sourceSandboxName is required")
@@ -109,11 +169,26 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID,
 		sandboxName = fmt.Sprintf("sbx-%s", shortID())
 	}
 
+	s.logger.Info("creating sandbox",
+		"source_vm_name", sourceSandboxName,
+		"agent_id", agentID,
+		"sandbox_name", sandboxName,
+		"cpu", cpu,
+		"memory_mb", memoryMB,
+		"auto_start", autoStart,
+		"wait_for_ip", waitForIP,
+	)
+
 	jobID := fmt.Sprintf("JOB-%s", shortID())
 
 	// Create the VM via libvirt manager by cloning from existing VM
 	_, err := s.mgr.CloneFromVM(ctx, sourceSandboxName, sandboxName, cpu, memoryMB, s.cfg.Network)
 	if err != nil {
+		s.logger.Error("failed to clone VM",
+			"source_vm_name", sourceSandboxName,
+			"sandbox_name", sandboxName,
+			"error", err,
+		)
 		return nil, "", fmt.Errorf("clone vm: %w", err)
 	}
 
@@ -133,10 +208,25 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID,
 		return nil, "", fmt.Errorf("persist sandbox: %w", err)
 	}
 
+	s.logger.Debug("sandbox cloned successfully",
+		"sandbox_id", sb.ID,
+		"sandbox_name", sandboxName,
+	)
+
 	// If autoStart is requested, start the VM immediately
 	var ip string
 	if autoStart {
+		s.logger.Info("auto-starting sandbox",
+			"sandbox_id", sb.ID,
+			"sandbox_name", sb.SandboxName,
+		)
+
 		if err := s.mgr.StartVM(ctx, sb.SandboxName); err != nil {
+			s.logger.Error("auto-start failed",
+				"sandbox_id", sb.ID,
+				"sandbox_name", sb.SandboxName,
+				"error", err,
+			)
 			_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateError, nil)
 			return sb, "", fmt.Errorf("auto-start vm: %w", err)
 		}
@@ -148,13 +238,39 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID,
 		sb.State = store.SandboxStateStarting
 
 		if waitForIP {
-			ip, err = s.mgr.GetIPAddress(ctx, sb.SandboxName, s.cfg.IPDiscoveryTimeout)
+			s.logger.Info("waiting for IP address",
+				"sandbox_id", sb.ID,
+				"timeout", s.cfg.IPDiscoveryTimeout,
+			)
+
+			var mac string
+			ip, mac, err = s.mgr.GetIPAddress(ctx, sb.SandboxName, s.cfg.IPDiscoveryTimeout)
 			if err != nil {
+				s.logger.Warn("IP discovery failed",
+					"sandbox_id", sb.ID,
+					"sandbox_name", sb.SandboxName,
+					"error", err,
+				)
 				// Still mark as running even if we couldn't discover the IP
 				_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, nil)
 				sb.State = store.SandboxStateRunning
 				return sb, "", fmt.Errorf("get ip: %w", err)
 			}
+
+			// Validate IP uniqueness before storing
+			if err := s.validateIPUniqueness(ctx, sb.ID, ip); err != nil {
+				s.logger.Error("IP conflict during sandbox creation",
+					"sandbox_id", sb.ID,
+					"sandbox_name", sb.SandboxName,
+					"ip_address", ip,
+					"mac_address", mac,
+					"error", err,
+				)
+				_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, nil)
+				sb.State = store.SandboxStateRunning
+				return sb, "", fmt.Errorf("ip conflict: %w", err)
+			}
+
 			if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, &ip); err != nil {
 				return sb, ip, err
 			}
@@ -167,6 +283,12 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID,
 			sb.State = store.SandboxStateRunning
 		}
 	}
+
+	s.logger.Info("sandbox created",
+		"sandbox_id", sb.ID,
+		"state", sb.State,
+		"ip_address", ip,
+	)
 
 	return sb, ip, nil
 }
@@ -223,12 +345,28 @@ func (s *Service) StartSandbox(ctx context.Context, sandboxID string, waitForIP 
 	if strings.TrimSpace(sandboxID) == "" {
 		return "", fmt.Errorf("sandboxID is required")
 	}
+
+	s.logger.Info("starting sandbox",
+		"sandbox_id", sandboxID,
+		"wait_for_ip", waitForIP,
+	)
+
 	sb, err := s.store.GetSandbox(ctx, sandboxID)
 	if err != nil {
 		return "", err
 	}
 
+	s.logger.Debug("sandbox found",
+		"sandbox_name", sb.SandboxName,
+		"current_state", sb.State,
+	)
+
 	if err := s.mgr.StartVM(ctx, sb.SandboxName); err != nil {
+		s.logger.Error("failed to start VM",
+			"sandbox_id", sb.ID,
+			"sandbox_name", sb.SandboxName,
+			"error", err,
+		)
 		_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateError, nil)
 		return "", fmt.Errorf("start vm: %w", err)
 	}
@@ -240,12 +378,37 @@ func (s *Service) StartSandbox(ctx context.Context, sandboxID string, waitForIP 
 
 	var ip string
 	if waitForIP {
-		ip, err = s.mgr.GetIPAddress(ctx, sb.SandboxName, s.cfg.IPDiscoveryTimeout)
+		s.logger.Info("waiting for IP address",
+			"sandbox_id", sb.ID,
+			"timeout", s.cfg.IPDiscoveryTimeout,
+		)
+
+		var mac string
+		ip, mac, err = s.mgr.GetIPAddress(ctx, sb.SandboxName, s.cfg.IPDiscoveryTimeout)
 		if err != nil {
+			s.logger.Warn("IP discovery failed",
+				"sandbox_id", sb.ID,
+				"sandbox_name", sb.SandboxName,
+				"error", err,
+			)
 			// Still mark as running even if we couldn't discover the IP
 			_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, nil)
 			return "", fmt.Errorf("get ip: %w", err)
 		}
+
+		// Validate IP uniqueness before storing
+		if err := s.validateIPUniqueness(ctx, sb.ID, ip); err != nil {
+			s.logger.Error("IP conflict during sandbox start",
+				"sandbox_id", sb.ID,
+				"sandbox_name", sb.SandboxName,
+				"ip_address", ip,
+				"mac_address", mac,
+				"error", err,
+			)
+			_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, nil)
+			return "", fmt.Errorf("ip conflict: %w", err)
+		}
+
 		if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, &ip); err != nil {
 			return "", err
 		}
@@ -254,6 +417,64 @@ func (s *Service) StartSandbox(ctx context.Context, sandboxID string, waitForIP 
 			return "", err
 		}
 	}
+
+	s.logger.Info("sandbox started",
+		"sandbox_id", sb.ID,
+		"ip_address", ip,
+	)
+
+	return ip, nil
+}
+
+// DiscoverIP attempts to discover the IP address for a sandbox.
+// This is useful for async workflows where wait_for_ip was false during start.
+// Returns the discovered IP address, or an error if discovery fails.
+func (s *Service) DiscoverIP(ctx context.Context, sandboxID string) (string, error) {
+	if strings.TrimSpace(sandboxID) == "" {
+		return "", fmt.Errorf("sandboxID is required")
+	}
+
+	sb, err := s.store.GetSandbox(ctx, sandboxID)
+	if err != nil {
+		return "", err
+	}
+
+	// Check if VM is in a state where IP discovery makes sense
+	if sb.State != store.SandboxStateRunning && sb.State != store.SandboxStateStarting {
+		return "", fmt.Errorf("sandbox is in state %s, must be running or starting for IP discovery", sb.State)
+	}
+
+	s.logger.Info("discovering IP for sandbox",
+		"sandbox_id", sandboxID,
+		"sandbox_name", sb.SandboxName,
+	)
+
+	ip, mac, err := s.mgr.GetIPAddress(ctx, sb.SandboxName, s.cfg.IPDiscoveryTimeout)
+	if err != nil {
+		return "", fmt.Errorf("ip discovery failed: %w", err)
+	}
+
+	// Validate IP uniqueness
+	if err := s.validateIPUniqueness(ctx, sb.ID, ip); err != nil {
+		s.logger.Warn("IP conflict during discovery",
+			"sandbox_id", sb.ID,
+			"ip_address", ip,
+			"mac_address", mac,
+			"error", err,
+		)
+		return "", fmt.Errorf("ip conflict: %w", err)
+	}
+
+	// Update the sandbox with the discovered IP
+	if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, &ip); err != nil {
+		return "", fmt.Errorf("persist ip: %w", err)
+	}
+
+	s.logger.Info("IP discovered and stored",
+		"sandbox_id", sandboxID,
+		"ip_address", ip,
+		"mac_address", mac,
+	)
 
 	return ip, nil
 }
@@ -283,6 +504,17 @@ func (s *Service) DestroySandbox(ctx context.Context, sandboxID string) (*store.
 	if err != nil {
 		return nil, err
 	}
+
+	// Cleanup managed SSH keys for this sandbox (non-fatal if it fails)
+	if s.keyMgr != nil {
+		if err := s.keyMgr.CleanupSandbox(ctx, sandboxID); err != nil {
+			s.logger.Warn("failed to cleanup SSH keys",
+				"sandbox_id", sandboxID,
+				"error", err,
+			)
+		}
+	}
+
 	if err := s.mgr.DestroyVM(ctx, sb.SandboxName); err != nil {
 		return nil, fmt.Errorf("destroy vm: %w", err)
 	}
@@ -374,17 +606,11 @@ func (s *Service) DiffSnapshots(ctx context.Context, sandboxID, from, to string)
 }
 
 // RunCommand executes a command inside the sandbox via SSH.
-// The username and privateKeyPath are required for SSH auth. The service obtains
-// the VM IP from the sandbox record or discovers it via libvirt if missing.
+// If privateKeyPath is empty and a key manager is configured, managed credentials will be used.
+// Otherwise, username and privateKeyPath are required for SSH auth.
 func (s *Service) RunCommand(ctx context.Context, sandboxID, username, privateKeyPath, command string, timeout time.Duration, env map[string]string) (*store.Command, error) {
 	if strings.TrimSpace(sandboxID) == "" {
 		return nil, fmt.Errorf("sandboxID is required")
-	}
-	if strings.TrimSpace(username) == "" {
-		return nil, fmt.Errorf("username is required")
-	}
-	if strings.TrimSpace(privateKeyPath) == "" {
-		return nil, fmt.Errorf("privateKeyPath is required")
 	}
 	if strings.TrimSpace(command) == "" {
 		return nil, fmt.Errorf("command is required")
@@ -393,22 +619,68 @@ func (s *Service) RunCommand(ctx context.Context, sandboxID, username, privateKe
 		timeout = s.cfg.CommandTimeout
 	}
 
+	// Determine if we're using managed credentials
+	var useManagedCreds bool
+	var certPath string
+	if strings.TrimSpace(privateKeyPath) == "" {
+		if s.keyMgr == nil {
+			return nil, fmt.Errorf("privateKeyPath is required (no key manager configured)")
+		}
+		useManagedCreds = true
+		// Default username for managed credentials
+		if strings.TrimSpace(username) == "" {
+			username = "sandbox"
+		}
+	} else {
+		// Traditional mode: username is required
+		if strings.TrimSpace(username) == "" {
+			return nil, fmt.Errorf("username is required")
+		}
+	}
+
 	sb, err := s.store.GetSandbox(ctx, sandboxID)
 	if err != nil {
 		return nil, err
 	}
-	ip := ""
-	if sb.IPAddress != nil && *sb.IPAddress != "" {
-		ip = *sb.IPAddress
-	} else {
-		ip, err = s.mgr.GetIPAddress(ctx, sb.SandboxName, s.cfg.IPDiscoveryTimeout)
-		if err != nil {
-			return nil, fmt.Errorf("discover ip: %w", err)
-		}
-		// Persist discovered IP for subsequent calls
+
+	// Always re-discover IP to ensure we have the correct one for THIS sandbox.
+	// This is important because:
+	// 1. Cached IPs might be stale if the VM was restarted
+	// 2. Another sandbox might have been assigned the same IP erroneously
+	// 3. DHCP leases can change
+	ip, mac, err := s.mgr.GetIPAddress(ctx, sb.SandboxName, s.cfg.IPDiscoveryTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("discover ip for sandbox %s (vm: %s): %w", sb.ID, sb.SandboxName, err)
+	}
+
+	// Check if this IP is already assigned to a DIFFERENT running sandbox
+	if err := s.validateIPUniqueness(ctx, sb.ID, ip); err != nil {
+		s.logger.Warn("IP conflict detected",
+			"sandbox_id", sb.ID,
+			"sandbox_name", sb.SandboxName,
+			"ip_address", ip,
+			"mac_address", mac,
+			"error", err,
+		)
+		return nil, fmt.Errorf("ip conflict: %w", err)
+	}
+
+	// Update IP if it changed or wasn't set
+	if sb.IPAddress == nil || *sb.IPAddress != ip {
 		if err := s.store.UpdateSandboxState(ctx, sb.ID, sb.State, &ip); err != nil {
 			return nil, fmt.Errorf("persist ip: %w", err)
 		}
+	}
+
+	// Get managed credentials if needed
+	if useManagedCreds {
+		creds, err := s.keyMgr.GetCredentials(ctx, sandboxID, username)
+		if err != nil {
+			return nil, fmt.Errorf("get managed credentials: %w", err)
+		}
+		privateKeyPath = creds.PrivateKeyPath
+		certPath = creds.CertificatePath
+		username = creds.Username
 	}
 
 	cmdID := fmt.Sprintf("CMD-%s", shortID())
@@ -422,7 +694,15 @@ func (s *Service) RunCommand(ctx context.Context, sandboxID, username, privateKe
 		envJSON = &tmp
 	}
 
-	stdout, stderr, code, runErr := s.ssh.Run(ctx, ip, username, privateKeyPath, commandWithEnv(command, env), timeout, env)
+	// Execute SSH command
+	var stdout, stderr string
+	var code int
+	var runErr error
+	if useManagedCreds {
+		stdout, stderr, code, runErr = s.ssh.RunWithCert(ctx, ip, username, privateKeyPath, certPath, commandWithEnv(command, env), timeout, env)
+	} else {
+		stdout, stderr, code, runErr = s.ssh.Run(ctx, ip, username, privateKeyPath, commandWithEnv(command, env), timeout, env)
+	}
 
 	cmd := &store.Command{
 		ID:        cmdID,
@@ -451,15 +731,37 @@ type SSHRunner interface {
 	// Returns stdout, stderr, and exit code. Implementations should use StrictHostKeyChecking=no
 	// or a known_hosts strategy appropriate for ephemeral sandboxes.
 	Run(ctx context.Context, addr, user, privateKeyPath, command string, timeout time.Duration, env map[string]string) (stdout, stderr string, exitCode int, err error)
+
+	// RunWithCert executes command using certificate-based authentication.
+	// The certPath should point to the SSH certificate file (key-cert.pub).
+	RunWithCert(ctx context.Context, addr, user, privateKeyPath, certPath, command string, timeout time.Duration, env map[string]string) (stdout, stderr string, exitCode int, err error)
 }
 
 // DefaultSSHRunner is a simple implementation backed by the system's ssh binary.
-type DefaultSSHRunner struct{}
+type DefaultSSHRunner struct {
+	// ProxyJump specifies a jump host for SSH connections.
+	// Format: "user@host:port" or just "host" for default user/port.
+	// If empty, direct connections are made.
+	ProxyJump string
+}
 
 // Run implements SSHRunner.Run using the local ssh client.
 // It disables strict host key checking and sets a connect timeout.
 // It assumes the VM is reachable on the default SSH port (22).
 func (r *DefaultSSHRunner) Run(ctx context.Context, addr, user, privateKeyPath, command string, timeout time.Duration, _ map[string]string) (string, string, int, error) {
+	// Pre-flight check: verify the private key file exists and has correct permissions
+	keyInfo, err := os.Stat(privateKeyPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", "", 255, fmt.Errorf("ssh key file not found: %s", privateKeyPath)
+		}
+		return "", "", 255, fmt.Errorf("ssh key file error: %w", err)
+	}
+	// Check permissions - SSH keys should not be world-readable
+	if keyInfo.Mode().Perm()&0o077 != 0 {
+		return "", "", 255, fmt.Errorf("ssh key file %s has insecure permissions %o (should be 0600 or stricter)", privateKeyPath, keyInfo.Mode().Perm())
+	}
+
 	if _, ok := ctx.Deadline(); !ok && timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, timeout)
@@ -471,27 +773,109 @@ func (r *DefaultSSHRunner) Run(ctx context.Context, addr, user, privateKeyPath, 
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "UserKnownHostsFile=/dev/null",
 		"-o", "ConnectTimeout=15",
+	}
+	// Add ProxyJump if configured
+	if r.ProxyJump != "" {
+		args = append(args, "-J", r.ProxyJump)
+	}
+	args = append(args,
 		fmt.Sprintf("%s@%s", user, addr),
 		"--",
 		command,
-	}
+	)
 
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, "ssh", args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
+	err = cmd.Run()
 	exitCode := 0
 	if err != nil {
 		// Best-effort extract exit code
 		var ee *exec.ExitError
-		if errors.As(err, &ee) && ee.ProcessState != nil {
-			exitCode = ee.ProcessState.ExitCode()
+		if errors.As(err, &ee) {
+			exitCode = ee.ExitCode()
 		} else {
 			exitCode = 255
 		}
-		return stdout.String(), stderr.String(), exitCode, err
+		// Include stderr in error message for better debugging
+		stderrStr := stderr.String()
+		if stderrStr != "" {
+			err = fmt.Errorf("%w: %s", err, stderrStr)
+		}
+		return stdout.String(), stderrStr, exitCode, err
+	}
+	if cmd.ProcessState != nil {
+		exitCode = cmd.ProcessState.ExitCode()
+	}
+	return stdout.String(), stderr.String(), exitCode, nil
+}
+
+// RunWithCert implements SSHRunner.RunWithCert using the local ssh client with certificate auth.
+func (r *DefaultSSHRunner) RunWithCert(ctx context.Context, addr, user, privateKeyPath, certPath, command string, timeout time.Duration, _ map[string]string) (string, string, int, error) {
+	// Pre-flight check: verify the private key file exists and has correct permissions
+	keyInfo, err := os.Stat(privateKeyPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", "", 255, fmt.Errorf("ssh key file not found: %s", privateKeyPath)
+		}
+		return "", "", 255, fmt.Errorf("ssh key file error: %w", err)
+	}
+	if keyInfo.Mode().Perm()&0o077 != 0 {
+		return "", "", 255, fmt.Errorf("ssh key file %s has insecure permissions %o (should be 0600 or stricter)", privateKeyPath, keyInfo.Mode().Perm())
+	}
+
+	// Check certificate file exists
+	if _, err := os.Stat(certPath); err != nil {
+		if os.IsNotExist(err) {
+			return "", "", 255, fmt.Errorf("ssh certificate file not found: %s", certPath)
+		}
+		return "", "", 255, fmt.Errorf("ssh certificate file error: %w", err)
+	}
+
+	if _, ok := ctx.Deadline(); !ok && timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
+	args := []string{
+		"-i", privateKeyPath,
+		"-o", fmt.Sprintf("CertificateFile=%s", certPath),
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "ConnectTimeout=15",
+	}
+	// Add ProxyJump if configured
+	if r.ProxyJump != "" {
+		args = append(args, "-J", r.ProxyJump)
+	}
+	args = append(args,
+		fmt.Sprintf("%s@%s", user, addr),
+		"--",
+		command,
+	)
+
+	var stdout, stderr bytes.Buffer
+	cmd := exec.CommandContext(ctx, "ssh", args...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	exitCode := 0
+	if err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			exitCode = ee.ExitCode()
+		} else {
+			exitCode = 255
+		}
+		stderrStr := stderr.String()
+		if stderrStr != "" {
+			err = fmt.Errorf("%w: %s", err, stderrStr)
+		}
+		return stdout.String(), stderrStr, exitCode, err
 	}
 	if cmd.ProcessState != nil {
 		exitCode = cmd.ProcessState.ExitCode()

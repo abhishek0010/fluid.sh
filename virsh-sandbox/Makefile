@@ -79,7 +79,7 @@ create-test-vm: ## Create a test VM for development
 ## Docker targets
 
 docker-build: ## Build Docker image
-	docker build -f api.Dockerfile -t virsh-sandbox-api .
+	docker build -f Dockerfile -t virsh-sandbox-api .
 
 ## Help
 

@@ -7,9 +7,9 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **command** | **str** | required | [optional] 
 **env** | **Dict[str, str]** | optional | [optional] 
-**private_key_path** | **str** | required; path on API host | [optional] 
+**private_key_path** | **str** | optional; if empty, uses managed credentials (requires SSH CA) | [optional] 
 **timeout_sec** | **int** | optional; default from service config | [optional] 
-**username** | **str** | required | [optional] 
+**user** | **str** | optional; defaults to \&quot;sandbox\&quot; when using managed credentials | [optional] 
 
 ## Example
 

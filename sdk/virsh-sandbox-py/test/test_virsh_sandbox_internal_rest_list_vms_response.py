@@ -41,12 +41,7 @@ class TestVirshSandboxInternalRestListVMsResponse(unittest.TestCase):
         if include_optional:
             return VirshSandboxInternalRestListVMsResponse(
                 vms = [
-                    virsh_sandbox.models.virsh_sandbox_internal_rest/vm_info.virsh-sandbox_internal_rest.vmInfo(
-                        disk_path = '', 
-                        name = '', 
-                        persistent = True, 
-                        state = '', 
-                        uuid = '', )
+                    {"name":"name","state":"state","persistent":true,"uuid":"uuid","disk_path":"disk_path"}
                     ]
             )
         else:

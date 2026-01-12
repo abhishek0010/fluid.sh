@@ -1,178 +1,98 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
-// Stream event types matching backend
-interface StreamEvent {
-  type:
-    | "connected"
-    | "command_history"
-    | "command_new"
-    | "heartbeat"
-    | "file_change";
-  timestamp: string;
-  data?: unknown;
-  sandbox_id?: string;
-}
-
-interface CommandData {
+interface StreamCommand {
   command_id: string;
   command: string;
   stdout?: string;
   stderr?: string;
   exit_code?: number;
-  started_at: string;
-  ended_at: string;
+  started_at?: string;
+  ended_at?: string;
 }
 
 interface ConnectionData {
-  sandbox_id: string;
-  sandbox_name: string;
-  state: string;
   ip_address?: string;
-}
-
-interface UseSandboxStreamOptions {
-  onCommand?: (command: CommandData) => void;
-  onConnected?: (data: ConnectionData) => void;
-  onError?: (error: Event) => void;
-  autoReconnect?: boolean;
-  reconnectInterval?: number;
+  state?: string;
 }
 
 interface UseSandboxStreamReturn {
   isConnected: boolean;
-  commands: CommandData[];
+  commands: StreamCommand[];
   connectionData: ConnectionData | null;
-  error: string | null;
-  connect: () => void;
-  disconnect: () => void;
+  error: Error | null;
 }
 
-export function useSandboxStream(
-  sandboxId: string | undefined,
-  options: UseSandboxStreamOptions = {}
-): UseSandboxStreamReturn {
-  const {
-    onCommand,
-    onConnected,
-    onError,
-    autoReconnect = true,
-    reconnectInterval = 5000,
-  } = options;
-
+export function useSandboxStream(sandboxId: string): UseSandboxStreamReturn {
   const [isConnected, setIsConnected] = useState(false);
-  const [commands, setCommands] = useState<CommandData[]>([]);
-  const [connectionData, setConnectionData] = useState<ConnectionData | null>(
-    null
-  );
-  const [error, setError] = useState<string | null>(null);
-
+  const [commands, setCommands] = useState<StreamCommand[]>([]);
+  const [connectionData, setConnectionData] = useState<ConnectionData | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<number | null>(null);
 
   const connect = useCallback(() => {
     if (!sandboxId) return;
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    // Determine WebSocket URL based on current location
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/v1/sandboxes/${sandboxId}/stream`;
+    const wsUrl = `${protocol}//${window.location.host}/v1/sandboxes/${sandboxId}/stream`;
 
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    ws.onopen = () => {
-      setIsConnected(true);
-      setError(null);
-    };
+      ws.onopen = () => {
+        setIsConnected(true);
+        setError(null);
+      };
 
-    ws.onmessage = (event) => {
-      try {
-        const streamEvent: StreamEvent = JSON.parse(event.data);
-
-        switch (streamEvent.type) {
-          case "connected": {
-            const data = streamEvent.data as ConnectionData;
-            setConnectionData(data);
-            onConnected?.(data);
-            break;
-          }
-          case "command_history":
-          case "command_new": {
-            const cmdData = streamEvent.data as CommandData;
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === "command") {
             setCommands((prev) => {
-              // Avoid duplicates
-              if (prev.some((c) => c.command_id === cmdData.command_id)) {
-                return prev;
+              const existing = prev.findIndex((c) => c.command_id === data.command_id);
+              if (existing >= 0) {
+                const updated = [...prev];
+                updated[existing] = { ...updated[existing], ...data };
+                return updated;
               }
-              return [...prev, cmdData];
+              return [...prev, data];
             });
-            onCommand?.(cmdData);
-            break;
+          } else if (data.type === "connection") {
+            setConnectionData(data);
           }
-          case "heartbeat":
-            // Keep-alive, no action needed
-            break;
+        } catch (e) {
+          console.error("Failed to parse WebSocket message:", e);
         }
-      } catch (e) {
-        console.error("Failed to parse WebSocket message:", e);
-      }
-    };
+      };
 
-    ws.onerror = (event) => {
-      setError("WebSocket connection error");
-      onError?.(event);
-    };
+      ws.onclose = () => {
+        setIsConnected(false);
+      };
 
-    ws.onclose = () => {
-      setIsConnected(false);
-      wsRef.current = null;
-
-      // Auto-reconnect if enabled
-      if (autoReconnect && sandboxId) {
-        reconnectTimeoutRef.current = window.setTimeout(() => {
-          connect();
-        }, reconnectInterval);
-      }
-    };
-  }, [
-    sandboxId,
-    onCommand,
-    onConnected,
-    onError,
-    autoReconnect,
-    reconnectInterval,
-  ]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
+      ws.onerror = (e) => {
+        setError(new Error("WebSocket connection error"));
+        setIsConnected(false);
+      };
+    } catch (e) {
+      setError(e as Error);
     }
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    setIsConnected(false);
-  }, []);
+  }, [sandboxId]);
 
-  // Connect when sandboxId changes
   useEffect(() => {
-    if (sandboxId) {
-      connect();
-    }
+    connect();
 
     return () => {
-      disconnect();
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
     };
-  }, [sandboxId, connect, disconnect]);
+  }, [connect]);
 
   return {
     isConnected,
     commands,
     connectionData,
     error,
-    connect,
-    disconnect,
   };
 }

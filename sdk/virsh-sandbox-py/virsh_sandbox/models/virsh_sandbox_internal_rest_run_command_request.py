@@ -30,18 +30,22 @@ class VirshSandboxInternalRestRunCommandRequest(BaseModel):
     command: Optional[StrictStr] = Field(default=None, description="required")
     env: Optional[Dict[str, StrictStr]] = Field(default=None, description="optional")
     private_key_path: Optional[StrictStr] = Field(
-        default=None, description="required; path on API host"
+        default=None,
+        description="optional; if empty, uses managed credentials (requires SSH CA)",
     )
     timeout_sec: Optional[StrictInt] = Field(
         default=None, description="optional; default from service config"
     )
-    username: Optional[StrictStr] = Field(default=None, description="required")
+    user: Optional[StrictStr] = Field(
+        default=None,
+        description='optional; defaults to "sandbox" when using managed credentials',
+    )
     __properties: ClassVar[List[str]] = [
         "command",
         "env",
         "private_key_path",
         "timeout_sec",
-        "username",
+        "user",
     ]
 
     model_config = ConfigDict(
@@ -98,7 +102,7 @@ class VirshSandboxInternalRestRunCommandRequest(BaseModel):
                 "env": obj.get("env"),
                 "private_key_path": obj.get("private_key_path"),
                 "timeout_sec": obj.get("timeout_sec"),
-                "username": obj.get("username"),
+                "user": obj.get("user"),
             }
         )
         return _obj

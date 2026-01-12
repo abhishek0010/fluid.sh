@@ -24,9 +24,11 @@ When modifying the API, you must rebuild for changes to take effect:
 ```bash
 # From repo root - rebuild and restart via docker-compose
 docker-compose down && docker-compose up --build -d
+```
 
-# Or rebuild locally
-cd virsh-sandbox && make build
+```bash
+# Use limactl to access the test VM
+limactl shell virsh-sandbox-dev
 ```
 
 ### ARM Mac (Apple Silicon) Limitations

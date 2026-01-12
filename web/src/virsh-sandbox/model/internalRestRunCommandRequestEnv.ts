@@ -9,4 +9,4 @@
 /**
  * optional
  */
-export type InternalRestRunCommandRequestEnv = {[key: string]: string};
+export type InternalRestRunCommandRequestEnv = { [key: string]: string };

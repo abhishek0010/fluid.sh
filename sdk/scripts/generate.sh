@@ -5,18 +5,15 @@ set -e
 
 echo "Generating SDK..."
 
-# Merge OpenAPI specs first
-npx openapi-merge-cli --config openapi/openapi-merge.json
-
 # Generate with custom templates
 docker run --rm \
-  -v ${PWD}:/local \
+  -v ${PWD}/..:/local \
   openapitools/openapi-generator-cli generate --skip-validate-spec \
-  -i /local/openapi/combined.yaml \
+  -i /local/virsh-sandbox/docs/openapi.yaml \
   -g python \
-  -o /local/virsh-sandbox-py/ \
-  -c /local/.openapi-generator/config.yaml \
-  -t /local/.openapi-generator/templates/python/
+  -o /local/sdk/virsh-sandbox-py/ \
+  -c /local/sdk/.openapi-generator/config.yaml \
+  -t /local/sdk/.openapi-generator/templates/python/
 
 echo "Running polish script..."
 python3 scripts/polish_sdk.py

@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_run_command_response import \
-    InternalRestRunCommandResponse
+from virsh_sandbox.models.internal_rest_run_command_response import (
+    InternalRestRunCommandResponse,
+)
 
 
 class TestInternalRestRunCommandResponse(unittest.TestCase):

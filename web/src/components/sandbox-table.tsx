@@ -18,8 +18,8 @@ import {
 } from "~/components/ui/table";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
-import { useListSandboxes } from "~/hooks/use-sandbox-api";
-import type { VirshSandboxInternalRestSandboxInfo } from "~/virsh-sandbox/model";
+import { useListSandboxes } from "~/virsh-sandbox/sandbox/sandbox";
+import type { InternalRestSandboxInfo } from "~/virsh-sandbox/model";
 
 function getStateBadgeVariant(
   state: string | undefined
@@ -42,9 +42,10 @@ export function SandboxTable() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const navigate = useNavigate();
 
-  const { data: sandboxes = [], isLoading, isError } = useListSandboxes();
+  const { data: response, isLoading, isError } = useListSandboxes();
+  const sandboxes = response?.data?.sandboxes ?? [];
 
-  const columns: ColumnDef<VirshSandboxInternalRestSandboxInfo>[] = [
+  const columns: ColumnDef<InternalRestSandboxInfo>[] = [
     {
       accessorKey: "id",
       header: "ID",
@@ -116,7 +117,7 @@ export function SandboxTable() {
   ];
 
   const table = useReactTable({
-    data: sandboxes as VirshSandboxInternalRestSandboxInfo[],
+    data: sandboxes as InternalRestSandboxInfo[],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),

@@ -1,5 +1,7 @@
 # SDK Development Guidelines
 
+**Important**: All scripts mentioned below must be run from the `sdk/` directory.
+
 ## Python SDK (`virsh-sandbox-py`)
 
 ### Development Scripts

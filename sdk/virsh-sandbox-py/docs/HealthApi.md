@@ -4,22 +4,22 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**get_health**](HealthApi.md#get_health) | **GET** /v1/health | Get health status
+[**get_health**](HealthApi.md#get_health) | **GET** /v1/health | Health check
 
 
 # **get_health**
-> TmuxClientInternalTypesHealthResponse get_health()
+> VirshSandboxInternalRestHealthResponse get_health()
 
-Get health status
+Health check
 
-Retrieves the health status of the API server and its components, including the virsh-sandbox API if configured
+Returns service health status
 
 ### Example
 
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.tmux_client_internal_types_health_response import TmuxClientInternalTypesHealthResponse
+from virsh_sandbox.models.virsh_sandbox_internal_rest_health_response import VirshSandboxInternalRestHealthResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -36,7 +36,7 @@ with virsh_sandbox.ApiClient(configuration) as api_client:
     api_instance = virsh_sandbox.HealthApi(api_client)
 
     try:
-        # Get health status
+        # Health check
         api_response = api_instance.get_health()
         print("The response of HealthApi->get_health:\n")
         pprint(api_response)
@@ -52,7 +52,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**TmuxClientInternalTypesHealthResponse**](TmuxClientInternalTypesHealthResponse.md)
+[**VirshSandboxInternalRestHealthResponse**](VirshSandboxInternalRestHealthResponse.md)
 
 ### Authorization
 

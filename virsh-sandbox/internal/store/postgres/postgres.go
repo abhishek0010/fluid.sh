@@ -499,17 +499,299 @@ func (s *postgresStore) GetPublication(ctx context.Context, id string) (*store.P
 	return publicationFromModel(&model), nil
 }
 
+// --- Playbook ---
+
+func (s *postgresStore) CreatePlaybook(ctx context.Context, pb *store.Playbook) error {
+	if s.conf.ReadOnly {
+		return fmt.Errorf("postgres: CreatePlaybook: %w", store.ErrInvalid)
+	}
+	if pb == nil || pb.ID == "" || pb.Name == "" || pb.Hosts == "" {
+		return fmt.Errorf("postgres: CreatePlaybook: %w", store.ErrInvalid)
+	}
+	now := time.Now().UTC()
+	pb.CreatedAt = now
+	pb.UpdatedAt = now
+
+	if err := s.db.WithContext(ctx).Create(playbookToModel(pb)).Error; err != nil {
+		return mapDBError(err)
+	}
+	return nil
+}
+
+func (s *postgresStore) GetPlaybook(ctx context.Context, id string) (*store.Playbook, error) {
+	var model PlaybookModel
+	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&model).Error; err != nil {
+		return nil, mapDBError(err)
+	}
+	return playbookFromModel(&model), nil
+}
+
+func (s *postgresStore) GetPlaybookByName(ctx context.Context, name string) (*store.Playbook, error) {
+	var model PlaybookModel
+	if err := s.db.WithContext(ctx).Where("name = ?", name).First(&model).Error; err != nil {
+		return nil, mapDBError(err)
+	}
+	return playbookFromModel(&model), nil
+}
+
+func (s *postgresStore) ListPlaybooks(ctx context.Context, opt *store.ListOptions) ([]*store.Playbook, error) {
+	tx := s.db.WithContext(ctx).Model(&PlaybookModel{})
+	tx = applyListOptions(tx, opt, map[string]string{
+		"created_at": "created_at",
+		"updated_at": "updated_at",
+		"name":       "name",
+	})
+
+	var models []PlaybookModel
+	if err := tx.Find(&models).Error; err != nil {
+		return nil, mapDBError(err)
+	}
+	out := make([]*store.Playbook, 0, len(models))
+	for i := range models {
+		out = append(out, playbookFromModel(&models[i]))
+	}
+	return out, nil
+}
+
+func (s *postgresStore) UpdatePlaybook(ctx context.Context, pb *store.Playbook) error {
+	if s.conf.ReadOnly {
+		return fmt.Errorf("postgres: UpdatePlaybook: %w", store.ErrInvalid)
+	}
+	if pb == nil || pb.ID == "" {
+		return fmt.Errorf("postgres: UpdatePlaybook: %w", store.ErrInvalid)
+	}
+	pb.UpdatedAt = time.Now().UTC()
+	model := playbookToModel(pb)
+
+	res := s.db.WithContext(ctx).
+		Model(&PlaybookModel{}).
+		Where("id = ?", pb.ID).
+		Updates(map[string]any{
+			"name":       model.Name,
+			"hosts":      model.Hosts,
+			"become":     model.Become,
+			"file_path":  model.FilePath,
+			"updated_at": model.UpdatedAt,
+		})
+
+	if err := mapDBError(res.Error); err != nil {
+		return err
+	}
+	if res.RowsAffected == 0 {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+func (s *postgresStore) DeletePlaybook(ctx context.Context, id string) error {
+	if s.conf.ReadOnly {
+		return fmt.Errorf("postgres: DeletePlaybook: %w", store.ErrInvalid)
+	}
+	if id == "" {
+		return fmt.Errorf("postgres: DeletePlaybook: %w", store.ErrInvalid)
+	}
+
+	// Delete associated tasks first
+	if err := s.db.WithContext(ctx).Where("playbook_id = ?", id).Delete(&PlaybookTaskModel{}).Error; err != nil {
+		return mapDBError(err)
+	}
+
+	res := s.db.WithContext(ctx).Where("id = ?", id).Delete(&PlaybookModel{})
+	if err := mapDBError(res.Error); err != nil {
+		return err
+	}
+	if res.RowsAffected == 0 {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+// --- PlaybookTask ---
+
+func (s *postgresStore) CreatePlaybookTask(ctx context.Context, task *store.PlaybookTask) error {
+	if s.conf.ReadOnly {
+		return fmt.Errorf("postgres: CreatePlaybookTask: %w", store.ErrInvalid)
+	}
+	if task == nil || task.ID == "" || task.PlaybookID == "" || task.Name == "" || task.Module == "" {
+		return fmt.Errorf("postgres: CreatePlaybookTask: %w", store.ErrInvalid)
+	}
+	if task.CreatedAt.IsZero() {
+		task.CreatedAt = time.Now().UTC()
+	}
+
+	model, err := playbookTaskToModel(task)
+	if err != nil {
+		return err
+	}
+	if err := s.db.WithContext(ctx).Create(model).Error; err != nil {
+		return mapDBError(err)
+	}
+	return nil
+}
+
+func (s *postgresStore) GetPlaybookTask(ctx context.Context, id string) (*store.PlaybookTask, error) {
+	var model PlaybookTaskModel
+	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&model).Error; err != nil {
+		return nil, mapDBError(err)
+	}
+	return playbookTaskFromModel(&model)
+}
+
+func (s *postgresStore) ListPlaybookTasks(ctx context.Context, playbookID string, opt *store.ListOptions) ([]*store.PlaybookTask, error) {
+	tx := s.db.WithContext(ctx).Model(&PlaybookTaskModel{}).Where("playbook_id = ?", playbookID)
+
+	// Default ordering by position
+	if opt == nil || opt.OrderBy == "" {
+		tx = tx.Order("position ASC")
+	} else {
+		tx = applyListOptions(tx, opt, map[string]string{
+			"position":   "position",
+			"created_at": "created_at",
+			"name":       "name",
+		})
+	}
+
+	if opt != nil && opt.Limit > 0 {
+		tx = tx.Limit(opt.Limit)
+		if opt.Offset > 0 {
+			tx = tx.Offset(opt.Offset)
+		}
+	}
+
+	var models []PlaybookTaskModel
+	if err := tx.Find(&models).Error; err != nil {
+		return nil, mapDBError(err)
+	}
+	out := make([]*store.PlaybookTask, 0, len(models))
+	for i := range models {
+		task, err := playbookTaskFromModel(&models[i])
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, task)
+	}
+	return out, nil
+}
+
+func (s *postgresStore) UpdatePlaybookTask(ctx context.Context, task *store.PlaybookTask) error {
+	if s.conf.ReadOnly {
+		return fmt.Errorf("postgres: UpdatePlaybookTask: %w", store.ErrInvalid)
+	}
+	if task == nil || task.ID == "" {
+		return fmt.Errorf("postgres: UpdatePlaybookTask: %w", store.ErrInvalid)
+	}
+
+	model, err := playbookTaskToModel(task)
+	if err != nil {
+		return err
+	}
+
+	res := s.db.WithContext(ctx).
+		Model(&PlaybookTaskModel{}).
+		Where("id = ?", task.ID).
+		Updates(map[string]any{
+			"name":     model.Name,
+			"module":   model.Module,
+			"params":   model.Params,
+			"position": model.Position,
+		})
+
+	if err := mapDBError(res.Error); err != nil {
+		return err
+	}
+	if res.RowsAffected == 0 {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+func (s *postgresStore) DeletePlaybookTask(ctx context.Context, id string) error {
+	if s.conf.ReadOnly {
+		return fmt.Errorf("postgres: DeletePlaybookTask: %w", store.ErrInvalid)
+	}
+	if id == "" {
+		return fmt.Errorf("postgres: DeletePlaybookTask: %w", store.ErrInvalid)
+	}
+
+	res := s.db.WithContext(ctx).Where("id = ?", id).Delete(&PlaybookTaskModel{})
+	if err := mapDBError(res.Error); err != nil {
+		return err
+	}
+	if res.RowsAffected == 0 {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+func (s *postgresStore) ReorderPlaybookTasks(ctx context.Context, playbookID string, taskIDs []string) error {
+	if s.conf.ReadOnly {
+		return fmt.Errorf("postgres: ReorderPlaybookTasks: %w", store.ErrInvalid)
+	}
+	if playbookID == "" || len(taskIDs) == 0 {
+		return fmt.Errorf("postgres: ReorderPlaybookTasks: %w", store.ErrInvalid)
+	}
+
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for i, taskID := range taskIDs {
+			res := tx.Model(&PlaybookTaskModel{}).
+				Where("id = ? AND playbook_id = ?", taskID, playbookID).
+				Update("position", i)
+			if res.Error != nil {
+				return mapDBError(res.Error)
+			}
+			if res.RowsAffected == 0 {
+				return fmt.Errorf("task %s not found in playbook %s", taskID, playbookID)
+			}
+		}
+		return nil
+	})
+}
+
+func (s *postgresStore) GetNextTaskPosition(ctx context.Context, playbookID string) (int, error) {
+	var maxPos *int
+	err := s.db.WithContext(ctx).
+		Model(&PlaybookTaskModel{}).
+		Where("playbook_id = ?", playbookID).
+		Select("MAX(position)").
+		Scan(&maxPos).Error
+	if err != nil {
+		return 0, mapDBError(err)
+	}
+	if maxPos == nil {
+		return 0, nil
+	}
+	return *maxPos + 1, nil
+}
+
 // --- Migration ---
 
 func (s *postgresStore) autoMigrate(ctx context.Context) error {
-	return s.db.WithContext(ctx).AutoMigrate(
+	if err := s.db.WithContext(ctx).AutoMigrate(
 		&SandboxModel{},
 		&SnapshotModel{},
 		&CommandModel{},
 		&DiffModel{},
 		&ChangeSetModel{},
 		&PublicationModel{},
-	)
+		&PlaybookModel{},
+		&PlaybookTaskModel{},
+	); err != nil {
+		return err
+	}
+
+	// Create partial unique index on sandbox_name for non-deleted rows only.
+	// This allows reusing sandbox names after soft-delete.
+	// We use CREATE INDEX IF NOT EXISTS to be idempotent.
+	if err := s.db.WithContext(ctx).Exec(`
+		DROP INDEX IF EXISTS idx_sandboxes_sandbox_name;
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_sandbox_name_active
+		ON sandboxes (sandbox_name)
+		WHERE deleted_at IS NULL
+	`).Error; err != nil {
+		return fmt.Errorf("create partial unique index: %w", err)
+	}
+
+	return nil
 }
 
 // --- Models & Converters ---
@@ -518,7 +800,7 @@ type SandboxModel struct {
 	ID          string     `gorm:"primaryKey;column:id"`
 	JobID       string     `gorm:"column:job_id;not null;index"`
 	AgentID     string     `gorm:"column:agent_id;not null;index"`
-	SandboxName string     `gorm:"column:sandbox_name;not null;uniqueIndex"`
+	SandboxName string     `gorm:"column:sandbox_name;not null"` // Partial unique index created in autoMigrate
 	BaseImage   string     `gorm:"column:base_image;not null;index"`
 	Network     string     `gorm:"column:network;not null"`
 	IPAddress   *string    `gorm:"column:ip"`
@@ -595,6 +877,30 @@ type PublicationModel struct {
 }
 
 func (PublicationModel) TableName() string { return "publications" }
+
+type PlaybookModel struct {
+	ID        string    `gorm:"primaryKey;column:id"`
+	Name      string    `gorm:"column:name;not null;uniqueIndex"`
+	Hosts     string    `gorm:"column:hosts;not null"`
+	Become    bool      `gorm:"column:become;not null;default:false"`
+	FilePath  *string   `gorm:"column:file_path"`
+	CreatedAt time.Time `gorm:"column:created_at;not null"`
+	UpdatedAt time.Time `gorm:"column:updated_at;not null"`
+}
+
+func (PlaybookModel) TableName() string { return "playbooks" }
+
+type PlaybookTaskModel struct {
+	ID         string         `gorm:"primaryKey;column:id"`
+	PlaybookID string         `gorm:"column:playbook_id;not null;index"`
+	Position   int            `gorm:"column:position;not null;index"`
+	Name       string         `gorm:"column:name;not null"`
+	Module     string         `gorm:"column:module;not null"`
+	Params     datatypes.JSON `gorm:"column:params;type:jsonb;not null"`
+	CreatedAt  time.Time      `gorm:"column:created_at;not null"`
+}
+
+func (PlaybookTaskModel) TableName() string { return "playbook_tasks" }
 
 func sandboxToModel(sb *store.Sandbox) *SandboxModel {
 	return &SandboxModel{
@@ -764,6 +1070,64 @@ func publicationFromModel(m *PublicationModel) *store.Publication {
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}
+}
+
+func playbookToModel(pb *store.Playbook) *PlaybookModel {
+	return &PlaybookModel{
+		ID:        pb.ID,
+		Name:      pb.Name,
+		Hosts:     pb.Hosts,
+		Become:    pb.Become,
+		FilePath:  copyString(pb.FilePath),
+		CreatedAt: pb.CreatedAt,
+		UpdatedAt: pb.UpdatedAt,
+	}
+}
+
+func playbookFromModel(m *PlaybookModel) *store.Playbook {
+	return &store.Playbook{
+		ID:        m.ID,
+		Name:      m.Name,
+		Hosts:     m.Hosts,
+		Become:    m.Become,
+		FilePath:  copyString(m.FilePath),
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
+	}
+}
+
+func playbookTaskToModel(task *store.PlaybookTask) (*PlaybookTaskModel, error) {
+	params, err := json.Marshal(task.Params)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: marshal task params: %w", err)
+	}
+	return &PlaybookTaskModel{
+		ID:         task.ID,
+		PlaybookID: task.PlaybookID,
+		Position:   task.Position,
+		Name:       task.Name,
+		Module:     task.Module,
+		Params:     datatypes.JSON(params),
+		CreatedAt:  task.CreatedAt,
+	}, nil
+}
+
+func playbookTaskFromModel(m *PlaybookTaskModel) (*store.PlaybookTask, error) {
+	var params map[string]any
+	if len(m.Params) > 0 {
+		if err := json.Unmarshal([]byte(m.Params), &params); err != nil {
+			return nil, fmt.Errorf("postgres: unmarshal task params: %w", err)
+		}
+	}
+	return &store.PlaybookTask{
+		ID:         m.ID,
+		PlaybookID: m.PlaybookID,
+		Position:   m.Position,
+		Name:       m.Name,
+		Module:     m.Module,
+		Params:     params,
+		CreatedAt:  m.CreatedAt,
+	}, nil
 }
 
 // --- Helpers ---

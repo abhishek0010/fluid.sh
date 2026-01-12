@@ -39,7 +39,18 @@ class TestInternalRestListSandboxesResponse(unittest.TestCase):
         if include_optional:
             return InternalRestListSandboxesResponse(
                 sandboxes = [
-                    {"base_image":"base_image","agent_id":"agent_id","updated_at":"updated_at","job_id":"job_id","ttl_seconds":0,"created_at":"created_at","sandbox_name":"sandbox_name","id":"id","ip_address":"ip_address","state":"state","network":"network"}
+                    virsh_sandbox.models.internal_rest/sandbox_info.internal_rest.sandboxInfo(
+                        agent_id = '', 
+                        base_image = '', 
+                        created_at = '', 
+                        id = '', 
+                        ip_address = '', 
+                        job_id = '', 
+                        network = '', 
+                        sandbox_name = '', 
+                        state = '', 
+                        ttl_seconds = 56, 
+                        updated_at = '', )
                     ],
                 total = 56
             )

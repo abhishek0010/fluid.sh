@@ -261,7 +261,7 @@ func (s *AccessService) RevokeAccess(ctx context.Context, certificateID, reason 
 			now := s.timeNowFn()
 			if err := s.store.EndSession(ctx, session.ID, now, "certificate revoked: "+reason); err != nil {
 				// Log but continue
-				continue
+				_ = err
 			}
 		}
 	}
@@ -320,7 +320,8 @@ func (s *AccessService) RecordSessionStart(ctx context.Context, certificateID, s
 
 	// Update certificate last used
 	if err := s.store.UpdateCertificateLastUsed(ctx, certificateID, now); err != nil {
-		// Non-fatal
+		// Non-fatal, just ignore
+		_ = err
 	}
 
 	return sessionID, nil
@@ -413,7 +414,7 @@ func (s *AccessService) CleanupExpiredCertificates(ctx context.Context) (int, er
 		if cert.IsExpired() || cert.Status == CertStatusExpired {
 			if err := s.store.EndSession(ctx, session.ID, now, "certificate expired"); err != nil {
 				// Log but continue
-				continue
+				_ = err
 			}
 		}
 	}
@@ -445,7 +446,7 @@ func (s *AccessService) RevokeAllForSandbox(ctx context.Context, sandboxID, reas
 	for _, cert := range certs {
 		if err := s.store.RevokeCertificate(ctx, cert.ID, reason); err != nil {
 			// Log but continue
-			continue
+			_ = err
 		}
 	}
 
@@ -463,7 +464,7 @@ func (s *AccessService) RevokeAllForSandbox(ctx context.Context, sandboxID, reas
 	for _, session := range sessions {
 		if err := s.store.EndSession(ctx, session.ID, now, reason); err != nil {
 			// Log but continue
-			continue
+			_ = err
 		}
 	}
 
@@ -510,6 +511,7 @@ func (s *AccessService) StartCleanupRoutine(ctx context.Context, interval time.D
 			case <-ticker.C:
 				if _, err := s.CleanupExpiredCertificates(ctx); err != nil {
 					// Log error but continue
+					_ = err
 				}
 			}
 		}

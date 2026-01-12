@@ -6,11 +6,11 @@
  * OpenAPI spec version: 0.0.1-beta
  */
 
-export type VirshSandboxInternalStoreSnapshotKind = typeof VirshSandboxInternalStoreSnapshotKind[keyof typeof VirshSandboxInternalStoreSnapshotKind];
-
+export type VirshSandboxInternalStoreSnapshotKind =
+  (typeof VirshSandboxInternalStoreSnapshotKind)[keyof typeof VirshSandboxInternalStoreSnapshotKind];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const VirshSandboxInternalStoreSnapshotKind = {
-  SnapshotKindInternal: 'INTERNAL',
-  SnapshotKindExternal: 'EXTERNAL',
+  SnapshotKindInternal: "INTERNAL",
+  SnapshotKindExternal: "EXTERNAL",
 } as const;

@@ -41,7 +41,22 @@ class TestVirshSandboxInternalRestListCertificatesResponse(unittest.TestCase):
         if include_optional:
             return VirshSandboxInternalRestListCertificatesResponse(
                 certificates = [
-                    {"ttl_seconds":6,"principals":["principals","principals"],"serial_number":0,"issued_at":"issued_at","valid_after":"valid_after","vm_id":"vm_id","is_expired":true,"valid_before":"valid_before","user_id":"user_id","identity":"identity","sandbox_id":"sandbox_id","id":"id","status":"status"}
+                    virsh_sandbox.models.virsh_sandbox_internal_rest/certificate_response.virsh-sandbox_internal_rest.certificateResponse(
+                        id = '', 
+                        identity = '', 
+                        is_expired = True, 
+                        issued_at = '', 
+                        principals = [
+                            ''
+                            ], 
+                        sandbox_id = '', 
+                        serial_number = 56, 
+                        status = '', 
+                        ttl_seconds = 56, 
+                        user_id = '', 
+                        valid_after = '', 
+                        valid_before = '', 
+                        vm_id = '', )
                     ],
                 total = 56
             )

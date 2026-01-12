@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.virsh_sandbox_internal_store_command_exec_record import \
-    VirshSandboxInternalStoreCommandExecRecord
+from virsh_sandbox.models.virsh_sandbox_internal_store_command_exec_record import (
+    VirshSandboxInternalStoreCommandExecRecord,
+)
 
 
 class TestVirshSandboxInternalStoreCommandExecRecord(unittest.TestCase):
@@ -42,7 +43,7 @@ class TestVirshSandboxInternalStoreCommandExecRecord(unittest.TestCase):
                 redacted = {
                     'key' : ''
                     },
-                timeout = ERROR_TO_EXAMPLE_VALUE,
+                timeout = -9223372036854775808,
                 user = '',
                 work_dir = ''
             )

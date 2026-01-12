@@ -1,19 +1,20 @@
 """
-AI Agent for working on sys-admin tasks using the virsh-sandbox API.
+AI Agent for working on infrastructure tasks using the virsh-sandbox API.
 
 This agent uses OpenAI's function calling to interact with the
 virsh-sandbox API through a set of defined tools.
 """
 import json
-import time
+from time import sleep
+import sys
 from uuid import uuid4
 from typing import Any
 from virsh_sandbox import VirshSandbox, ApiException
 from openai import OpenAI
 from dotenv import load_dotenv
 from pprint import pprint
-from uuid import uuid4
 from tools import TOOLS
+from loader_bar import run_blocking_with_loader
 
 load_dotenv()
 
@@ -22,12 +23,11 @@ load_dotenv()
 # ---------------------------
 
 API_BASE = "http://localhost:8080"
-TMUX_BASE = "http://localhost:8081"
 MODEL = "gpt-5.2"
 
 openai_client = OpenAI()
 
-client = VirshSandbox(API_BASE, TMUX_BASE)
+client = VirshSandbox(API_BASE)
 
 # ---------------------------
 # Tool dispatcher
@@ -71,17 +71,13 @@ def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
         #     return {"ip_address": response.ip_address}
 
         # if name == "destroy_sandbox":
-        #     sandbox_client.destroy_sandbox(args["sandbox_id"])
+        #     client.destroy_sandbox(args["sandbox_id"])
         #     return {"success": True, "message": "Sandbox destroyed"}
 
         if name == "run_command":
             response = client.sandbox.run_sandbox_command(
                 id=args["sandbox_id"],
                 command=args["command"],
-                env=args.get("env", {}),
-                username=args.get("username", None),
-                private_key_path=args.get("private_key_path", None),
-                timeout_sec=args.get("timeout_sec", 60)
             )
             # Convert Pydantic model to dict for JSON serialization
             output = response.to_dict() if hasattr(response, 'to_dict') else response
@@ -122,6 +118,76 @@ def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
         # if name == "get_ansible_job":
         #     response = sandbox_client.get_ansible_job(args["job_id"])
         #     return response.to_dict()
+        if name == "create_playbook":
+            response = client.ansible_playbooks.create_playbook(
+                name=args["name"],
+                hosts=args["hosts"],
+                become=args.get("become", False),
+            )
+            output = response.to_dict() if hasattr(response, 'to_dict') else response
+            return {
+                "success": True,
+                "output": output
+            }
+        if name == "get_playbook":
+            response = client.ansible_playbooks.get_playbook(args["playbook_name"])
+            if(response.tasks):
+                output = response.to_dict() if hasattr(response, 'to_dict') else response
+                return {
+                    "success": True,
+                    "output": output
+                }
+        if name == "list_playbooks":
+            response = client.ansible_playbooks.list_playbooks()
+            if(response.playbooks):
+                output = response.to_dict() if hasattr(response, 'to_dict') else response
+                return {
+                    "success": True,
+                    "output": output
+                }
+        if name == "add_playbook_task":
+            response = client.ansible_playbooks.add_playbook_task(
+                playbook_name=args["playbook_name"],
+                name=args["name"],
+                module=args["module"],
+                params=args.get("params"),
+            )
+            output = response.to_dict() if hasattr(response, 'to_dict') else response
+            return {
+                "success": True,
+                "output": output
+            }
+        if name == "update_playbook_task":
+            response = client.ansible_playbooks.update_playbook_task(
+                playbook_name=args["playbook_name"],
+                task_id=args["task_id"],
+                name=args.get("name"),
+                module=args.get("module"),
+                params=args.get("params"),
+            )
+            output = response.to_dict() if hasattr(response, 'to_dict') else response
+            return {
+                "success": True,
+                "output": output
+            }
+
+        if name == "delete_playbook_task":
+            client.ansible_playbooks.delete_playbook_task(
+                playbook_name=args["playbook_name"],
+                task_id=args["task_id"],
+            )
+            return {"success": True, "message": "Task deleted"}
+
+        if name == "reorder_playbook_tasks":
+            client.ansible_playbooks.reorder_playbook_tasks(
+                playbook_name=args["playbook_name"],
+                task_ids=args["task_ids"],
+            )
+            return {"success": True, "message": "Tasks reordered"}
+
+        if name == "exit":
+            sys.exit(0)
+            return {"success": True, "message": "Agent exited"}
 
         raise ValueError(f"Unknown tool: {name}")
 
@@ -151,7 +217,11 @@ def run_agent(user_goal: str, sandbox_id: str | None | Any) -> None:
             "role": "system",
             "content": (
                 "You are an infrastructure automation agent.\n"
-                "- You MUST use tools to observe or change system state.\n"
+                "- Your goal is to complete the user's task by generating an Ansible playbook that recreates the task on a production machine.\n"
+                "- Test your updates by running relevant commands on the sandbox and then building out the playbook. Do not make assumptions on outputs.\n"
+                "- You MUST use the Ansible tools to create and manage the playbook.\n"
+                "- Add any steps to the playbook that are necessary to fully recreate the outcome on the production machine.\n"
+                "- You can use other tools to explore the environment and test your changes.\n"
                 "- Do NOT assume command output.\n"
                 "- No shell pipelines or chained commands.\n"
                 "- Always check the health of the API before performing operations.\n"
@@ -210,28 +280,25 @@ def run_agent(user_goal: str, sandbox_id: str | None | Any) -> None:
             # Heuristic stop condition - agent indicates completion
             if any(
                 phrase in content.lower()
-                for phrase in ["done", "completed", "finished", "task complete"]
+                for phrase in ["done", "complete", "completed", "finished", "task complete", "exit"]
             ):
                 print("\n[agent] Task completed!")
                 return
 
-        time.sleep(0.2)
+        sleep(0.2)
 
 def main():
-    print("Starting virsh-sandbox agent...")
+    print("Starting Fluid agent...")
     print("=" * 50)
 
     sandbox = None
     agent_id = str(uuid4())
     try:
+        sandbox = run_blocking_with_loader(client.sandbox.create_sandbox, source_vm_name="test-vm", agent_id=agent_id, auto_start=True, wait_for_ip=True, request_timeout=180.0, title="Creating sandbox...").sandbox
 
-        sandbox = client.sandbox.create_sandbox(source_vm_name="test-vm-arm64", agent_id=agent_id, auto_start=True, wait_for_ip=True).sandbox
-        print("Sandbox Created:")
-        pprint(sandbox)
-
-        if(sandbox):
+        if(sandbox and sandbox.id):
             run_agent(
-                "Run the command 'ls -l'", sandbox.id
+                "Install 'cowsay' and run it, create an Ansible playbook to recreate the task.", sandbox.id
             )
     except Exception as e:
         print(f"Error: {e}")

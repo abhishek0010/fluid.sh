@@ -6,13 +6,13 @@
  * OpenAPI spec version: 0.0.1-beta
  */
 
-export type InternalAnsibleJobStatus = typeof InternalAnsibleJobStatus[keyof typeof InternalAnsibleJobStatus];
-
+export type InternalAnsibleJobStatus =
+  (typeof InternalAnsibleJobStatus)[keyof typeof InternalAnsibleJobStatus];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const InternalAnsibleJobStatus = {
-  JobStatusPending: 'pending',
-  JobStatusRunning: 'running',
-  JobStatusFinished: 'finished',
-  JobStatusFailed: 'failed',
+  JobStatusPending: "pending",
+  JobStatusRunning: "running",
+  JobStatusFinished: "finished",
+  JobStatusFailed: "failed",
 } as const;

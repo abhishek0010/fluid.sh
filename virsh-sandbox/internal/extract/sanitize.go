@@ -235,7 +235,7 @@ func (s *Sanitizer) clearDeviceNodes(ctx context.Context, rootPath string, resul
 		if err != nil {
 			continue // Non-fatal, container runtime will create these
 		}
-		f.Close()
+		_ = f.Close()
 	}
 
 	result.RemovedPaths = append(result.RemovedPaths, "/dev/*")
@@ -403,7 +403,7 @@ func (s *Sanitizer) setContainerMarker(ctx context.Context, rootPath string, res
 	if err != nil {
 		return err
 	}
-	f.Close()
+	_ = f.Close()
 	result.ModifiedPaths = append(result.ModifiedPaths, "/.dockerenv")
 
 	// Create /run/.containerenv for Podman detection

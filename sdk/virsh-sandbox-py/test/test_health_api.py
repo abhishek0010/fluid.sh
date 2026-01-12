@@ -33,13 +33,6 @@ class TestHealthApi(unittest.TestCase):
         """
         pass
 
-    def test_get_health1(self) -> None:
-        """Test case for get_health1
-
-        Get health status
-        """
-        pass
-
 
 if __name__ == "__main__":
     unittest.main()

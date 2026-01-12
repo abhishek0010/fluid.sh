@@ -28,12 +28,14 @@ class TimeDuration(int, Enum):
     """
     allowed enum values
     """
-    minDuration = 1
-    maxDuration = 1000
-    Nanosecond = 1000000
-    Microsecond = 1000000000
-    Millisecond = 60000000000
-    Second = 3600000000000
+    minDuration = -9223372036854775808
+    maxDuration = 9223372036854775807
+    Nanosecond = 1
+    Microsecond = 1000
+    Millisecond = 1000000
+    Second = 1000000000
+    Minute = 60000000000
+    Hour = 3600000000000
 
     @classmethod
     def from_json(cls, json_str: str) -> Self:

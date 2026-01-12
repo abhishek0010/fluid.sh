@@ -10,11 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { useGetSandbox, useCreateAnsibleJob } from "~/hooks/use-sandbox-api";
+import { useGetSandbox } from "~/virsh-sandbox/sandbox/sandbox";
+import { useCreateAnsibleJob } from "~/virsh-sandbox/ansible/ansible";
 import { useSandboxStream } from "~/hooks/use-sandbox-stream";
 
 function getStateBadgeVariant(
-  state: string | undefined
+  state: string | undefined,
 ): "default" | "secondary" | "destructive" | "outline" {
   switch (state) {
     case "RUNNING":
@@ -40,11 +41,13 @@ export function SandboxDetails({ sandboxId }: SandboxDetailsProps) {
   const [playbookPath, setPlaybookPath] = React.useState("");
 
   const {
-    data: sandboxData,
+    data: response,
     isLoading,
     isError,
     error,
   } = useGetSandbox(sandboxId);
+
+  const sandboxData = response?.data;
 
   const {
     isConnected,
@@ -91,17 +94,18 @@ export function SandboxDetails({ sandboxId }: SandboxDetailsProps) {
 
     createAnsibleJobMutation.mutate(
       {
-        vm_name: sandboxData.sandbox.sandbox_name,
-        playbook: playbookPath,
-        check: false,
+        data: {
+          vm_name: sandboxData.sandbox.sandbox_name,
+          playbook: playbookPath,
+          check: false,
+        },
       },
       {
         onSuccess: (data) => {
           setShowAnsibleDialog(false);
-          // Could navigate to ansible job stream or show toast
           console.log("Ansible job created:", data);
         },
-      }
+      },
     );
   };
 
@@ -156,7 +160,10 @@ export function SandboxDetails({ sandboxId }: SandboxDetailsProps) {
             {sandbox?.state}
           </Badge>
           {isConnected && (
-            <Badge variant="outline" className="text-green-600 border-green-600">
+            <Badge
+              variant="outline"
+              className="text-green-600 border-green-600"
+            >
               <span className="mr-1 h-2 w-2 rounded-full bg-green-600 inline-block animate-pulse" />
               Live
             </Badge>
@@ -347,9 +354,7 @@ export function SandboxDetails({ sandboxId }: SandboxDetailsProps) {
               <div className="flex gap-2">
                 <Button
                   onClick={handleRunAnsible}
-                  disabled={
-                    !playbookPath || createAnsibleJobMutation.isPending
-                  }
+                  disabled={!playbookPath || createAnsibleJobMutation.isPending}
                 >
                   {createAnsibleJobMutation.isPending
                     ? "Creating Job..."

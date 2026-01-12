@@ -9,4 +9,6 @@
 /**
  * optional
  */
-export type VirshSandboxInternalRestRunCommandRequestEnv = {[key: string]: string};
+export type VirshSandboxInternalRestRunCommandRequestEnv = {
+  [key: string]: string;
+};

@@ -6,6 +6,8 @@ package libvirt
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"os"
 	"time"
 )
 
@@ -46,8 +48,24 @@ type Manager interface {
 	DiffSnapshot(ctx context.Context, vmName, fromSnapshot, toSnapshot string) (*FSComparePlan, error)
 
 	// GetIPAddress attempts to fetch the VM's primary IP via libvirt leases.
-	GetIPAddress(ctx context.Context, vmName string, timeout time.Duration) (string, error)
+	// Returns the IP address and MAC address of the VM's primary interface.
+	GetIPAddress(ctx context.Context, vmName string, timeout time.Duration) (ip string, mac string, err error)
+
+	// GetVMState returns the current state of a VM using virsh domstate.
+	GetVMState(ctx context.Context, vmName string) (VMState, error)
 }
+
+// VMState represents possible VM states from virsh domstate.
+type VMState string
+
+const (
+	VMStateRunning   VMState = "running"
+	VMStatePaused    VMState = "paused"
+	VMStateShutOff   VMState = "shut off"
+	VMStateCrashed   VMState = "crashed"
+	VMStateSuspended VMState = "pmsuspended"
+	VMStateUnknown   VMState = "unknown"
+)
 
 // Config controls how the virsh-based manager interacts with the host.
 type Config struct {
@@ -58,11 +76,20 @@ type Config struct {
 	SSHKeyInjectMethod    string // "virt-customize" or "cloud-init"
 	CloudInitMetaTemplate string // optional meta-data template for cloud-init seed
 
+	// SSH CA public key for managed credentials.
+	SSHCAPubKey string
+
+	// SSH ProxyJump host for reaching VMs on an isolated network.
+	SSHProxyJump string
+
 	// Optional explicit paths to binaries; if empty these are looked up in PATH.
 	VirshPath         string
 	QemuImgPath       string
 	VirtCustomizePath string
 	QemuNbdPath       string
+
+	// Socket VMNet configuration (macOS only)
+	SocketVMNetWrapper string // e.g., /path/to/qemu-socket-vmnet-wrapper.sh
 
 	// Domain defaults
 	DefaultVCPUs    int
@@ -105,13 +132,25 @@ type FSComparePlan struct {
 // VirshManager implements Manager using virsh/qemu-img/qemu-nbd/virt-customize and simple domain XML.
 // This is a stub implementation that returns errors when libvirt is not available.
 type VirshManager struct {
-	cfg Config
+	cfg    Config
+	logger *slog.Logger
+}
+
+// ConfigFromEnv returns a Config populated from environment variables.
+func ConfigFromEnv() Config {
+	return Config{
+		LibvirtURI:         os.Getenv("LIBVIRT_URI"),
+		BaseImageDir:       os.Getenv("BASE_IMAGE_DIR"),
+		WorkDir:            os.Getenv("SANDBOX_WORKDIR"),
+		DefaultNetwork:     os.Getenv("LIBVIRT_NETWORK"),
+		SSHKeyInjectMethod: os.Getenv("SSH_KEY_INJECT_METHOD"),
+	}
 }
 
 // NewVirshManager creates a new VirshManager with the provided config.
 // Note: This stub implementation will return errors for all operations.
-func NewVirshManager(cfg Config) *VirshManager {
-	return &VirshManager{cfg: cfg}
+func NewVirshManager(cfg Config, logger *slog.Logger) *VirshManager {
+	return &VirshManager{cfg: cfg, logger: logger}
 }
 
 // NewFromEnv builds a Config from environment variables and returns a manager.
@@ -121,7 +160,7 @@ func NewFromEnv() *VirshManager {
 		DefaultVCPUs:    2,
 		DefaultMemoryMB: 2048,
 	}
-	return NewVirshManager(cfg)
+	return NewVirshManager(cfg, nil)
 }
 
 // CloneVM is a stub that returns an error when libvirt is not available.
@@ -165,6 +204,21 @@ func (m *VirshManager) DiffSnapshot(ctx context.Context, vmName, fromSnapshot, t
 }
 
 // GetIPAddress is a stub that returns an error when libvirt is not available.
-func (m *VirshManager) GetIPAddress(ctx context.Context, vmName string, timeout time.Duration) (string, error) {
+func (m *VirshManager) GetIPAddress(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
+	return "", "", ErrLibvirtNotAvailable
+}
+
+// GetVMState is a stub that returns an error when libvirt is not available.
+func (m *VirshManager) GetVMState(ctx context.Context, vmName string) (VMState, error) {
+	return VMStateUnknown, ErrLibvirtNotAvailable
+}
+
+// GetVMMAC is a stub that returns an error when libvirt is not available.
+func (m *VirshManager) GetVMMAC(ctx context.Context, vmName string) (string, error) {
 	return "", ErrLibvirtNotAvailable
+}
+
+// ReleaseDHCPLease is a stub that returns an error when libvirt is not available.
+func (m *VirshManager) ReleaseDHCPLease(ctx context.Context, network, mac string) error {
+	return ErrLibvirtNotAvailable
 }

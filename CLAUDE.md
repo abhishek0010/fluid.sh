@@ -1,15 +1,38 @@
-# Virsh Sandbox Project Rules
+# virsh-sandbox
 
-This is a monorepo containing multiple projects. See project-specific rules below.
+Autonomous AI agents for infrastructure—with human approval.
 
-## Mandatory Testing Requirement
+## What This Is
 
-**CRITICAL**: After every code change, tests MUST be created or updated to verify the new behavior. Changes without corresponding tests are not considered complete.
+virsh-sandbox lets AI agents do infrastructure work in isolated VM sandboxes. Agent works autonomously. Human approves before production.
 
-## Project References
+## Project Structure
 
-- @sdk/AGENTS.md - Python SDK for virsh-sandbox API
-- @virsh-sandbox/AGENTS.md - Main virsh-sandbox Go service
-- @tmux-client/AGENTS.md - Tmux client Go service
-- @web/AGENTS.md - Web frontend
-- @examples/agent-example/AGENTS.md - Example agent implementation
+```
+virsh-sandbox/    # Go API - VM management via libvirt
+tmux-client/      # Go API - Terminal, files, commands
+web/              # React - UI for monitoring/approval
+sdk/              # Python SDK - Build agents
+examples/         # Working agent examples
+```
+
+## Testing Required
+
+Every code change needs tests. See project-specific AGENTS.md files for details.
+
+## Quick Reference
+
+```bash
+docker-compose up --build              # Start everything
+cd virsh-sandbox && make test          # Test API
+cd tmux-client && make test            # Test terminal service
+cd sdk/virsh-sandbox-py && pytest      # Test SDK
+```
+
+## Project Docs
+
+- @virsh-sandbox/AGENTS.md
+- @tmux-client/AGENTS.md
+- @sdk/AGENTS.md
+- @web/AGENTS.md
+- @examples/agent-example/AGENTS.md

@@ -319,7 +319,7 @@ func (ca *CA) IssueCertificate(ctx context.Context, req *CertificateRequest) (*C
 	if err != nil {
 		return nil, fmt.Errorf("create temp dir: %w", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Write public key to temp file
 	pubKeyPath := filepath.Join(tempDir, "user_key.pub")
@@ -436,7 +436,7 @@ func GenerateUserKeyPair(comment string) (privateKey, publicKey string, err erro
 	if err != nil {
 		return "", "", fmt.Errorf("create temp dir: %w", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	keyPath := filepath.Join(tempDir, "user_key")
 
@@ -521,7 +521,10 @@ func (ca *CA) validateRequest(req *CertificateRequest) error {
 // generateCertID generates a unique certificate identifier.
 func (ca *CA) generateCertID() string {
 	var b [16]byte
-	rand.Read(b[:])
+	if _, err := rand.Read(b[:]); err != nil {
+		// Fallback to time-based ID if random fails (extremely unlikely)
+		return fmt.Sprintf("%x", time.Now().UnixNano())
+	}
 	return fmt.Sprintf("%x", b[:8])
 }
 

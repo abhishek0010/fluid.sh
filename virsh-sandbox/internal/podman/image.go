@@ -65,7 +65,7 @@ func (b *ImageBuilder) BuildImage(ctx context.Context, archivePath string, vmNam
 			fmt.Sprintf("failed to create build directory: %v", err),
 		)
 	}
-	defer os.RemoveAll(buildDir)
+	defer func() { _ = os.RemoveAll(buildDir) }()
 
 	// Copy or link the archive to the build context
 	archiveBaseName := filepath.Base(archivePath)
@@ -285,7 +285,9 @@ func (b *ImageBuilder) InspectImage(ctx context.Context, imageRef string) (*Imag
 
 	created, _ := time.Parse(time.RFC3339, parts[1])
 	var size int64
-	fmt.Sscanf(parts[2], "%d", &size)
+	if _, err := fmt.Sscanf(parts[2], "%d", &size); err != nil {
+		return nil, fmt.Errorf("failed to parse size: %w", err)
+	}
 
 	return &ImageInfo{
 		ID:      parts[0],

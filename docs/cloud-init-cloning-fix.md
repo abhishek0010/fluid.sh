@@ -267,6 +267,26 @@ For optimal cloning behavior, base VMs should:
 
 ---
 
+---
+  Debugging Steps
+
+  # 1. Check DHCP leases
+  cat /var/lib/libvirt/dnsmasq/default.leases
+
+  # 2. Check network config
+  virsh net-dumpxml default | grep -A5 dhcp
+
+  # 3. List all VM MACs
+  for vm in $(virsh list --name); do
+    echo "=== $vm ==="
+    virsh domifaddr "$vm" --source lease
+  done
+
+  # 4. Check for duplicate MACs
+  virsh list --name | xargs -I{} virsh domiflist {} 2>/dev/null | grep -E "^[a-z]" | awk '{print $5}' | sort | uniq -d
+
+  ---
+
 ## Troubleshooting Guide
 
 ### Sandbox Has No IP After Expected Boot Time

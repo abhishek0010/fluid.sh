@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-swag init --dir .,./internal/ansible,./internal/diff,./internal/error,./internal/rest,./internal/vm,./internal/workflow --generalInfo ./cmd/api/main.go --parseDependency --parseInternal
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Generate swagger docs
+swag init --dir .,./internal/ansible,./internal/error,./internal/rest,./internal/vm,./internal/workflow --generalInfo ./cmd/api/main.go --parseDependency --parseInternal
+
+# Convert swagger to OpenAPI 3.0
 docker run --rm \
   -v "$(pwd)":/workspace \
   openapitools/openapi-generator-cli generate \

@@ -15,6 +15,8 @@ import (
 	"virsh-sandbox/internal/ansible"
 	"virsh-sandbox/internal/libvirt"
 	"virsh-sandbox/internal/rest"
+	"virsh-sandbox/internal/sshca"
+	"virsh-sandbox/internal/sshkeys"
 	"virsh-sandbox/internal/store"
 	postgresStore "virsh-sandbox/internal/store/postgres"
 	"virsh-sandbox/internal/vm"
@@ -56,10 +58,14 @@ func main() {
 	cmdTimeout := durationFromSecondsEnv("COMMAND_TIMEOUT_SEC", 600)              // 10m default
 	ipDiscoveryTimeout := durationFromSecondsEnv("IP_DISCOVERY_TIMEOUT_SEC", 120) // 2m default
 
+	// SSH proxy for reaching VMs on isolated networks (e.g., through Lima)
+	sshProxyJump := getenv("SSH_PROXY_JUMP", "")
+
 	// Ansible configuration
-	ansibleInventoryPath := getenv("ANSIBLE_INVENTORY_PATH", "/ansible/inventory")
+	ansibleInventoryPath := getenv("ANSIBLE_INVENTORY_PATH", "/Users/collinpfeifer/GitHub/fluid.sh/.ansible/inventory")
 	ansibleImage := getenv("ANSIBLE_IMAGE", "ansible-sandbox")
 	ansiblePlaybooks := strings.Split(getenv("ANSIBLE_ALLOWED_PLAYBOOKS", "ping.yml"), ",")
+	ansiblePlaybooksDir := getenv("ANSIBLE_PLAYBOOKS_DIR", "/Users/collinpfeifer/GitHub/fluid.sh/.ansible/playbooks")
 
 	logger.Info("starting virsh-sandbox API",
 		"addr", apiAddr,
@@ -69,6 +75,7 @@ func main() {
 		"default_memory_mb", defaultMemMB,
 		"command_timeout", cmdTimeout.String(),
 		"ip_discovery_timeout", ipDiscoveryTimeout.String(),
+		"ansible_playbooks_dir", ansiblePlaybooksDir,
 	)
 
 	st, err := postgresStore.New(ctx, store.Config{
@@ -89,34 +96,101 @@ func main() {
 		}
 	}()
 
-	// Initialize libvirt manager from environment
-	lvMgr := libvirt.NewFromEnv()
+	// Initialize libvirt manager from environment with logger
+	lvMgr := libvirt.NewVirshManager(libvirt.ConfigFromEnv(), logger)
 
 	// Initialize domain manager for direct libvirt queries
 	domainMgr := libvirt.NewDomainManager(libvirtURI)
 
-	// Initialize VM service
+	// Initialize SSH CA and key manager (optional - for managed credentials)
+	sshCAKeyPath := getenv("SSH_CA_KEY_PATH", "/etc/virsh-sandbox/ssh_ca")
+	sshCAPubKeyPath := getenv("SSH_CA_PUB_KEY_PATH", "/etc/virsh-sandbox/ssh_ca.pub")
+	sshKeyDir := getenv("SSH_KEY_DIR", "/tmp/sandbox-keys")
+	sshCertTTL := durationFromSecondsEnv("SSH_CERT_TTL_SEC", 300) // 5 minutes default
+
+	var keyMgr sshkeys.KeyProvider
+	if _, err := os.Stat(sshCAKeyPath); err == nil {
+		// SSH CA key exists, initialize managed key support
+		caCfg := sshca.Config{
+			CAKeyPath:             sshCAKeyPath,
+			CAPubKeyPath:          sshCAPubKeyPath,
+			WorkDir:               "/tmp/sshca",
+			DefaultTTL:            sshCertTTL,
+			MaxTTL:                10 * time.Minute,
+			DefaultPrincipals:     []string{"sandbox"},
+			EnforceKeyPermissions: true,
+		}
+		ca, err := sshca.NewCA(caCfg)
+		if err != nil {
+			logger.Error("failed to create SSH CA", "error", err)
+			os.Exit(1)
+		}
+		if err := ca.Initialize(ctx); err != nil {
+			logger.Error("failed to initialize SSH CA", "error", err)
+			os.Exit(1)
+		}
+
+		keyMgrCfg := sshkeys.Config{
+			KeyDir:          sshKeyDir,
+			CertificateTTL:  sshCertTTL,
+			RefreshMargin:   30 * time.Second,
+			DefaultUsername: "sandbox",
+		}
+		keyMgr, err = sshkeys.NewKeyManager(ca, keyMgrCfg, logger)
+		if err != nil {
+			logger.Error("failed to create SSH key manager", "error", err)
+			os.Exit(1)
+		}
+		defer func() {
+			if err := keyMgr.Close(); err != nil {
+				logger.Error("failed to close SSH key manager", "error", err)
+			}
+		}()
+		logger.Info("SSH key management enabled",
+			"key_dir", sshKeyDir,
+			"cert_ttl", sshCertTTL,
+		)
+	} else {
+		logger.Info("SSH CA not found, managed credentials disabled",
+			"ca_key_path", sshCAKeyPath,
+		)
+	}
+
+	// Initialize VM service with logger and optional key manager
+	vmOpts := []vm.Option{vm.WithLogger(logger)}
+	if keyMgr != nil {
+		vmOpts = append(vmOpts, vm.WithKeyManager(keyMgr))
+	}
 	vmSvc := vm.NewService(lvMgr, st, vm.Config{
 		Network:            network,
 		DefaultVCPUs:       defaultVCPUs,
 		DefaultMemoryMB:    defaultMemMB,
 		CommandTimeout:     cmdTimeout,
 		IPDiscoveryTimeout: ipDiscoveryTimeout,
-	})
+		SSHProxyJump:       sshProxyJump,
+	}, vmOpts...)
 
 	// Initialize Ansible runner
 	ansibleRunner := ansible.NewRunner(ansibleInventoryPath, ansibleImage, ansiblePlaybooks)
 
-	// REST server setup
-	restSrv := rest.NewServer(vmSvc, domainMgr, ansibleRunner)
+	// Initialize Ansible playbook service
+	playbookSvc := ansible.NewPlaybookService(st, ansiblePlaybooksDir)
+
+	// REST server setup with playbook support
+	restSrv := rest.NewServerWithPlaybooks(vmSvc, domainMgr, ansibleRunner, playbookSvc)
 
 	// Build http.Server so we can gracefully shutdown
+	// WriteTimeout must be > IPDiscoveryTimeout to allow wait_for_ip to complete
+	writeTimeout := ipDiscoveryTimeout + 30*time.Second
+	if writeTimeout < 120*time.Second {
+		writeTimeout = 120 * time.Second
+	}
 	httpSrv := &http.Server{
 		Addr:              apiAddr,
 		Handler:           restSrv.Router, // use the chi router directly for graceful shutdowns
 		ReadHeaderTimeout: 15 * time.Second,
 		ReadTimeout:       60 * time.Second,
-		WriteTimeout:      60 * time.Second,
+		WriteTimeout:      writeTimeout,
 		IdleTimeout:       120 * time.Second,
 	}
 
@@ -150,7 +224,7 @@ func main() {
 
 // setupLogger configures slog with level and format from environment.
 func setupLogger() *slog.Logger {
-	level := slog.LevelInfo
+	var level slog.Level
 	switch strings.ToLower(getenv("LOG_LEVEL", "info")) {
 	case "debug":
 		level = slog.LevelDebug

@@ -153,6 +153,18 @@ type sessionEndRequest struct {
 	Reason    string `json:"reason,omitempty"`
 }
 
+// sessionEndResponse is the response for ending a session.
+type sessionEndResponse struct {
+	Message   string `json:"message"`
+	SessionID string `json:"session_id"`
+}
+
+// revokeCertificateResponse is the response for revoking a certificate.
+type revokeCertificateResponse struct {
+	Message string `json:"message"`
+	ID      string `json:"id"`
+}
+
 // sessionResponse is the response for session queries.
 type sessionResponse struct {
 	ID              string `json:"id"`
@@ -203,6 +215,7 @@ func writeError(w http.ResponseWriter, status int, message, details string) {
 // @Failure 400 {object} accessErrorResponse
 // @Failure 404 {object} accessErrorResponse
 // @Failure 500 {object} accessErrorResponse
+// @Id requestAccess
 // @Router /v1/access/request [post]
 func (h *AccessHandler) handleRequestAccess(w http.ResponseWriter, r *http.Request) {
 	var req requestAccessRequest
@@ -275,6 +288,7 @@ func (h *AccessHandler) handleRequestAccess(w http.ResponseWriter, r *http.Reque
 // @Produce json
 // @Success 200 {object} caPublicKeyResponse
 // @Failure 500 {object} accessErrorResponse
+// @Id getCAPublicKey
 // @Router /v1/access/ca-pubkey [get]
 func (h *AccessHandler) handleGetCAPublicKey(w http.ResponseWriter, r *http.Request) {
 	pubKey, err := h.accessSvc.GetCAPublicKey()
@@ -301,6 +315,7 @@ and referenced in sshd_config with: TrustedUserCAKeys /etc/ssh/ssh_ca.pub`
 // @Success 200 {object} certificateResponse
 // @Failure 404 {object} accessErrorResponse
 // @Failure 500 {object} accessErrorResponse
+// @Id getCertificate
 // @Router /v1/access/certificate/{certID} [get]
 func (h *AccessHandler) handleGetCertificate(w http.ResponseWriter, r *http.Request) {
 	certID := chi.URLParam(r, "certID")
@@ -345,10 +360,11 @@ func (h *AccessHandler) handleGetCertificate(w http.ResponseWriter, r *http.Requ
 // @Produce json
 // @Param certID path string true "Certificate ID"
 // @Param request body revokeCertificateRequest false "Revocation reason"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} revokeCertificateResponse
 // @Failure 400 {object} accessErrorResponse
 // @Failure 404 {object} accessErrorResponse
 // @Failure 500 {object} accessErrorResponse
+// @Id revokeCertificate
 // @Router /v1/access/certificate/{certID} [delete]
 func (h *AccessHandler) handleRevokeCertificate(w http.ResponseWriter, r *http.Request) {
 	certID := chi.URLParam(r, "certID")
@@ -377,9 +393,9 @@ func (h *AccessHandler) handleRevokeCertificate(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	_ = serverJSON.RespondJSON(w, http.StatusOK, map[string]string{
-		"message": "certificate revoked successfully",
-		"id":      certID,
+	_ = serverJSON.RespondJSON(w, http.StatusOK, revokeCertificateResponse{
+		Message: "certificate revoked successfully",
+		ID:      certID,
 	})
 }
 
@@ -396,6 +412,7 @@ func (h *AccessHandler) handleRevokeCertificate(w http.ResponseWriter, r *http.R
 // @Param offset query int false "Offset for pagination"
 // @Success 200 {object} listCertificatesResponse
 // @Failure 500 {object} accessErrorResponse
+// @Id listCertificates
 // @Router /v1/access/certificates [get]
 func (h *AccessHandler) handleListCertificates(w http.ResponseWriter, r *http.Request) {
 	// Build filter
@@ -474,6 +491,7 @@ func (h *AccessHandler) handleListCertificates(w http.ResponseWriter, r *http.Re
 // @Success 200 {object} sessionStartResponse
 // @Failure 400 {object} accessErrorResponse
 // @Failure 500 {object} accessErrorResponse
+// @Id recordSessionStart
 // @Router /v1/access/session/start [post]
 func (h *AccessHandler) handleRecordSessionStart(w http.ResponseWriter, r *http.Request) {
 	var req sessionStartRequest
@@ -510,9 +528,10 @@ func (h *AccessHandler) handleRecordSessionStart(w http.ResponseWriter, r *http.
 // @Accept json
 // @Produce json
 // @Param request body sessionEndRequest true "Session end request"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} sessionEndResponse
 // @Failure 400 {object} accessErrorResponse
 // @Failure 500 {object} accessErrorResponse
+// @Id recordSessionEnd
 // @Router /v1/access/session/end [post]
 func (h *AccessHandler) handleRecordSessionEnd(w http.ResponseWriter, r *http.Request) {
 	var req sessionEndRequest
@@ -536,9 +555,9 @@ func (h *AccessHandler) handleRecordSessionEnd(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	_ = serverJSON.RespondJSON(w, http.StatusOK, map[string]string{
-		"message":    "session ended successfully",
-		"session_id": req.SessionID,
+	_ = serverJSON.RespondJSON(w, http.StatusOK, sessionEndResponse{
+		Message:   "session ended successfully",
+		SessionID: req.SessionID,
 	})
 }
 
@@ -555,6 +574,7 @@ func (h *AccessHandler) handleRecordSessionEnd(w http.ResponseWriter, r *http.Re
 // @Param offset query int false "Offset for pagination"
 // @Success 200 {object} listSessionsResponse
 // @Failure 500 {object} accessErrorResponse
+// @Id listSessions
 // @Router /v1/access/sessions [get]
 func (h *AccessHandler) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	// Build filter

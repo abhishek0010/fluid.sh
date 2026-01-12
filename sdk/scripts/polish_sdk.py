@@ -2,10 +2,11 @@
 """Post-process generated SDK for better quality and add unified client with flattened parameters."""
 
 import re
-import yaml
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
+
+import yaml
 
 
 def load_config() -> dict:
@@ -23,40 +24,35 @@ def simplify_type_name(verbose_name: str) -> str:
     Examples:
         VirshSandboxInternalRestCreateSandboxResponseDict -> CreateSandboxResponse
         VirshSandboxInternalStoreSandboxDict -> Sandbox
-        TmuxClientInternalTypesRunCommandResponseDict -> RunCommandResponse
         InternalAnsibleJobDict -> AnsibleJob
     """
     name = verbose_name
 
     # Remove Dict suffix first
-    if name.endswith('Dict'):
+    if name.endswith("Dict"):
         name = name[:-4]
 
     # Remove common prefixes in order of specificity
     prefixes_to_remove = [
-        'VirshSandboxInternalRest',
-        'VirshSandboxInternalStore',
-        'VirshSandboxInternal',
-        'VirshSandbox',
-        'TmuxClientInternalTypes',
-        'TmuxClientInternalApi',
-        'TmuxClientInternal',
-        'TmuxClient',
-        'InternalRest',
-        'InternalApi',
-        'InternalStore',
-        'Internal',
+        "VirshSandboxInternalRest",
+        "VirshSandboxInternalStore",
+        "VirshSandboxInternal",
+        "VirshSandbox",
+        "InternalRest",
+        "InternalApi",
+        "InternalStore",
+        "Internal",
     ]
 
     for prefix in prefixes_to_remove:
         if name.startswith(prefix):
-            name = name[len(prefix):]
+            name = name[len(prefix) :]
             break
 
     # Handle edge cases where name might be empty or start with lowercase
     if not name or not name[0].isupper():
         # Fall back to a reasonable extraction
-        name = verbose_name.replace('Dict', '')
+        name = verbose_name.replace("Dict", "")
 
     return name
 
@@ -71,9 +67,10 @@ def generate_simplified_aliases(models: dict) -> dict[str, str]:
     """
     # Filter to only non-request, non-query, non-enum models (same as topological_sort_models)
     filtered_models = {
-        name: info for name, info in models.items()
-        if not name.endswith('Request')
-        and not name.endswith('Query')
+        name: info
+        for name, info in models.items()
+        if not name.endswith("Request")
+        and not name.endswith("Query")
         and not is_enum_model(name, models)
     }
 
@@ -138,7 +135,7 @@ def parse_model_fields(model_path: Path) -> list[FieldInfo]:
     fields = []
 
     # Split content into lines for easier processing
-    lines = content.split('\n')
+    lines = content.split("\n")
 
     # Track if we're inside the class definition
     in_class = False
@@ -150,7 +147,7 @@ def parse_model_fields(model_path: Path) -> list[FieldInfo]:
         stripped = line.strip()
 
         # Detect class definition
-        if re.match(r'^class \w+\(BaseModel\):', stripped):
+        if re.match(r"^class \w+\(BaseModel\):", stripped):
             in_class = True
             # Find the indentation level of class body
             class_indent = len(line) - len(line.lstrip()) + 4  # class body is indented
@@ -162,42 +159,48 @@ def parse_model_fields(model_path: Path) -> list[FieldInfo]:
             current_indent = len(line) - len(line.lstrip()) if line.strip() else 0
 
             # Check if we've left the class (less indentation or new class/def at same level)
-            if stripped and current_indent < class_indent and not stripped.startswith('#'):
-                if stripped.startswith('class ') or stripped.startswith('def '):
+            if (
+                stripped
+                and current_indent < class_indent
+                and not stripped.startswith("#")
+            ):
+                if stripped.startswith("class ") or stripped.startswith("def "):
                     in_class = False
                     i += 1
                     continue
 
             # Stop parsing fields when we hit a method definition inside the class
             # Methods mark the end of field definitions in Pydantic models
-            if stripped.startswith('def ') or stripped.startswith('async def '):
+            if stripped.startswith("def ") or stripped.startswith("async def "):
                 in_class = False
                 i += 1
                 continue
 
             # Also stop if we hit model_config (usually comes after fields)
-            if stripped.startswith('model_config'):
+            if stripped.startswith("model_config"):
                 in_class = False
                 i += 1
                 continue
 
             # Skip empty lines, comments, docstrings, and special attributes
-            if (not stripped or
-                stripped.startswith('#') or
-                stripped.startswith('"""') or
-                stripped.startswith("'''") or
-                stripped.startswith('__')):
+            if (
+                not stripped
+                or stripped.startswith("#")
+                or stripped.startswith('"""')
+                or stripped.startswith("'''")
+                or stripped.startswith("__")
+            ):
                 i += 1
                 continue
 
             # Match field definition with Field(): name: Type = Field(...)
-            field_match = re.match(r'^(\w+):\s*(.+?)\s*=\s*Field\(', stripped)
-            if field_match and not field_match.group(1).startswith('_'):
+            field_match = re.match(r"^(\w+):\s*(.+?)\s*=\s*Field\(", stripped)
+            if field_match and not field_match.group(1).startswith("_"):
                 field_name = field_match.group(1)
                 type_hint = field_match.group(2).strip()
 
                 # Extract inner type from Optional[]
-                optional_match = re.match(r'Optional\[(.+)\]', type_hint)
+                optional_match = re.match(r"Optional\[(.+)\]", type_hint)
                 if optional_match:
                     type_hint = optional_match.group(1)
 
@@ -206,51 +209,59 @@ def parse_model_fields(model_path: Path) -> list[FieldInfo]:
                 full_field_text = stripped
 
                 # Collect the full Field() definition which may span multiple lines
-                paren_count = stripped.count('(') - stripped.count(')')
+                paren_count = stripped.count("(") - stripped.count(")")
                 j = i + 1
                 while paren_count > 0 and j < len(lines):
                     full_field_text += lines[j]
-                    paren_count += lines[j].count('(') - lines[j].count(')')
+                    paren_count += lines[j].count("(") - lines[j].count(")")
                     j += 1
 
                 # Extract description from the full field text
-                desc_match = re.search(r'description\s*=\s*["\'](.+?)["\']', full_field_text)
+                desc_match = re.search(
+                    r'description\s*=\s*["\'](.+?)["\']', full_field_text
+                )
                 if desc_match:
                     description = desc_match.group(1)
 
-                fields.append(FieldInfo(
-                    name=field_name,
-                    type_hint=type_hint,
-                    default="None",
-                    description=description,
-                ))
+                fields.append(
+                    FieldInfo(
+                        name=field_name,
+                        type_hint=type_hint,
+                        default="None",
+                        description=description,
+                    )
+                )
                 i += 1
                 continue
 
             # Match simple field definition: name: Type = value (or just name: Type)
             # This handles: field_name: Optional[StrictStr] = None
-            simple_match = re.match(r'^(\w+):\s*(.+?)(?:\s*=\s*(.+))?$', stripped)
-            if simple_match and not simple_match.group(1).startswith('_'):
+            simple_match = re.match(r"^(\w+):\s*(.+?)(?:\s*=\s*(.+))?$", stripped)
+            if simple_match and not simple_match.group(1).startswith("_"):
                 field_name = simple_match.group(1)
                 type_hint = simple_match.group(2).strip()
-                default_value = simple_match.group(3).strip() if simple_match.group(3) else None
+                default_value = (
+                    simple_match.group(3).strip() if simple_match.group(3) else None
+                )
 
                 # Skip if this looks like a method or class variable annotation
-                if type_hint.startswith('ClassVar') or '(' in type_hint:
+                if type_hint.startswith("ClassVar") or "(" in type_hint:
                     i += 1
                     continue
 
                 # Extract inner type from Optional[]
-                optional_match = re.match(r'Optional\[(.+)\]', type_hint)
+                optional_match = re.match(r"Optional\[(.+)\]", type_hint)
                 if optional_match:
                     type_hint = optional_match.group(1)
 
-                fields.append(FieldInfo(
-                    name=field_name,
-                    type_hint=type_hint,
-                    default=default_value or "None",
-                    description="",
-                ))
+                fields.append(
+                    FieldInfo(
+                        name=field_name,
+                        type_hint=type_hint,
+                        default=default_value or "None",
+                        description="",
+                    )
+                )
 
         i += 1
 
@@ -267,23 +278,27 @@ def parse_api_methods(api_path: Path) -> list[MethodInfo]:
     # Updated to handle multiline docstrings with :param style
     pattern = re.compile(
         r'(?:async\s+)?def (\w+)\(\s*self,([^)]*)\)\s*->\s*([^:]+):\s*"""(.*?)"""',
-        re.DOTALL
+        re.DOTALL,
     )
 
     for match in pattern.finditer(content):
         method_name = match.group(1)
 
         # Skip internal methods and variants
-        if (method_name.startswith('_') or
-            '_with_http_info' in method_name or
-            '_without_preload_content' in method_name):
+        if (
+            method_name.startswith("_")
+            or "_with_http_info" in method_name
+            or "_without_preload_content" in method_name
+        ):
             continue
 
         params_str = match.group(2)
         return_type = match.group(3).strip()
         # Extract first meaningful line from docstring (skip empty lines)
         docstring_raw = match.group(4).strip()
-        docstring_lines = [line.strip() for line in docstring_raw.split('\n') if line.strip()]
+        docstring_lines = [
+            line.strip() for line in docstring_raw.split("\n") if line.strip()
+        ]
         docstring = docstring_lines[0] if docstring_lines else method_name
 
         # Parse parameters
@@ -295,11 +310,11 @@ def parse_api_methods(api_path: Path) -> list[MethodInfo]:
         current = ""
         bracket_depth = 0
         for char in params_str:
-            if char in '([{':
+            if char in "([{":
                 bracket_depth += 1
-            elif char in ')]}':
+            elif char in ")]}":
                 bracket_depth -= 1
-            elif char == ',' and bracket_depth == 0:
+            elif char == "," and bracket_depth == 0:
                 param_parts.append(current.strip())
                 current = ""
                 continue
@@ -309,31 +324,40 @@ def parse_api_methods(api_path: Path) -> list[MethodInfo]:
 
         for param in param_parts:
             param = param.strip()
-            if not param or param.startswith('_'):
+            if not param or param.startswith("_"):
                 continue
 
             # Parse: name: Type or name: Type = default
-            param_match = re.match(r'(\w+):\s*(.+?)(?:\s*=\s*(.+))?$', param)
+            param_match = re.match(r"(\w+):\s*(.+?)(?:\s*=\s*(.+))?$", param)
             if param_match:
                 p_name = param_match.group(1)
                 p_type = param_match.group(2).strip()
-                p_default = param_match.group(3).strip() if param_match.group(3) else None
+                p_default = (
+                    param_match.group(3).strip() if param_match.group(3) else None
+                )
 
                 # Check if this is a request body parameter with generic 'object' type
                 # This happens when OpenAPI spec has requestBody with just 'type: object'
                 # Mark it as a special request type that needs no fields
-                if p_name == 'request' and p_type == 'object':
-                    request_type = '__empty_object__'
+                if p_name == "request" and p_type == "object":
+                    request_type = "__empty_object__"
                     continue
 
                 # Check if it's a model parameter (request/query type)
                 # Look for capitalized type names that aren't basic types
-                type_match = re.search(r'(?:Optional\[)?([A-Z]\w+?)(?:\])?$', p_type)
+                type_match = re.search(r"(?:Optional\[)?([A-Z]\w+?)(?:\])?$", p_type)
                 if type_match:
                     type_name = type_match.group(1)
                     # Skip basic types
-                    if type_name not in ('Dict', 'List', 'Optional', 'Union', 'Any', 'Tuple'):
-                        if 'Request' in type_name or 'Query' in type_name:
+                    if type_name not in (
+                        "Dict",
+                        "List",
+                        "Optional",
+                        "Union",
+                        "Any",
+                        "Tuple",
+                    ):
+                        if "Request" in type_name or "Query" in type_name:
                             request_type = type_name
                         else:
                             # It's a path/query param with a model type
@@ -343,13 +367,15 @@ def parse_api_methods(api_path: Path) -> list[MethodInfo]:
                 else:
                     path_params.append((p_name, p_type, p_default))
 
-        methods.append(MethodInfo(
-            name=method_name,
-            path_params=path_params,
-            request_type=request_type,
-            return_type=return_type,
-            docstring=docstring,
-        ))
+        methods.append(
+            MethodInfo(
+                name=method_name,
+                path_params=path_params,
+                request_type=request_type,
+                return_type=return_type,
+                docstring=docstring,
+            )
+        )
 
     return methods
 
@@ -358,11 +384,11 @@ def simplify_type(type_str: str) -> str:
     """Convert Pydantic strict types to simple Python types."""
     type_str = type_str.strip()
     replacements = {
-        'StrictStr': 'str',
-        'StrictInt': 'int',
-        'StrictFloat': 'float',
-        'StrictBool': 'bool',
-        'StrictBytes': 'bytes',
+        "StrictStr": "str",
+        "StrictInt": "int",
+        "StrictFloat": "float",
+        "StrictBool": "bool",
+        "StrictBytes": "bytes",
     }
     for old, new in replacements.items():
         type_str = type_str.replace(old, new)
@@ -378,18 +404,20 @@ def discover_apis(sdk_dir: Path) -> list[dict]:
         module_name = api_file.stem
         content = api_file.read_text()
 
-        class_match = re.search(r'class (\w+Api)\s*:', content)
+        class_match = re.search(r"class (\w+Api)\s*:", content)
         if class_match:
             class_name = class_match.group(1)
-            property_name = module_name.replace('_api', '')
+            property_name = module_name.replace("_api", "")
             methods = parse_api_methods(api_file)
 
-            apis.append({
-                'module': module_name,
-                'class_name': class_name,
-                'property_name': property_name,
-                'methods': methods,
-            })
+            apis.append(
+                {
+                    "module": module_name,
+                    "class_name": class_name,
+                    "property_name": property_name,
+                    "methods": methods,
+                }
+            )
 
     return apis
 
@@ -403,24 +431,24 @@ def discover_models(sdk_dir: Path) -> dict[str, dict]:
         content = model_file.read_text()
 
         # Find any class that extends BaseModel
-        class_match = re.search(r'class (\w+)\(BaseModel\):', content)
+        class_match = re.search(r"class (\w+)\(BaseModel\):", content)
         if class_match:
             class_name = class_match.group(1)
             # Parse fields for ALL models (not just Request types) to generate TypedDicts
             fields = parse_model_fields(model_file)
             models[class_name] = {
-                'fields': fields,
-                'module': model_file.stem,
+                "fields": fields,
+                "module": model_file.stem,
             }
             continue
 
         # Also find Enum classes (e.g., class SomeStatus(str, Enum):)
-        enum_match = re.search(r'class (\w+)\([^)]*Enum[^)]*\):', content)
+        enum_match = re.search(r"class (\w+)\([^)]*Enum[^)]*\):", content)
         if enum_match:
             class_name = enum_match.group(1)
             models[class_name] = {
-                'fields': [],
-                'module': model_file.stem,
+                "fields": [],
+                "module": model_file.stem,
             }
 
     return models
@@ -433,9 +461,9 @@ def get_model_dependencies(model_name: str, models: dict) -> set:
 
     deps = set()
     model_info = models[model_name]
-    for field in model_info.get('fields', []):
+    for field in model_info.get("fields", []):
         # Extract type names from the field type hint
-        type_names = re.findall(r'([A-Z][a-zA-Z0-9_]+)', field.type_hint)
+        type_names = re.findall(r"([A-Z][a-zA-Z0-9_]+)", field.type_hint)
         for type_name in type_names:
             if type_name in models and type_name != model_name:
                 # Skip enum types as they become str
@@ -449,9 +477,10 @@ def topological_sort_models(models: dict) -> list:
     # Build dependency graph
     # Filter to only include non-request, non-query, non-enum models
     filtered_models = {
-        name: info for name, info in models.items()
-        if not name.endswith('Request')
-        and not name.endswith('Query')
+        name: info
+        for name, info in models.items()
+        if not name.endswith("Request")
+        and not name.endswith("Query")
         and not is_enum_model(name, models)
     }
 
@@ -500,26 +529,28 @@ def is_enum_model(model_name: str, models: dict) -> bool:
     model_info = models[model_name]
     # Enums typically have no fields or are explicitly marked
     # Common enum suffixes in this codebase
-    enum_suffixes = ('Status', 'Kind', 'State', 'Type')
-    return len(model_info.get('fields', [])) == 0 and any(model_name.endswith(s) for s in enum_suffixes)
+    enum_suffixes = ("Status", "Kind", "State", "Type")
+    return len(model_info.get("fields", [])) == 0 and any(
+        model_name.endswith(s) for s in enum_suffixes
+    )
 
 
 def convert_type_to_dict_type(type_hint: str, models: dict) -> str:
     """Convert a Pydantic model type hint to its TypedDict equivalent."""
     # Handle Optional types
-    optional_match = re.match(r'Optional\[(.+)\]', type_hint)
+    optional_match = re.match(r"Optional\[(.+)\]", type_hint)
     if optional_match:
         inner = convert_type_to_dict_type(optional_match.group(1), models)
         return f"Optional[{inner}]"
 
     # Handle List types
-    list_match = re.match(r'List\[(.+)\]', type_hint)
+    list_match = re.match(r"List\[(.+)\]", type_hint)
     if list_match:
         inner = convert_type_to_dict_type(list_match.group(1), models)
         return f"List[{inner}]"
 
     # Handle Dict types
-    dict_match = re.match(r'Dict\[(.+),\s*(.+)\]', type_hint)
+    dict_match = re.match(r"Dict\[(.+),\s*(.+)\]", type_hint)
     if dict_match:
         key_type = convert_type_to_dict_type(dict_match.group(1), models)
         val_type = convert_type_to_dict_type(dict_match.group(2), models)
@@ -527,18 +558,18 @@ def convert_type_to_dict_type(type_hint: str, models: dict) -> str:
 
     # Convert Pydantic strict types to Python types
     type_mapping = {
-        'StrictStr': 'str',
-        'StrictInt': 'int',
-        'StrictFloat': 'float',
-        'StrictBool': 'bool',
-        'StrictBytes': 'bytes',
+        "StrictStr": "str",
+        "StrictInt": "int",
+        "StrictFloat": "float",
+        "StrictBool": "bool",
+        "StrictBytes": "bytes",
     }
     if type_hint in type_mapping:
         return type_mapping[type_hint]
 
     # If this is an enum model, convert to str (enums serialize to strings)
     if is_enum_model(type_hint, models):
-        return 'str'
+        return "str"
 
     # If this is a model type, convert to its TypedDict version
     # No forward reference needed since we topologically sort the TypedDicts
@@ -557,13 +588,13 @@ def generate_typed_dict(class_name: str, fields: list, models: dict) -> str:
     # Add docstring with field descriptions for better IDE hover
     if fields:
         lines.append('    """')
-        lines.append(f'    Dictionary representation of {class_name}.')
-        lines.append('')
-        lines.append('    Keys:')
+        lines.append(f"    Dictionary representation of {class_name}.")
+        lines.append("")
+        lines.append("    Keys:")
         for field in fields:
             field_type = convert_type_to_dict_type(field.type_hint, models)
             desc = field.description if field.description else field.name
-            lines.append(f'        {field.name} ({field_type}): {desc}')
+            lines.append(f"        {field.name} ({field_type}): {desc}")
         lines.append('    """')
 
     if not fields:
@@ -590,7 +621,7 @@ def get_return_type_for_model(return_type: str, models: dict) -> str:
         return "None"
 
     # Handle List[ModelType] - keep as is
-    list_match = re.match(r'List\[(\w+)\]', return_type)
+    list_match = re.match(r"List\[(\w+)\]", return_type)
     if list_match:
         inner_type = list_match.group(1)
         if inner_type in models:
@@ -598,7 +629,7 @@ def get_return_type_for_model(return_type: str, models: dict) -> str:
         return return_type
 
     # Handle single model types - keep the model class name
-    type_match = re.match(r'(?:Optional\[)?(\w+)(?:\])?', return_type)
+    type_match = re.match(r"(?:Optional\[)?(\w+)(?:\])?", return_type)
     if type_match:
         base_type = type_match.group(1)
         if base_type in models:
@@ -607,14 +638,24 @@ def get_return_type_for_model(return_type: str, models: dict) -> str:
     return return_type
 
 
-def generate_wrapper_method(method: MethodInfo, models: dict, use_async: bool = True) -> str:
+def generate_wrapper_method(
+    method: MethodInfo, models: dict, use_async: bool = True
+) -> str:
     """Generate a wrapper method with flattened parameters that returns Pydantic models."""
     lines = []
 
     # Get request fields if applicable
     request_fields = []
     if method.request_type and method.request_type in models:
-        request_fields = models[method.request_type]['fields']
+        request_fields = models[method.request_type]["fields"]
+
+    # Determine if this method needs a request_timeout parameter
+    # Methods with wait_for_ip field or certain long-running operations need it
+    needs_request_timeout = False
+    has_wait_for_ip = any(field.name == "wait_for_ip" for field in request_fields)
+    long_running_methods = {"create_sandbox", "start_sandbox", "run_sandbox_command"}
+    if has_wait_for_ip or method.name in long_running_methods:
+        needs_request_timeout = True
 
     # Build parameter list
     all_params = []
@@ -630,6 +671,12 @@ def generate_wrapper_method(method: MethodInfo, models: dict, use_async: bool = 
     for field in request_fields:
         field_type = simplify_type(field.type_hint)
         all_params.append(f"{field.name}: Optional[{field_type}] = None")
+
+    # Add request_timeout parameter for long-running methods
+    if needs_request_timeout:
+        all_params.append(
+            "request_timeout: Union[None, float, Tuple[float, float]] = None"
+        )
 
     # Method signature - use the original Pydantic model as return type
     return_type_hint = get_return_type_for_model(method.return_type, models)
@@ -652,13 +699,22 @@ def generate_wrapper_method(method: MethodInfo, models: dict, use_async: bool = 
             lines.append(f"            {p_name}: {p_type}")
         for field in request_fields:
             desc = field.description or field.name
+            # Add note about request_timeout for wait_for_ip fields
+            if field.name == "wait_for_ip":
+                desc += ". When True, consider setting request_timeout to accommodate IP discovery (server default is 120s)"
             lines.append(f"            {field.name}: {desc}")
+        if needs_request_timeout:
+            lines.append(
+                "            request_timeout: HTTP request timeout in seconds. Can be a single float for total timeout, or a tuple (connect_timeout, read_timeout). For operations with wait_for_ip=True, set this to at least 180 seconds."
+            )
 
     # Add Returns section
     if method.return_type != "None":
         lines.append("")
         lines.append("        Returns:")
-        lines.append(f"            {return_type_hint}: Pydantic model with full IDE autocomplete.")
+        lines.append(
+            f"            {return_type_hint}: Pydantic model with full IDE autocomplete."
+        )
         lines.append("            Call .model_dump() to convert to dict if needed.")
 
     lines.append('        """')
@@ -669,7 +725,7 @@ def generate_wrapper_method(method: MethodInfo, models: dict, use_async: bool = 
 
     if method.request_type:
         # We have a request type - need to build and pass it
-        if method.request_type == '__empty_object__':
+        if method.request_type == "__empty_object__":
             # Special case: request body is just 'object' type with no schema
             # Pass an empty dict as the request
             call_args.append("request={}")
@@ -685,12 +741,24 @@ def generate_wrapper_method(method: MethodInfo, models: dict, use_async: bool = 
             lines.append(f"        request = {method.request_type}()")
             call_args.append("request=request")
 
+        # Add _request_timeout if this method needs it
+        if needs_request_timeout:
+            call_args.append("_request_timeout=request_timeout")
+
         # Return the Pydantic model directly (no _to_dict conversion)
-        lines.append(f"        return {await_keyword}self._api.{method.name}({', '.join(call_args)})")
+        lines.append(
+            f"        return {await_keyword}self._api.{method.name}({', '.join(call_args)})"
+        )
     else:
         # No request object needed - return model directly
+        # Add _request_timeout if this method needs it
+        if needs_request_timeout:
+            call_args.append("_request_timeout=request_timeout")
+
         if call_args:
-            lines.append(f"        return {await_keyword}self._api.{method.name}({', '.join(call_args)})")
+            lines.append(
+                f"        return {await_keyword}self._api.{method.name}({', '.join(call_args)})"
+            )
         else:
             lines.append(f"        return {await_keyword}self._api.{method.name}()")
 
@@ -707,16 +775,15 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     apis = discover_apis(sdk_dir)
     models = discover_models(sdk_dir)
 
-    # Which APIs use tmux host
-    tmux_api_properties = {"command", "file", "tmux", "audit", "health", "human", "plan"}
-
     # Collect imports
     api_imports = []
     model_imports = set()
 
     for api in apis:
-        api_imports.append(f"from {package_name}.api.{api['module']} import {api['class_name']}")
-        for method in api['methods']:
+        api_imports.append(
+            f"from {package_name}.api.{api['module']} import {api['class_name']}"
+        )
+        for method in api["methods"]:
             # Import request/query types
             if method.request_type and method.request_type in models:
                 model_info = models[method.request_type]
@@ -725,12 +792,24 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
                 )
 
                 # Also import types used in the request model fields (e.g., enum types)
-                for field in model_info.get('fields', []):
+                for field in model_info.get("fields", []):
                     field_type = field.type_hint
                     # Extract type names from the field type (handles List[], Optional[], etc.)
-                    field_type_names = re.findall(r'([A-Z][a-zA-Z0-9_]+)', field_type)
+                    field_type_names = re.findall(r"([A-Z][a-zA-Z0-9_]+)", field_type)
                     for field_type_name in field_type_names:
-                        if field_type_name in models and field_type_name not in ('Dict', 'List', 'Optional', 'Union', 'Any', 'Tuple', 'StrictStr', 'StrictInt', 'StrictFloat', 'StrictBool', 'StrictBytes'):
+                        if field_type_name in models and field_type_name not in (
+                            "Dict",
+                            "List",
+                            "Optional",
+                            "Union",
+                            "Any",
+                            "Tuple",
+                            "StrictStr",
+                            "StrictInt",
+                            "StrictFloat",
+                            "StrictBool",
+                            "StrictBytes",
+                        ):
                             field_model_info = models[field_type_name]
                             model_imports.add(
                                 f"from {package_name}.models.{field_model_info['module']} import {field_type_name}"
@@ -740,9 +819,16 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
             # Handle wrapped types like List[SomeType], Optional[SomeType], etc.
             return_type = method.return_type.strip()
             # Extract type names from the return type (handles List[], Optional[], etc.)
-            type_names = re.findall(r'([A-Z][a-zA-Z0-9_]+)', return_type)
+            type_names = re.findall(r"([A-Z][a-zA-Z0-9_]+)", return_type)
             for type_name in type_names:
-                if type_name in models and type_name not in ('Dict', 'List', 'Optional', 'Union', 'Any', 'Tuple'):
+                if type_name in models and type_name not in (
+                    "Dict",
+                    "List",
+                    "Optional",
+                    "Union",
+                    "Any",
+                    "Tuple",
+                ):
                     model_info = models[type_name]
                     model_imports.add(
                         f"from {package_name}.models.{model_info['module']} import {type_name}"
@@ -750,7 +836,7 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
 
             # Import types from path params that are model types
             for p_name, p_type, _ in method.path_params:
-                type_match = re.search(r'(?:Optional\[)?([A-Z]\w+?)(?:\])?$', p_type)
+                type_match = re.search(r"(?:Optional\[)?([A-Z]\w+?)(?:\])?$", p_type)
                 if type_match:
                     type_name = type_match.group(1)
                     if type_name in models:
@@ -762,16 +848,18 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     # Generate wrapper classes
     wrapper_classes = []
     for api in apis:
-        wrapper_name = api['class_name'].replace('Api', 'Operations')
+        wrapper_name = api["class_name"].replace("Api", "Operations")
         lines = []
         lines.append(f"class {wrapper_name}:")
-        lines.append(f'    """Wrapper for {api["class_name"]} with simplified method signatures."""')
+        lines.append(
+            f'    """Wrapper for {api["class_name"]} with simplified method signatures."""'
+        )
         lines.append("")
         lines.append(f"    def __init__(self, api: {api['class_name']}):")
         lines.append("        self._api = api")
         lines.append("")
 
-        for method in api['methods']:
+        for method in api["methods"]:
             method_code = generate_wrapper_method(method, models, use_async=use_async)
             lines.append(method_code)
 
@@ -780,37 +868,51 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     # Build the complete file
     output_lines = []
 
-    output_lines.append('# coding: utf-8')
-    output_lines.append('')
-    output_lines.append('from __future__ import annotations')
-    output_lines.append('')
+    output_lines.append("# coding: utf-8")
+    output_lines.append("")
+    output_lines.append("from __future__ import annotations")
+    output_lines.append("")
     output_lines.append('"""')
-    output_lines.append('Unified VirshSandbox Client')
-    output_lines.append('')
-    output_lines.append('This module provides a unified client wrapper for the virsh-sandbox SDK,')
-    output_lines.append('offering a cleaner interface with flattened parameters instead of request objects.')
-    output_lines.append('')
-    output_lines.append('Example:')
-    output_lines.append(f'    from {package_name} import VirshSandbox')
-    output_lines.append('')
+    output_lines.append("Unified VirshSandbox Client")
+    output_lines.append("")
+    output_lines.append(
+        "This module provides a unified client wrapper for the virsh-sandbox SDK,"
+    )
+    output_lines.append(
+        "offering a cleaner interface with flattened parameters instead of request objects."
+    )
+    output_lines.append("")
+    output_lines.append("Example:")
+    output_lines.append(f"    from {package_name} import VirshSandbox")
+    output_lines.append("")
     if use_async:
-        output_lines.append('    async with VirshSandbox(host="http://localhost:8080") as client:')
-        output_lines.append('        # Create a sandbox with simple parameters')
-        output_lines.append('        await client.sandbox.create_sandbox(source_vm_name="ubuntu-base")')
-        output_lines.append('        # Run a command')
-        output_lines.append('        await client.command.run_command(command="ls", args=["-la"])')
+        output_lines.append(
+            '    async with VirshSandbox(host="http://localhost:8080") as client:'
+        )
+        output_lines.append("        # Create a sandbox with simple parameters")
+        output_lines.append(
+            '        await client.sandbox.create_sandbox(source_vm_name="ubuntu-base")'
+        )
+        output_lines.append("        # Run a command")
+        output_lines.append(
+            '        await client.command.run_command(command="ls", args=["-la"])'
+        )
     else:
         output_lines.append('    client = VirshSandbox(host="http://localhost:8080")')
-        output_lines.append('    # Create a sandbox with simple parameters')
-        output_lines.append('    client.sandbox.create_sandbox(source_vm_name="ubuntu-base")')
-        output_lines.append('    # Run a command')
-        output_lines.append('    client.command.run_command(command="ls", args=["-la"])')
+        output_lines.append("    # Create a sandbox with simple parameters")
+        output_lines.append(
+            '    client.sandbox.create_sandbox(source_vm_name="ubuntu-base")'
+        )
+        output_lines.append("    # Run a command")
+        output_lines.append(
+            '    client.command.run_command(command="ls", args=["-la"])'
+        )
     output_lines.append('"""')
-    output_lines.append('')
-    output_lines.append('from typing import Dict, List, Optional')
-    output_lines.append('')
-    output_lines.append(f'from {package_name}.api_client import ApiClient')
-    output_lines.append(f'from {package_name}.configuration import Configuration')
+    output_lines.append("")
+    output_lines.append("from typing import Dict, List, Optional, Tuple, Union")
+    output_lines.append("")
+    output_lines.append(f"from {package_name}.api_client import ApiClient")
+    output_lines.append(f"from {package_name}.configuration import Configuration")
 
     for imp in sorted(api_imports):
         output_lines.append(imp)
@@ -818,154 +920,145 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     for imp in sorted(model_imports):
         output_lines.append(imp)
 
-    output_lines.append('')
-    output_lines.append('')
+    output_lines.append("")
+    output_lines.append("")
 
     # Add wrapper classes
     for wrapper in wrapper_classes:
         output_lines.append(wrapper)
-        output_lines.append('')
+        output_lines.append("")
 
     # Main client class
-    output_lines.append('')
-    output_lines.append('class VirshSandbox:')
+    output_lines.append("")
+    output_lines.append("class VirshSandbox:")
     output_lines.append('    """Unified client for the virsh-sandbox API.')
-    output_lines.append('')
-    output_lines.append('    This class provides a single entry point for all virsh-sandbox API operations,')
-    output_lines.append('    with support for separate hosts for the main API and tmux API.')
-    output_lines.append('    All methods use flattened parameters instead of request objects.')
-    output_lines.append('')
-    output_lines.append('    Args:')
-    output_lines.append('        host: Base URL for the main virsh-sandbox API')
-    output_lines.append('        tmux_host: Base URL for the tmux API (defaults to host)')
-    output_lines.append('        api_key: Optional API key for authentication')
-    output_lines.append('        verify_ssl: Whether to verify SSL certificates')
-    output_lines.append('')
-    output_lines.append('    Example:')
-    output_lines.append(f'        >>> from {package_name} import VirshSandbox')
+    output_lines.append("")
+    output_lines.append(
+        "    This class provides a single entry point for all virsh-sandbox API operations."
+    )
+    output_lines.append(
+        "    All methods use flattened parameters instead of request objects."
+    )
+    output_lines.append("")
+    output_lines.append("    Args:")
+    output_lines.append("        host: Base URL for the main virsh-sandbox API")
+    output_lines.append("        api_key: Optional API key for authentication")
+    output_lines.append("        verify_ssl: Whether to verify SSL certificates")
+    output_lines.append("")
+    output_lines.append("    Example:")
+    output_lines.append(f"        >>> from {package_name} import VirshSandbox")
     if use_async:
-        output_lines.append('        >>> async with VirshSandbox() as client:')
-        output_lines.append('        ...     await client.sandbox.create_sandbox(source_vm_name="base-vm")')
+        output_lines.append("        >>> async with VirshSandbox() as client:")
+        output_lines.append(
+            '        ...     await client.sandbox.create_sandbox(source_vm_name="base-vm")'
+        )
     else:
-        output_lines.append('        >>> client = VirshSandbox()')
-        output_lines.append('        >>> client.sandbox.create_sandbox(source_vm_name="base-vm")')
+        output_lines.append("        >>> client = VirshSandbox()")
+        output_lines.append(
+            '        >>> client.sandbox.create_sandbox(source_vm_name="base-vm")'
+        )
     output_lines.append('    """')
-    output_lines.append('')
-    output_lines.append('    def __init__(')
-    output_lines.append('        self,')
+    output_lines.append("")
+    output_lines.append("    def __init__(")
+    output_lines.append("        self,")
     output_lines.append('        host: str = "http://localhost:8080",')
-    output_lines.append('        tmux_host: Optional[str] = None,')
-    output_lines.append('        api_key: Optional[str] = None,')
-    output_lines.append('        access_token: Optional[str] = None,')
-    output_lines.append('        username: Optional[str] = None,')
-    output_lines.append('        password: Optional[str] = None,')
-    output_lines.append('        verify_ssl: bool = True,')
-    output_lines.append('        ssl_ca_cert: Optional[str] = None,')
-    output_lines.append('        retries: Optional[int] = None,')
-    output_lines.append('    ) -> None:')
+    output_lines.append("        api_key: Optional[str] = None,")
+    output_lines.append("        access_token: Optional[str] = None,")
+    output_lines.append("        username: Optional[str] = None,")
+    output_lines.append("        password: Optional[str] = None,")
+    output_lines.append("        verify_ssl: bool = True,")
+    output_lines.append("        ssl_ca_cert: Optional[str] = None,")
+    output_lines.append("        retries: Optional[int] = None,")
+    output_lines.append("    ) -> None:")
     output_lines.append('        """Initialize the VirshSandbox client."""')
-    output_lines.append('        self._main_config = Configuration(')
-    output_lines.append('            host=host,')
-    output_lines.append('            api_key={"Authorization": api_key} if api_key else None,')
-    output_lines.append('            access_token=access_token,')
-    output_lines.append('            username=username,')
-    output_lines.append('            password=password,')
-    output_lines.append('            ssl_ca_cert=ssl_ca_cert,')
-    output_lines.append('            retries=retries,')
-    output_lines.append('        )')
-    output_lines.append('        self._main_config.verify_ssl = verify_ssl')
-    output_lines.append('        self._main_api_client = ApiClient(configuration=self._main_config)')
-    output_lines.append('')
-    output_lines.append('        tmux_host = tmux_host or host')
-    output_lines.append('        if tmux_host != host:')
-    output_lines.append('            self._tmux_config = Configuration(')
-    output_lines.append('                host=tmux_host,')
-    output_lines.append('                api_key={"Authorization": api_key} if api_key else None,')
-    output_lines.append('                access_token=access_token,')
-    output_lines.append('                username=username,')
-    output_lines.append('                password=password,')
-    output_lines.append('                ssl_ca_cert=ssl_ca_cert,')
-    output_lines.append('                retries=retries,')
-    output_lines.append('            )')
-    output_lines.append('            self._tmux_config.verify_ssl = verify_ssl')
-    output_lines.append('            self._tmux_api_client = ApiClient(configuration=self._tmux_config)')
-    output_lines.append('        else:')
-    output_lines.append('            self._tmux_config = self._main_config')
-    output_lines.append('            self._tmux_api_client = self._main_api_client')
-    output_lines.append('')
+    output_lines.append("        self._main_config = Configuration(")
+    output_lines.append("            host=host,")
+    output_lines.append(
+        '            api_key={"Authorization": api_key} if api_key else None,'
+    )
+    output_lines.append("            access_token=access_token,")
+    output_lines.append("            username=username,")
+    output_lines.append("            password=password,")
+    output_lines.append("            ssl_ca_cert=ssl_ca_cert,")
+    output_lines.append("            retries=retries,")
+    output_lines.append("        )")
+    output_lines.append("        self._main_config.verify_ssl = verify_ssl")
+    output_lines.append(
+        "        self._main_api_client = ApiClient(configuration=self._main_config)"
+    )
+    output_lines.append("")
 
     # Lazy init fields
     for api in apis:
-        wrapper_name = api['class_name'].replace('Api', 'Operations')
-        output_lines.append(f"        self._{api['property_name']}: Optional[{wrapper_name}] = None")
-    output_lines.append('')
+        wrapper_name = api["class_name"].replace("Api", "Operations")
+        output_lines.append(
+            f"        self._{api['property_name']}: Optional[{wrapper_name}] = None"
+        )
+    output_lines.append("")
 
     # Properties
     for api in apis:
-        prop = api['property_name']
-        wrapper_name = api['class_name'].replace('Api', 'Operations')
-        api_class = api['class_name']
-        client_var = "self._tmux_api_client" if prop in tmux_api_properties else "self._main_api_client"
+        prop = api["property_name"]
+        wrapper_name = api["class_name"].replace("Api", "Operations")
+        api_class = api["class_name"]
+        client_var = "self._main_api_client"
 
-        output_lines.append('    @property')
-        output_lines.append(f'    def {prop}(self) -> {wrapper_name}:')
+        output_lines.append("    @property")
+        output_lines.append(f"    def {prop}(self) -> {wrapper_name}:")
         output_lines.append(f'        """Access {api_class} operations."""')
-        output_lines.append(f'        if self._{prop} is None:')
-        output_lines.append(f'            api = {api_class}(api_client={client_var})')
-        output_lines.append(f'            self._{prop} = {wrapper_name}(api)')
-        output_lines.append(f'        return self._{prop}')
-        output_lines.append('')
+        output_lines.append(f"        if self._{prop} is None:")
+        output_lines.append(f"            api = {api_class}(api_client={client_var})")
+        output_lines.append(f"            self._{prop} = {wrapper_name}(api)")
+        output_lines.append(f"        return self._{prop}")
+        output_lines.append("")
 
     # Utility methods
-    output_lines.append('    @property')
-    output_lines.append('    def configuration(self) -> Configuration:')
+    output_lines.append("    @property")
+    output_lines.append("    def configuration(self) -> Configuration:")
     output_lines.append('        """Get the main API configuration."""')
-    output_lines.append('        return self._main_config')
-    output_lines.append('')
-    output_lines.append('    @property')
-    output_lines.append('    def tmux_configuration(self) -> Configuration:')
-    output_lines.append('        """Get the tmux API configuration."""')
-    output_lines.append('        return self._tmux_config')
-    output_lines.append('')
-    output_lines.append('    def set_debug(self, debug: bool) -> None:')
+    output_lines.append("        return self._main_config")
+    output_lines.append("")
+    output_lines.append("    def set_debug(self, debug: bool) -> None:")
     output_lines.append('        """Enable or disable debug mode."""')
-    output_lines.append('        self._main_config.debug = debug')
-    output_lines.append('        if self._tmux_config is not self._main_config:')
-    output_lines.append('            self._tmux_config.debug = debug')
-    output_lines.append('')
+    output_lines.append("        self._main_config.debug = debug")
+    output_lines.append("")
 
     if use_async:
-        output_lines.append('    async def close(self) -> None:')
+        output_lines.append("    async def close(self) -> None:")
         output_lines.append('        """Close the API client connections."""')
-        output_lines.append("        if hasattr(self._main_api_client.rest_client, 'close'):")
-        output_lines.append('            await self._main_api_client.rest_client.close()')
-        output_lines.append('        if self._tmux_api_client is not self._main_api_client:')
-        output_lines.append("            if hasattr(self._tmux_api_client.rest_client, 'close'):")
-        output_lines.append('                await self._tmux_api_client.rest_client.close()')
-        output_lines.append('')
+        output_lines.append(
+            "        if hasattr(self._main_api_client.rest_client, 'close'):"
+        )
+        output_lines.append(
+            "            await self._main_api_client.rest_client.close()"
+        )
+        output_lines.append("")
         output_lines.append('    async def __aenter__(self) -> "VirshSandbox":')
         output_lines.append('        """Async context manager entry."""')
-        output_lines.append('        return self')
-        output_lines.append('')
-        output_lines.append('    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:')
+        output_lines.append("        return self")
+        output_lines.append("")
+        output_lines.append(
+            "    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:"
+        )
         output_lines.append('        """Async context manager exit."""')
-        output_lines.append('        await self.close()')
+        output_lines.append("        await self.close()")
     else:
-        output_lines.append('    def close(self) -> None:')
+        output_lines.append("    def close(self) -> None:")
         output_lines.append('        """Close the API client connections."""')
-        output_lines.append("        if hasattr(self._main_api_client.rest_client, 'close'):")
-        output_lines.append('            self._main_api_client.rest_client.close()')
-        output_lines.append('        if self._tmux_api_client is not self._main_api_client:')
-        output_lines.append("            if hasattr(self._tmux_api_client.rest_client, 'close'):")
-        output_lines.append('                self._tmux_api_client.rest_client.close()')
-        output_lines.append('')
+        output_lines.append(
+            "        if hasattr(self._main_api_client.rest_client, 'close'):"
+        )
+        output_lines.append("            self._main_api_client.rest_client.close()")
+        output_lines.append("")
         output_lines.append('    def __enter__(self) -> "VirshSandbox":')
         output_lines.append('        """Context manager entry."""')
-        output_lines.append('        return self')
-        output_lines.append('')
-        output_lines.append('    def __exit__(self, exc_type, exc_val, exc_tb) -> None:')
+        output_lines.append("        return self")
+        output_lines.append("")
+        output_lines.append(
+            "    def __exit__(self, exc_type, exc_val, exc_tb) -> None:"
+        )
         output_lines.append('        """Context manager exit."""')
-        output_lines.append('        self.close()')
+        output_lines.append("        self.close()")
 
     # Write the file
     client_path = sdk_dir / "client.py"
@@ -982,15 +1075,12 @@ def update_init_file(sdk_dir: Path, package_name: str = "virsh_sandbox"):
         print("VirshSandbox already exported in __init__.py")
         return
 
-    content = content.replace(
-        '__all__ = [',
-        '__all__ = [\n    "VirshSandbox",'
-    )
+    content = content.replace("__all__ = [", '__all__ = [\n    "VirshSandbox",')
 
     if "# import apis into sdk package" in content:
         content = content.replace(
             "# import apis into sdk package",
-            f"# import unified client\nfrom {package_name}.client import VirshSandbox as VirshSandbox\n\n# import apis into sdk package"
+            f"# import unified client\nfrom {package_name}.client import VirshSandbox as VirshSandbox\n\n# import apis into sdk package",
         )
     else:
         content += f"\n# import unified client\nfrom {package_name}.client import VirshSandbox as VirshSandbox\n"
@@ -1014,8 +1104,11 @@ def remove_unused_imports(sdk_dir: Path):
     # List of imports that are commonly unused in model files
     # These have `# noqa: F401` comments which indicates they may be unused
     unused_import_patterns = [
-        (r'^import re  # noqa: F401\n', ''),  # Remove unused re import with noqa comment
-        (r'^import re\n', ''),  # Remove unused re import without noqa comment
+        (
+            r"^import re  # noqa: F401\n",
+            "",
+        ),  # Remove unused re import with noqa comment
+        (r"^import re\n", ""),  # Remove unused re import without noqa comment
     ]
 
     files_modified = 0
@@ -1029,7 +1122,7 @@ def remove_unused_imports(sdk_dir: Path):
 
         # Check if `re` is actually used in the file (beyond the import)
         # Look for `re.` usage which would indicate actual usage
-        re_is_used = bool(re.search(r'\bre\.', content))
+        re_is_used = bool(re.search(r"\bre\.", content))
 
         if not re_is_used:
             # Remove the unused re import
@@ -1061,16 +1154,20 @@ def patch_api_client(sdk_dir: Path):
     modified = False
 
     # Fix safe_chars_for_path_param - replace direct attribute access with getattr
-    old_safe_chars = 'quote(str(v), safe=config.safe_chars_for_path_param)'
-    new_safe_chars = "quote(str(v), safe=getattr(config, 'safe_chars_for_path_param', ''))"
+    old_safe_chars = "quote(str(v), safe=config.safe_chars_for_path_param)"
+    new_safe_chars = (
+        "quote(str(v), safe=getattr(config, 'safe_chars_for_path_param', ''))"
+    )
     if old_safe_chars in content:
         content = content.replace(old_safe_chars, new_safe_chars)
         modified = True
         print("  - Patched safe_chars_for_path_param to use getattr with default")
 
     # Fix ignore_operation_servers - replace direct attribute access with getattr
-    old_ignore_servers = 'self.configuration.ignore_operation_servers'
-    new_ignore_servers = "getattr(self.configuration, 'ignore_operation_servers', False)"
+    old_ignore_servers = "self.configuration.ignore_operation_servers"
+    new_ignore_servers = (
+        "getattr(self.configuration, 'ignore_operation_servers', False)"
+    )
     if old_ignore_servers in content:
         content = content.replace(old_ignore_servers, new_ignore_servers)
         modified = True

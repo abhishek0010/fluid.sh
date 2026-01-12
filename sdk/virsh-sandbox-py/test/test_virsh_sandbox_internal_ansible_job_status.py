@@ -14,6 +14,10 @@
 
 import unittest
 
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_job_status import (
+    VirshSandboxInternalAnsibleJobStatus,
+)
+
 
 class TestVirshSandboxInternalAnsibleJobStatus(unittest.TestCase):
     """VirshSandboxInternalAnsibleJobStatus unit test stubs"""

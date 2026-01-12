@@ -15,7 +15,7 @@ func TestGenerateCA(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	keyPath := filepath.Join(tempDir, "test_ca")
 	comment := "test-ssh-ca"
@@ -94,9 +94,7 @@ func TestNewCA(t *testing.T) {
 
 	if ca == nil {
 		t.Error("NewCA returned nil")
-	}
-
-	if ca.sshKeygen == "" {
+	} else if ca.sshKeygen == "" {
 		t.Error("ssh-keygen path not set")
 	}
 }
@@ -107,7 +105,7 @@ func TestCAInitialize(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	keyPath := filepath.Join(tempDir, "test_ca")
 	err = GenerateCA(keyPath, "test-ca")
@@ -176,7 +174,7 @@ func TestCAIssueCertificate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	keyPath := filepath.Join(tempDir, "test_ca")
 	err = GenerateCA(keyPath, "test-ca")
@@ -295,7 +293,7 @@ func TestCAValidateRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	keyPath := filepath.Join(tempDir, "test_ca")
 	err = GenerateCA(keyPath, "test-ca")
@@ -393,7 +391,7 @@ func TestCATTLCapping(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	keyPath := filepath.Join(tempDir, "test_ca")
 	err = GenerateCA(keyPath, "test-ca")

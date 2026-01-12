@@ -22,14 +22,20 @@ import (
 
 // Server wires the HTTP layer to application services.
 type Server struct {
-	Router         chi.Router
-	vmSvc          *vm.Service
-	domainMgr      *libvirt.DomainManager
-	ansibleHandler *ansible.Handler
+	Router          chi.Router
+	vmSvc           *vm.Service
+	domainMgr       *libvirt.DomainManager
+	ansibleHandler  *ansible.Handler
+	playbookHandler *ansible.PlaybookHandler
 }
 
 // NewServer constructs a REST server with routes registered.
 func NewServer(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, ansibleRunner *ansible.Runner) *Server {
+	return NewServerWithPlaybooks(vmSvc, domainMgr, ansibleRunner, nil)
+}
+
+// NewServerWithPlaybooks constructs a REST server with playbook management support.
+func NewServerWithPlaybooks(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, ansibleRunner *ansible.Runner, playbookSvc *ansible.PlaybookService) *Server {
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
@@ -41,11 +47,17 @@ func NewServer(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, ansibleRunne
 		ansibleHandler = ansible.NewHandler(ansibleRunner)
 	}
 
+	var playbookHandler *ansible.PlaybookHandler
+	if playbookSvc != nil {
+		playbookHandler = ansible.NewPlaybookHandler(playbookSvc)
+	}
+
 	s := &Server{
-		Router:         router,
-		vmSvc:          vmSvc,
-		domainMgr:      domainMgr,
-		ansibleHandler: ansibleHandler,
+		Router:          router,
+		vmSvc:           vmSvc,
+		domainMgr:       domainMgr,
+		ansibleHandler:  ansibleHandler,
+		playbookHandler: playbookHandler,
 	}
 	s.routes()
 	return s
@@ -83,7 +95,7 @@ func (s *Server) routes() {
 			fmt.Printf("%v", err)
 		}
 
-		fmt.Fprintln(w, htmlContent)
+		_, _ = fmt.Fprintln(w, htmlContent)
 	})
 
 	// API v1 routes
@@ -100,6 +112,7 @@ func (s *Server) routes() {
 				r.Get("/", s.handleGetSandbox)
 				r.Get("/commands", s.handleListSandboxCommands)
 				r.Get("/stream", s.handleSandboxStream)
+				r.Get("/ip", s.handleDiscoverIP)
 
 				r.Post("/sshkey", s.handleInjectSSHKey)
 				r.Post("/start", s.handleStartSandbox)
@@ -116,7 +129,16 @@ func (s *Server) routes() {
 
 		// Ansible job management
 		if s.ansibleHandler != nil {
-			s.ansibleHandler.RegisterRoutes(r)
+			if s.playbookHandler != nil {
+				s.ansibleHandler.RegisterRoutesWithPlaybooks(r, s.playbookHandler)
+			} else {
+				s.ansibleHandler.RegisterRoutes(r)
+			}
+		} else if s.playbookHandler != nil {
+			// Register playbook routes directly if no ansible handler
+			r.Route("/ansible", func(r chi.Router) {
+				s.playbookHandler.RegisterPlaybookRoutes(r)
+			})
 		}
 	})
 }
@@ -152,12 +174,16 @@ type startSandboxResponse struct {
 	IPAddress string `json:"ip_address,omitempty"`
 }
 
+type discoverIPResponse struct {
+	IPAddress string `json:"ip_address"`
+}
+
 type runCommandRequest struct {
-	Username       string            `json:"username"`              // required
-	PrivateKeyPath string            `json:"private_key_path"`      // required; path on API host
-	Command        string            `json:"command"`               // required
-	TimeoutSec     int               `json:"timeout_sec,omitempty"` // optional; default from service config
-	Env            map[string]string `json:"env,omitempty"`         // optional
+	Username       string            `json:"user,omitempty"`             // optional; defaults to "sandbox" when using managed credentials
+	PrivateKeyPath string            `json:"private_key_path,omitempty"` // optional; if empty, uses managed credentials (requires SSH CA)
+	Command        string            `json:"command"`                    // required
+	TimeoutSec     int               `json:"timeout_sec,omitempty"`      // optional; default from service config
+	Env            map[string]string `json:"env,omitempty"`              // optional
 }
 
 type runCommandResponse struct {
@@ -235,6 +261,10 @@ type listSandboxesResponse struct {
 	Total     int           `json:"total"`
 }
 
+type healthResponse struct {
+	Status string `json:"status"`
+}
+
 // --- Handlers ---
 
 // handleHealth returns service health status.
@@ -243,11 +273,11 @@ type listSandboxesResponse struct {
 // @Tags Health
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} healthResponse
 // @Id getHealth
 // @Router /v1/health [get]
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	_ = serverJSON.RespondJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+	_ = serverJSON.RespondJSON(w, http.StatusOK, healthResponse{Status: "ok"})
 }
 
 // @Summary Create a new sandbox
@@ -343,8 +373,38 @@ func (s *Server) handleStartSandbox(w http.ResponseWriter, r *http.Request) {
 	_ = serverJSON.RespondJSON(w, http.StatusOK, startSandboxResponse{IPAddress: ip})
 }
 
+// @Summary Discover sandbox IP
+// @Description Discovers and returns the IP address for a running sandbox. Use this for async workflows where wait_for_ip was false during start.
+// @Tags Sandbox
+// @Produce json
+// @Param id path string true "Sandbox ID"
+// @Success 200 {object} discoverIPResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Id discoverSandboxIP
+// @Router /v1/sandboxes/{id}/ip [get]
+func (s *Server) handleDiscoverIP(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		serverError.RespondError(w, http.StatusBadRequest, errors.New("sandbox id is required"))
+		return
+	}
+
+	ip, err := s.vmSvc.DiscoverIP(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			serverError.RespondError(w, http.StatusNotFound, fmt.Errorf("sandbox not found: %s", id))
+			return
+		}
+		serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("discover ip: %w", err))
+		return
+	}
+	_ = serverJSON.RespondJSON(w, http.StatusOK, discoverIPResponse{IPAddress: ip})
+}
+
 // @Summary Run command in sandbox
-// @Description Executes a command inside the sandbox via SSH
+// @Description Executes a command inside the sandbox via SSH. If private_key_path is omitted and SSH CA is configured, managed credentials will be used automatically.
 // @Tags Sandbox
 // @Accept json
 // @Produce json
@@ -362,13 +422,22 @@ func (s *Server) handleRunCommand(w http.ResponseWriter, r *http.Request) {
 		serverError.RespondError(w, http.StatusBadRequest, err)
 		return
 	}
-	if req.Username == "" || req.PrivateKeyPath == "" || req.Command == "" {
-		serverError.RespondError(w, http.StatusBadRequest, errors.New("username, private_key_path and command are required"))
+	// Command is always required
+	if req.Command == "" {
+		serverError.RespondError(w, http.StatusBadRequest, errors.New("command is required"))
 		return
 	}
+	// Username defaults to "sandbox" when using managed credentials (handled in service layer)
+	// PrivateKeyPath is optional - if empty, service will use managed credentials
 	timeout := time.Duration(req.TimeoutSec) * time.Second
 	cmd, err := s.vmSvc.RunCommand(r.Context(), id, req.Username, req.PrivateKeyPath, req.Command, timeout, req.Env)
 	if err != nil {
+		// If we have a command result (with stderr/stdout), return it even on error.
+		// This allows callers to see SSH error messages in stderr.
+		if cmd != nil {
+			_ = serverJSON.RespondJSON(w, http.StatusOK, runCommandResponse{Command: cmd})
+			return
+		}
 		serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("run command: %w", err))
 		return
 	}
@@ -645,7 +714,7 @@ func (s *Server) handleDestroySandbox(w http.ResponseWriter, r *http.Request) {
 		serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("destroy sandbox: %w", err))
 		return
 	}
-	serverJSON.RespondJSON(w, http.StatusOK, destroySandboxResponse{
+	_ = serverJSON.RespondJSON(w, http.StatusOK, destroySandboxResponse{
 		State:       sb.State,
 		BaseImage:   sb.BaseImage,
 		SandboxName: sb.SandboxName,
@@ -845,7 +914,7 @@ func (s *Server) handleSandboxStream(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Set a reasonable deadline
 	if err := conn.SetWriteDeadline(time.Now().Add(10 * time.Minute)); err != nil {

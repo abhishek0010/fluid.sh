@@ -26,59 +26,59 @@ class TestAccessApi(unittest.TestCase):
     def tearDown(self) -> None:
         pass
 
-    def test_v1_access_ca_pubkey_get(self) -> None:
-        """Test case for v1_access_ca_pubkey_get
+    def test_get_ca_public_key(self) -> None:
+        """Test case for get_ca_public_key
 
         Get the SSH CA public key
         """
         pass
 
-    def test_v1_access_certificate_cert_id_delete(self) -> None:
-        """Test case for v1_access_certificate_cert_id_delete
-
-        Revoke a certificate
-        """
-        pass
-
-    def test_v1_access_certificate_cert_id_get(self) -> None:
-        """Test case for v1_access_certificate_cert_id_get
+    def test_get_certificate(self) -> None:
+        """Test case for get_certificate
 
         Get certificate details
         """
         pass
 
-    def test_v1_access_certificates_get(self) -> None:
-        """Test case for v1_access_certificates_get
+    def test_list_certificates(self) -> None:
+        """Test case for list_certificates
 
         List certificates
         """
         pass
 
-    def test_v1_access_request_post(self) -> None:
-        """Test case for v1_access_request_post
+    def test_list_sessions(self) -> None:
+        """Test case for list_sessions
 
-        Request SSH access to a sandbox
+        List sessions
         """
         pass
 
-    def test_v1_access_session_end_post(self) -> None:
-        """Test case for v1_access_session_end_post
+    def test_record_session_end(self) -> None:
+        """Test case for record_session_end
 
         Record session end
         """
         pass
 
-    def test_v1_access_session_start_post(self) -> None:
-        """Test case for v1_access_session_start_post
+    def test_record_session_start(self) -> None:
+        """Test case for record_session_start
 
         Record session start
         """
         pass
 
-    def test_v1_access_sessions_get(self) -> None:
-        """Test case for v1_access_sessions_get
+    def test_request_access(self) -> None:
+        """Test case for request_access
 
-        List sessions
+        Request SSH access to a sandbox
+        """
+        pass
+
+    def test_revoke_certificate(self) -> None:
+        """Test case for revoke_certificate
+
+        Revoke a certificate
         """
         pass
 

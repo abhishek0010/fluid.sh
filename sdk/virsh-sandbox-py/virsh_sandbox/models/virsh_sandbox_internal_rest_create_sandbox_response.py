@@ -31,11 +31,11 @@ class VirshSandboxInternalRestCreateSandboxResponse(BaseModel):
     VirshSandboxInternalRestCreateSandboxResponse
     """  # noqa: E501
 
-    sandbox: Optional[VirshSandboxInternalStoreSandbox] = None
     ip_address: Optional[StrictStr] = Field(
         default=None, description="populated when auto_start and wait_for_ip are true"
     )
-    __properties: ClassVar[List[str]] = ["sandbox", "ip_address"]
+    sandbox: Optional[VirshSandboxInternalStoreSandbox] = None
+    __properties: ClassVar[List[str]] = ["ip_address", "sandbox"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -90,10 +90,10 @@ class VirshSandboxInternalRestCreateSandboxResponse(BaseModel):
 
         _obj = cls.model_validate(
             {
+                "ip_address": obj.get("ip_address"),
                 "sandbox": VirshSandboxInternalStoreSandbox.from_dict(obj["sandbox"])
                 if obj.get("sandbox") is not None
                 else None,
-                "ip_address": obj.get("ip_address"),
             }
         )
         return _obj

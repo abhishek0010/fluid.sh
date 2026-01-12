@@ -28,6 +28,10 @@ class VirshSandboxInternalRestCreateSandboxRequest(BaseModel):
     """  # noqa: E501
 
     agent_id: Optional[StrictStr] = Field(default=None, description="required")
+    auto_start: Optional[StrictBool] = Field(
+        default=None,
+        description="optional; if true, start the VM immediately after creation",
+    )
     cpu: Optional[StrictInt] = Field(
         default=None, description="optional; default from service config if <=0"
     )
@@ -38,15 +42,11 @@ class VirshSandboxInternalRestCreateSandboxRequest(BaseModel):
         default=None,
         description="required; name of existing VM in libvirt to clone from",
     )
-    vm_name: Optional[StrictStr] = Field(
-        default=None, description="optional; generated if empty"
-    )
     ttl_seconds: Optional[StrictInt] = Field(
         default=None, description="optional; TTL for auto garbage collection"
     )
-    auto_start: Optional[StrictBool] = Field(
-        default=None,
-        description="optional; if true, start the VM immediately after creation",
+    vm_name: Optional[StrictStr] = Field(
+        default=None, description="optional; generated if empty"
     )
     wait_for_ip: Optional[StrictBool] = Field(
         default=None,
@@ -54,12 +54,12 @@ class VirshSandboxInternalRestCreateSandboxRequest(BaseModel):
     )
     __properties: ClassVar[List[str]] = [
         "agent_id",
+        "auto_start",
         "cpu",
         "memory_mb",
         "source_vm_name",
-        "vm_name",
         "ttl_seconds",
-        "auto_start",
+        "vm_name",
         "wait_for_ip",
     ]
 
@@ -114,12 +114,12 @@ class VirshSandboxInternalRestCreateSandboxRequest(BaseModel):
         _obj = cls.model_validate(
             {
                 "agent_id": obj.get("agent_id"),
+                "auto_start": obj.get("auto_start"),
                 "cpu": obj.get("cpu"),
                 "memory_mb": obj.get("memory_mb"),
                 "source_vm_name": obj.get("source_vm_name"),
-                "vm_name": obj.get("vm_name"),
                 "ttl_seconds": obj.get("ttl_seconds"),
-                "auto_start": obj.get("auto_start"),
+                "vm_name": obj.get("vm_name"),
                 "wait_for_ip": obj.get("wait_for_ip"),
             }
         )

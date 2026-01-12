@@ -8,7 +8,7 @@ Method | HTTP request | Description
 
 
 # **list_virtual_machines**
-> InternalRestListVMsResponse list_virtual_machines()
+> VirshSandboxInternalRestListVMsResponse list_virtual_machines()
 
 List all VMs
 
@@ -19,7 +19,7 @@ Returns a list of all virtual machines from the libvirt instance
 
 ```python
 import virsh_sandbox
-from virsh_sandbox.models.internal_rest_list_vms_response import InternalRestListVMsResponse
+from virsh_sandbox.models.virsh_sandbox_internal_rest_list_vms_response import VirshSandboxInternalRestListVMsResponse
 from virsh_sandbox.rest import ApiException
 from pprint import pprint
 
@@ -52,7 +52,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**InternalRestListVMsResponse**](InternalRestListVMsResponse.md)
+[**VirshSandboxInternalRestListVMsResponse**](VirshSandboxInternalRestListVMsResponse.md)
 
 ### Authorization
 

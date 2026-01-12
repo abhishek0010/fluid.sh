@@ -133,7 +133,7 @@ func (h *Handler) HandleJobWebSocket(w http.ResponseWriter, r *http.Request) {
 		// Upgrade already sends the error response
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Set a reasonable deadline for the entire job
 	if err := conn.SetWriteDeadline(time.Now().Add(10 * time.Minute)); err != nil {
@@ -159,6 +159,19 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Post("/jobs", h.HandleCreateJob)
 		r.Get("/jobs/{job_id}", h.HandleGetJob)
 		r.Get("/jobs/{job_id}/stream", h.HandleJobWebSocket)
+	})
+}
+
+// RegisterRoutesWithPlaybooks registers Ansible routes including playbook management.
+func (h *Handler) RegisterRoutesWithPlaybooks(r chi.Router, playbookHandler *PlaybookHandler) {
+	r.Route("/ansible", func(r chi.Router) {
+		r.Post("/jobs", h.HandleCreateJob)
+		r.Get("/jobs/{job_id}", h.HandleGetJob)
+		r.Get("/jobs/{job_id}/stream", h.HandleJobWebSocket)
+
+		if playbookHandler != nil {
+			playbookHandler.RegisterPlaybookRoutes(r)
+		}
 	})
 }
 

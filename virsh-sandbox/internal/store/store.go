@@ -212,6 +212,28 @@ type Publication struct {
 	UpdatedAt time.Time         `json:"updated_at" db:"updated_at"`
 }
 
+// Playbook represents an Ansible playbook stored in the database.
+type Playbook struct {
+	ID        string    `json:"id" db:"id"`
+	Name      string    `json:"name" db:"name"`                     // unique playbook name
+	Hosts     string    `json:"hosts" db:"hosts"`                   // target hosts pattern (e.g., "all", "webservers")
+	Become    bool      `json:"become" db:"become"`                 // whether to use privilege escalation
+	FilePath  *string   `json:"file_path,omitempty" db:"file_path"` // rendered YAML file path
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// PlaybookTask represents a single task within an Ansible playbook.
+type PlaybookTask struct {
+	ID         string         `json:"id" db:"id"`
+	PlaybookID string         `json:"playbook_id" db:"playbook_id"`
+	Position   int            `json:"position" db:"position"`                  // ordering within playbook
+	Name       string         `json:"name" db:"name"`                          // task name/description
+	Module     string         `json:"module" db:"module"`                      // ansible module (apt, shell, copy, etc.)
+	Params     map[string]any `json:"params" db:"params" swaggertype:"object"` // module-specific parameters
+	CreatedAt  time.Time      `json:"created_at" db:"created_at"`
+}
+
 // DataStore declares data operations. This is transaction-friendly and
 // can be implemented by both the root Store and a transactional context.
 type DataStore interface {
@@ -249,6 +271,23 @@ type DataStore interface {
 	CreatePublication(ctx context.Context, p *Publication) error
 	UpdatePublicationStatus(ctx context.Context, id string, status PublicationStatus, commitSHA, prURL, errMsg *string) error
 	GetPublication(ctx context.Context, id string) (*Publication, error)
+
+	// Playbook
+	CreatePlaybook(ctx context.Context, pb *Playbook) error
+	GetPlaybook(ctx context.Context, id string) (*Playbook, error)
+	GetPlaybookByName(ctx context.Context, name string) (*Playbook, error)
+	ListPlaybooks(ctx context.Context, opt *ListOptions) ([]*Playbook, error)
+	UpdatePlaybook(ctx context.Context, pb *Playbook) error
+	DeletePlaybook(ctx context.Context, id string) error
+
+	// PlaybookTask
+	CreatePlaybookTask(ctx context.Context, task *PlaybookTask) error
+	GetPlaybookTask(ctx context.Context, id string) (*PlaybookTask, error)
+	ListPlaybookTasks(ctx context.Context, playbookID string, opt *ListOptions) ([]*PlaybookTask, error)
+	UpdatePlaybookTask(ctx context.Context, task *PlaybookTask) error
+	DeletePlaybookTask(ctx context.Context, id string) error
+	ReorderPlaybookTasks(ctx context.Context, playbookID string, taskIDs []string) error
+	GetNextTaskPosition(ctx context.Context, playbookID string) (int, error)
 }
 
 // Store is the root database handle. It can produce transactional views and

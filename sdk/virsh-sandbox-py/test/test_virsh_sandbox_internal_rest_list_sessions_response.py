@@ -41,7 +41,18 @@ class TestVirshSandboxInternalRestListSessionsResponse(unittest.TestCase):
         if include_optional:
             return VirshSandboxInternalRestListSessionsResponse(
                 sessions = [
-                    {"certificate_id":"certificate_id","duration_seconds":0,"vm_id":"vm_id","user_id":"user_id","sandbox_id":"sandbox_id","started_at":"started_at","vm_ip_address":"vm_ip_address","id":"id","ended_at":"ended_at","source_ip":"source_ip","status":"status"}
+                    virsh_sandbox.models.virsh_sandbox_internal_rest/session_response.virsh-sandbox_internal_rest.sessionResponse(
+                        certificate_id = '', 
+                        duration_seconds = 56, 
+                        ended_at = '', 
+                        id = '', 
+                        sandbox_id = '', 
+                        source_ip = '', 
+                        started_at = '', 
+                        status = '', 
+                        user_id = '', 
+                        vm_id = '', 
+                        vm_ip_address = '', )
                     ],
                 total = 56
             )

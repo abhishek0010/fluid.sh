@@ -14,21 +14,16 @@
 """  # noqa: E501
 
 
-__version__ = "0.0.15-beta"
+__version__ = "0.0.21-beta"
 
 # Define package exports
 __all__ = [
     "VirshSandbox",
     "AccessApi",
     "AnsibleApi",
-    "AuditApi",
-    "CommandApi",
-    "FileApi",
+    "AnsiblePlaybooksApi",
     "HealthApi",
-    "HumanApi",
-    "PlanApi",
     "SandboxApi",
-    "TmuxApi",
     "VMsApi",
     "ApiResponse",
     "ApiClient",
@@ -39,8 +34,20 @@ __all__ = [
     "ApiKeyError",
     "ApiAttributeError",
     "ApiException",
+    "InternalAnsibleAddTaskRequest",
+    "InternalAnsibleAddTaskResponse",
+    "InternalAnsibleCreatePlaybookRequest",
+    "InternalAnsibleCreatePlaybookResponse",
+    "InternalAnsibleExportPlaybookResponse",
+    "InternalAnsibleGetPlaybookResponse",
+    "InternalAnsibleJob",
+    "InternalAnsibleJobRequest",
+    "InternalAnsibleJobResponse",
     "InternalAnsibleJobStatus",
-    "InternalApiSandboxSessionInfo",
+    "InternalAnsibleListPlaybooksResponse",
+    "InternalAnsibleReorderTasksRequest",
+    "InternalAnsibleUpdateTaskRequest",
+    "InternalAnsibleUpdateTaskResponse",
     "InternalRestAccessErrorResponse",
     "InternalRestCaPublicKeyResponse",
     "InternalRestCertificateResponse",
@@ -49,9 +56,11 @@ __all__ = [
     "InternalRestDestroySandboxResponse",
     "InternalRestDiffRequest",
     "InternalRestDiffResponse",
+    "InternalRestDiscoverIPResponse",
     "InternalRestErrorResponse",
     "InternalRestGenerateResponse",
     "InternalRestGetSandboxResponse",
+    "InternalRestHealthResponse",
     "InternalRestInjectSSHKeyRequest",
     "InternalRestListCertificatesResponse",
     "InternalRestListSandboxCommandsResponse",
@@ -63,10 +72,12 @@ __all__ = [
     "InternalRestRequestAccessRequest",
     "InternalRestRequestAccessResponse",
     "InternalRestRevokeCertificateRequest",
+    "InternalRestRevokeCertificateResponse",
     "InternalRestRunCommandRequest",
     "InternalRestRunCommandResponse",
     "InternalRestSandboxInfo",
     "InternalRestSessionEndRequest",
+    "InternalRestSessionEndResponse",
     "InternalRestSessionResponse",
     "InternalRestSessionStartRequest",
     "InternalRestSessionStartResponse",
@@ -76,69 +87,58 @@ __all__ = [
     "InternalRestStartSandboxResponse",
     "InternalRestVmInfo",
     "TimeDuration",
-    "TmuxClientInternalApiCreateSandboxSessionRequest",
-    "TmuxClientInternalApiCreateSandboxSessionResponse",
-    "TmuxClientInternalApiListSandboxSessionsResponse",
-    "TmuxClientInternalApiSandboxSessionInfo",
-    "TmuxClientInternalTypesAPIError",
-    "TmuxClientInternalTypesApprovalStatus",
-    "TmuxClientInternalTypesApproveRequest",
-    "TmuxClientInternalTypesAskHumanRequest",
-    "TmuxClientInternalTypesAskHumanResponse",
-    "TmuxClientInternalTypesAuditEntry",
-    "TmuxClientInternalTypesAuditQuery",
-    "TmuxClientInternalTypesAuditQueryResponse",
-    "TmuxClientInternalTypesComponentHealth",
-    "TmuxClientInternalTypesCopyFileRequest",
-    "TmuxClientInternalTypesCopyFileResponse",
-    "TmuxClientInternalTypesCreatePaneRequest",
-    "TmuxClientInternalTypesCreatePaneResponse",
-    "TmuxClientInternalTypesCreatePlanRequest",
-    "TmuxClientInternalTypesCreatePlanResponse",
-    "TmuxClientInternalTypesDeleteFileRequest",
-    "TmuxClientInternalTypesDeleteFileResponse",
-    "TmuxClientInternalTypesEditFileRequest",
-    "TmuxClientInternalTypesEditFileResponse",
-    "TmuxClientInternalTypesFileInfo",
-    "TmuxClientInternalTypesGetPlanResponse",
-    "TmuxClientInternalTypesHealthResponse",
-    "TmuxClientInternalTypesHealthStatus",
-    "TmuxClientInternalTypesKillSessionResponse",
-    "TmuxClientInternalTypesListApprovalsResponse",
-    "TmuxClientInternalTypesListDirRequest",
-    "TmuxClientInternalTypesListDirResponse",
-    "TmuxClientInternalTypesListPanesResponse",
-    "TmuxClientInternalTypesListPlansResponse",
-    "TmuxClientInternalTypesPaneInfo",
-    "TmuxClientInternalTypesPendingApproval",
-    "TmuxClientInternalTypesPlan",
-    "TmuxClientInternalTypesPlanStatus",
-    "TmuxClientInternalTypesPlanStep",
-    "TmuxClientInternalTypesReadFileRequest",
-    "TmuxClientInternalTypesReadFileResponse",
-    "TmuxClientInternalTypesReadPaneRequest",
-    "TmuxClientInternalTypesReadPaneResponse",
-    "TmuxClientInternalTypesRunCommandRequest",
-    "TmuxClientInternalTypesRunCommandResponse",
-    "TmuxClientInternalTypesSendKeysRequest",
-    "TmuxClientInternalTypesSendKeysResponse",
-    "TmuxClientInternalTypesSessionInfo",
-    "TmuxClientInternalTypesStepStatus",
-    "TmuxClientInternalTypesSwitchPaneRequest",
-    "TmuxClientInternalTypesSwitchPaneResponse",
-    "TmuxClientInternalTypesUpdatePlanRequest",
-    "TmuxClientInternalTypesUpdatePlanResponse",
-    "TmuxClientInternalTypesWindowInfo",
-    "TmuxClientInternalTypesWriteFileRequest",
-    "TmuxClientInternalTypesWriteFileResponse",
+    "VirshSandboxInternalAnsibleAddTaskRequest",
+    "VirshSandboxInternalAnsibleAddTaskResponse",
+    "VirshSandboxInternalAnsibleCreatePlaybookRequest",
+    "VirshSandboxInternalAnsibleCreatePlaybookResponse",
+    "VirshSandboxInternalAnsibleExportPlaybookResponse",
+    "VirshSandboxInternalAnsibleGetPlaybookResponse",
     "VirshSandboxInternalAnsibleJob",
     "VirshSandboxInternalAnsibleJobRequest",
     "VirshSandboxInternalAnsibleJobResponse",
     "VirshSandboxInternalAnsibleJobStatus",
+    "VirshSandboxInternalAnsibleListPlaybooksResponse",
+    "VirshSandboxInternalAnsibleReorderTasksRequest",
+    "VirshSandboxInternalAnsibleUpdateTaskRequest",
+    "VirshSandboxInternalAnsibleUpdateTaskResponse",
     "VirshSandboxInternalErrorErrorResponse",
+    "VirshSandboxInternalRestAccessErrorResponse",
+    "VirshSandboxInternalRestCaPublicKeyResponse",
     "VirshSandboxInternalRestCertificateResponse",
+    "VirshSandboxInternalRestCreateSandboxRequest",
+    "VirshSandboxInternalRestCreateSandboxResponse",
+    "VirshSandboxInternalRestDestroySandboxResponse",
+    "VirshSandboxInternalRestDiffRequest",
+    "VirshSandboxInternalRestDiffResponse",
+    "VirshSandboxInternalRestDiscoverIPResponse",
+    "VirshSandboxInternalRestErrorResponse",
+    "VirshSandboxInternalRestGenerateResponse",
+    "VirshSandboxInternalRestGetSandboxResponse",
+    "VirshSandboxInternalRestHealthResponse",
+    "VirshSandboxInternalRestInjectSSHKeyRequest",
+    "VirshSandboxInternalRestListCertificatesResponse",
+    "VirshSandboxInternalRestListSandboxCommandsResponse",
+    "VirshSandboxInternalRestListSandboxesResponse",
+    "VirshSandboxInternalRestListSessionsResponse",
+    "VirshSandboxInternalRestListVMsResponse",
+    "VirshSandboxInternalRestPublishRequest",
+    "VirshSandboxInternalRestPublishResponse",
+    "VirshSandboxInternalRestRequestAccessRequest",
+    "VirshSandboxInternalRestRequestAccessResponse",
+    "VirshSandboxInternalRestRevokeCertificateRequest",
+    "VirshSandboxInternalRestRevokeCertificateResponse",
+    "VirshSandboxInternalRestRunCommandRequest",
+    "VirshSandboxInternalRestRunCommandResponse",
     "VirshSandboxInternalRestSandboxInfo",
+    "VirshSandboxInternalRestSessionEndRequest",
+    "VirshSandboxInternalRestSessionEndResponse",
     "VirshSandboxInternalRestSessionResponse",
+    "VirshSandboxInternalRestSessionStartRequest",
+    "VirshSandboxInternalRestSessionStartResponse",
+    "VirshSandboxInternalRestSnapshotRequest",
+    "VirshSandboxInternalRestSnapshotResponse",
+    "VirshSandboxInternalRestStartSandboxRequest",
+    "VirshSandboxInternalRestStartSandboxResponse",
     "VirshSandboxInternalRestVmInfo",
     "VirshSandboxInternalStoreChangeDiff",
     "VirshSandboxInternalStoreCommand",
@@ -146,6 +146,8 @@ __all__ = [
     "VirshSandboxInternalStoreCommandSummary",
     "VirshSandboxInternalStoreDiff",
     "VirshSandboxInternalStorePackageInfo",
+    "VirshSandboxInternalStorePlaybook",
+    "VirshSandboxInternalStorePlaybookTask",
     "VirshSandboxInternalStoreSandbox",
     "VirshSandboxInternalStoreSandboxState",
     "VirshSandboxInternalStoreServiceChange",
@@ -156,14 +158,11 @@ __all__ = [
 # import apis into sdk package
 from virsh_sandbox.api.access_api import AccessApi as AccessApi
 from virsh_sandbox.api.ansible_api import AnsibleApi as AnsibleApi
-from virsh_sandbox.api.audit_api import AuditApi as AuditApi
-from virsh_sandbox.api.command_api import CommandApi as CommandApi
-from virsh_sandbox.api.file_api import FileApi as FileApi
+from virsh_sandbox.api.ansible_playbooks_api import (
+    AnsiblePlaybooksApi as AnsiblePlaybooksApi,
+)
 from virsh_sandbox.api.health_api import HealthApi as HealthApi
-from virsh_sandbox.api.human_api import HumanApi as HumanApi
-from virsh_sandbox.api.plan_api import PlanApi as PlanApi
 from virsh_sandbox.api.sandbox_api import SandboxApi as SandboxApi
-from virsh_sandbox.api.tmux_api import TmuxApi as TmuxApi
 from virsh_sandbox.api.vms_api import VMsApi as VMsApi
 from virsh_sandbox.api_client import ApiClient as ApiClient
 
@@ -181,11 +180,47 @@ from virsh_sandbox.exceptions import ApiValueError as ApiValueError
 from virsh_sandbox.exceptions import OpenApiException as OpenApiException
 
 # import models into sdk package
+from virsh_sandbox.models.internal_ansible_add_task_request import (
+    InternalAnsibleAddTaskRequest as InternalAnsibleAddTaskRequest,
+)
+from virsh_sandbox.models.internal_ansible_add_task_response import (
+    InternalAnsibleAddTaskResponse as InternalAnsibleAddTaskResponse,
+)
+from virsh_sandbox.models.internal_ansible_create_playbook_request import (
+    InternalAnsibleCreatePlaybookRequest as InternalAnsibleCreatePlaybookRequest,
+)
+from virsh_sandbox.models.internal_ansible_create_playbook_response import (
+    InternalAnsibleCreatePlaybookResponse as InternalAnsibleCreatePlaybookResponse,
+)
+from virsh_sandbox.models.internal_ansible_export_playbook_response import (
+    InternalAnsibleExportPlaybookResponse as InternalAnsibleExportPlaybookResponse,
+)
+from virsh_sandbox.models.internal_ansible_get_playbook_response import (
+    InternalAnsibleGetPlaybookResponse as InternalAnsibleGetPlaybookResponse,
+)
+from virsh_sandbox.models.internal_ansible_job import (
+    InternalAnsibleJob as InternalAnsibleJob,
+)
+from virsh_sandbox.models.internal_ansible_job_request import (
+    InternalAnsibleJobRequest as InternalAnsibleJobRequest,
+)
+from virsh_sandbox.models.internal_ansible_job_response import (
+    InternalAnsibleJobResponse as InternalAnsibleJobResponse,
+)
 from virsh_sandbox.models.internal_ansible_job_status import (
     InternalAnsibleJobStatus as InternalAnsibleJobStatus,
 )
-from virsh_sandbox.models.internal_api_sandbox_session_info import (
-    InternalApiSandboxSessionInfo as InternalApiSandboxSessionInfo,
+from virsh_sandbox.models.internal_ansible_list_playbooks_response import (
+    InternalAnsibleListPlaybooksResponse as InternalAnsibleListPlaybooksResponse,
+)
+from virsh_sandbox.models.internal_ansible_reorder_tasks_request import (
+    InternalAnsibleReorderTasksRequest as InternalAnsibleReorderTasksRequest,
+)
+from virsh_sandbox.models.internal_ansible_update_task_request import (
+    InternalAnsibleUpdateTaskRequest as InternalAnsibleUpdateTaskRequest,
+)
+from virsh_sandbox.models.internal_ansible_update_task_response import (
+    InternalAnsibleUpdateTaskResponse as InternalAnsibleUpdateTaskResponse,
 )
 from virsh_sandbox.models.internal_rest_access_error_response import (
     InternalRestAccessErrorResponse as InternalRestAccessErrorResponse,
@@ -211,6 +246,9 @@ from virsh_sandbox.models.internal_rest_diff_request import (
 from virsh_sandbox.models.internal_rest_diff_response import (
     InternalRestDiffResponse as InternalRestDiffResponse,
 )
+from virsh_sandbox.models.internal_rest_discover_ip_response import (
+    InternalRestDiscoverIPResponse as InternalRestDiscoverIPResponse,
+)
 from virsh_sandbox.models.internal_rest_error_response import (
     InternalRestErrorResponse as InternalRestErrorResponse,
 )
@@ -219,6 +257,9 @@ from virsh_sandbox.models.internal_rest_generate_response import (
 )
 from virsh_sandbox.models.internal_rest_get_sandbox_response import (
     InternalRestGetSandboxResponse as InternalRestGetSandboxResponse,
+)
+from virsh_sandbox.models.internal_rest_health_response import (
+    InternalRestHealthResponse as InternalRestHealthResponse,
 )
 from virsh_sandbox.models.internal_rest_inject_ssh_key_request import (
     InternalRestInjectSSHKeyRequest as InternalRestInjectSSHKeyRequest,
@@ -253,6 +294,9 @@ from virsh_sandbox.models.internal_rest_request_access_response import (
 from virsh_sandbox.models.internal_rest_revoke_certificate_request import (
     InternalRestRevokeCertificateRequest as InternalRestRevokeCertificateRequest,
 )
+from virsh_sandbox.models.internal_rest_revoke_certificate_response import (
+    InternalRestRevokeCertificateResponse as InternalRestRevokeCertificateResponse,
+)
 from virsh_sandbox.models.internal_rest_run_command_request import (
     InternalRestRunCommandRequest as InternalRestRunCommandRequest,
 )
@@ -264,6 +308,9 @@ from virsh_sandbox.models.internal_rest_sandbox_info import (
 )
 from virsh_sandbox.models.internal_rest_session_end_request import (
     InternalRestSessionEndRequest as InternalRestSessionEndRequest,
+)
+from virsh_sandbox.models.internal_rest_session_end_response import (
+    InternalRestSessionEndResponse as InternalRestSessionEndResponse,
 )
 from virsh_sandbox.models.internal_rest_session_response import (
     InternalRestSessionResponse as InternalRestSessionResponse,
@@ -290,170 +337,23 @@ from virsh_sandbox.models.internal_rest_vm_info import (
     InternalRestVmInfo as InternalRestVmInfo,
 )
 from virsh_sandbox.models.time_duration import TimeDuration as TimeDuration
-from virsh_sandbox.models.tmux_client_internal_api_create_sandbox_session_request import (
-    TmuxClientInternalApiCreateSandboxSessionRequest as TmuxClientInternalApiCreateSandboxSessionRequest,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_request import (
+    VirshSandboxInternalAnsibleAddTaskRequest as VirshSandboxInternalAnsibleAddTaskRequest,
 )
-from virsh_sandbox.models.tmux_client_internal_api_create_sandbox_session_response import (
-    TmuxClientInternalApiCreateSandboxSessionResponse as TmuxClientInternalApiCreateSandboxSessionResponse,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_response import (
+    VirshSandboxInternalAnsibleAddTaskResponse as VirshSandboxInternalAnsibleAddTaskResponse,
 )
-from virsh_sandbox.models.tmux_client_internal_api_list_sandbox_sessions_response import (
-    TmuxClientInternalApiListSandboxSessionsResponse as TmuxClientInternalApiListSandboxSessionsResponse,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_request import (
+    VirshSandboxInternalAnsibleCreatePlaybookRequest as VirshSandboxInternalAnsibleCreatePlaybookRequest,
 )
-from virsh_sandbox.models.tmux_client_internal_api_sandbox_session_info import (
-    TmuxClientInternalApiSandboxSessionInfo as TmuxClientInternalApiSandboxSessionInfo,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_response import (
+    VirshSandboxInternalAnsibleCreatePlaybookResponse as VirshSandboxInternalAnsibleCreatePlaybookResponse,
 )
-from virsh_sandbox.models.tmux_client_internal_types_api_error import (
-    TmuxClientInternalTypesAPIError as TmuxClientInternalTypesAPIError,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_export_playbook_response import (
+    VirshSandboxInternalAnsibleExportPlaybookResponse as VirshSandboxInternalAnsibleExportPlaybookResponse,
 )
-from virsh_sandbox.models.tmux_client_internal_types_approval_status import (
-    TmuxClientInternalTypesApprovalStatus as TmuxClientInternalTypesApprovalStatus,
-)
-from virsh_sandbox.models.tmux_client_internal_types_approve_request import (
-    TmuxClientInternalTypesApproveRequest as TmuxClientInternalTypesApproveRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_ask_human_request import (
-    TmuxClientInternalTypesAskHumanRequest as TmuxClientInternalTypesAskHumanRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_ask_human_response import (
-    TmuxClientInternalTypesAskHumanResponse as TmuxClientInternalTypesAskHumanResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_audit_entry import (
-    TmuxClientInternalTypesAuditEntry as TmuxClientInternalTypesAuditEntry,
-)
-from virsh_sandbox.models.tmux_client_internal_types_audit_query import (
-    TmuxClientInternalTypesAuditQuery as TmuxClientInternalTypesAuditQuery,
-)
-from virsh_sandbox.models.tmux_client_internal_types_audit_query_response import (
-    TmuxClientInternalTypesAuditQueryResponse as TmuxClientInternalTypesAuditQueryResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_component_health import (
-    TmuxClientInternalTypesComponentHealth as TmuxClientInternalTypesComponentHealth,
-)
-from virsh_sandbox.models.tmux_client_internal_types_copy_file_request import (
-    TmuxClientInternalTypesCopyFileRequest as TmuxClientInternalTypesCopyFileRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_copy_file_response import (
-    TmuxClientInternalTypesCopyFileResponse as TmuxClientInternalTypesCopyFileResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_create_pane_request import (
-    TmuxClientInternalTypesCreatePaneRequest as TmuxClientInternalTypesCreatePaneRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_create_pane_response import (
-    TmuxClientInternalTypesCreatePaneResponse as TmuxClientInternalTypesCreatePaneResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_create_plan_request import (
-    TmuxClientInternalTypesCreatePlanRequest as TmuxClientInternalTypesCreatePlanRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_create_plan_response import (
-    TmuxClientInternalTypesCreatePlanResponse as TmuxClientInternalTypesCreatePlanResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_delete_file_request import (
-    TmuxClientInternalTypesDeleteFileRequest as TmuxClientInternalTypesDeleteFileRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_delete_file_response import (
-    TmuxClientInternalTypesDeleteFileResponse as TmuxClientInternalTypesDeleteFileResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_edit_file_request import (
-    TmuxClientInternalTypesEditFileRequest as TmuxClientInternalTypesEditFileRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_edit_file_response import (
-    TmuxClientInternalTypesEditFileResponse as TmuxClientInternalTypesEditFileResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_file_info import (
-    TmuxClientInternalTypesFileInfo as TmuxClientInternalTypesFileInfo,
-)
-from virsh_sandbox.models.tmux_client_internal_types_get_plan_response import (
-    TmuxClientInternalTypesGetPlanResponse as TmuxClientInternalTypesGetPlanResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_health_response import (
-    TmuxClientInternalTypesHealthResponse as TmuxClientInternalTypesHealthResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_health_status import (
-    TmuxClientInternalTypesHealthStatus as TmuxClientInternalTypesHealthStatus,
-)
-from virsh_sandbox.models.tmux_client_internal_types_kill_session_response import (
-    TmuxClientInternalTypesKillSessionResponse as TmuxClientInternalTypesKillSessionResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_list_approvals_response import (
-    TmuxClientInternalTypesListApprovalsResponse as TmuxClientInternalTypesListApprovalsResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_list_dir_request import (
-    TmuxClientInternalTypesListDirRequest as TmuxClientInternalTypesListDirRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_list_dir_response import (
-    TmuxClientInternalTypesListDirResponse as TmuxClientInternalTypesListDirResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_list_panes_response import (
-    TmuxClientInternalTypesListPanesResponse as TmuxClientInternalTypesListPanesResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_list_plans_response import (
-    TmuxClientInternalTypesListPlansResponse as TmuxClientInternalTypesListPlansResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_pane_info import (
-    TmuxClientInternalTypesPaneInfo as TmuxClientInternalTypesPaneInfo,
-)
-from virsh_sandbox.models.tmux_client_internal_types_pending_approval import (
-    TmuxClientInternalTypesPendingApproval as TmuxClientInternalTypesPendingApproval,
-)
-from virsh_sandbox.models.tmux_client_internal_types_plan import (
-    TmuxClientInternalTypesPlan as TmuxClientInternalTypesPlan,
-)
-from virsh_sandbox.models.tmux_client_internal_types_plan_status import (
-    TmuxClientInternalTypesPlanStatus as TmuxClientInternalTypesPlanStatus,
-)
-from virsh_sandbox.models.tmux_client_internal_types_plan_step import (
-    TmuxClientInternalTypesPlanStep as TmuxClientInternalTypesPlanStep,
-)
-from virsh_sandbox.models.tmux_client_internal_types_read_file_request import (
-    TmuxClientInternalTypesReadFileRequest as TmuxClientInternalTypesReadFileRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_read_file_response import (
-    TmuxClientInternalTypesReadFileResponse as TmuxClientInternalTypesReadFileResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_read_pane_request import (
-    TmuxClientInternalTypesReadPaneRequest as TmuxClientInternalTypesReadPaneRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_read_pane_response import (
-    TmuxClientInternalTypesReadPaneResponse as TmuxClientInternalTypesReadPaneResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_run_command_request import (
-    TmuxClientInternalTypesRunCommandRequest as TmuxClientInternalTypesRunCommandRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_run_command_response import (
-    TmuxClientInternalTypesRunCommandResponse as TmuxClientInternalTypesRunCommandResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_send_keys_request import (
-    TmuxClientInternalTypesSendKeysRequest as TmuxClientInternalTypesSendKeysRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_send_keys_response import (
-    TmuxClientInternalTypesSendKeysResponse as TmuxClientInternalTypesSendKeysResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_session_info import (
-    TmuxClientInternalTypesSessionInfo as TmuxClientInternalTypesSessionInfo,
-)
-from virsh_sandbox.models.tmux_client_internal_types_step_status import (
-    TmuxClientInternalTypesStepStatus as TmuxClientInternalTypesStepStatus,
-)
-from virsh_sandbox.models.tmux_client_internal_types_switch_pane_request import (
-    TmuxClientInternalTypesSwitchPaneRequest as TmuxClientInternalTypesSwitchPaneRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_switch_pane_response import (
-    TmuxClientInternalTypesSwitchPaneResponse as TmuxClientInternalTypesSwitchPaneResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_update_plan_request import (
-    TmuxClientInternalTypesUpdatePlanRequest as TmuxClientInternalTypesUpdatePlanRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_update_plan_response import (
-    TmuxClientInternalTypesUpdatePlanResponse as TmuxClientInternalTypesUpdatePlanResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_window_info import (
-    TmuxClientInternalTypesWindowInfo as TmuxClientInternalTypesWindowInfo,
-)
-from virsh_sandbox.models.tmux_client_internal_types_write_file_request import (
-    TmuxClientInternalTypesWriteFileRequest as TmuxClientInternalTypesWriteFileRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_write_file_response import (
-    TmuxClientInternalTypesWriteFileResponse as TmuxClientInternalTypesWriteFileResponse,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_get_playbook_response import (
+    VirshSandboxInternalAnsibleGetPlaybookResponse as VirshSandboxInternalAnsibleGetPlaybookResponse,
 )
 from virsh_sandbox.models.virsh_sandbox_internal_ansible_job import (
     VirshSandboxInternalAnsibleJob as VirshSandboxInternalAnsibleJob,
@@ -467,17 +367,131 @@ from virsh_sandbox.models.virsh_sandbox_internal_ansible_job_response import (
 from virsh_sandbox.models.virsh_sandbox_internal_ansible_job_status import (
     VirshSandboxInternalAnsibleJobStatus as VirshSandboxInternalAnsibleJobStatus,
 )
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_list_playbooks_response import (
+    VirshSandboxInternalAnsibleListPlaybooksResponse as VirshSandboxInternalAnsibleListPlaybooksResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_reorder_tasks_request import (
+    VirshSandboxInternalAnsibleReorderTasksRequest as VirshSandboxInternalAnsibleReorderTasksRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_request import (
+    VirshSandboxInternalAnsibleUpdateTaskRequest as VirshSandboxInternalAnsibleUpdateTaskRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_response import (
+    VirshSandboxInternalAnsibleUpdateTaskResponse as VirshSandboxInternalAnsibleUpdateTaskResponse,
+)
 from virsh_sandbox.models.virsh_sandbox_internal_error_error_response import (
     VirshSandboxInternalErrorErrorResponse as VirshSandboxInternalErrorErrorResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_access_error_response import (
+    VirshSandboxInternalRestAccessErrorResponse as VirshSandboxInternalRestAccessErrorResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_ca_public_key_response import (
+    VirshSandboxInternalRestCaPublicKeyResponse as VirshSandboxInternalRestCaPublicKeyResponse,
 )
 from virsh_sandbox.models.virsh_sandbox_internal_rest_certificate_response import (
     VirshSandboxInternalRestCertificateResponse as VirshSandboxInternalRestCertificateResponse,
 )
+from virsh_sandbox.models.virsh_sandbox_internal_rest_create_sandbox_request import (
+    VirshSandboxInternalRestCreateSandboxRequest as VirshSandboxInternalRestCreateSandboxRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_create_sandbox_response import (
+    VirshSandboxInternalRestCreateSandboxResponse as VirshSandboxInternalRestCreateSandboxResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_destroy_sandbox_response import (
+    VirshSandboxInternalRestDestroySandboxResponse as VirshSandboxInternalRestDestroySandboxResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_diff_request import (
+    VirshSandboxInternalRestDiffRequest as VirshSandboxInternalRestDiffRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_diff_response import (
+    VirshSandboxInternalRestDiffResponse as VirshSandboxInternalRestDiffResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_discover_ip_response import (
+    VirshSandboxInternalRestDiscoverIPResponse as VirshSandboxInternalRestDiscoverIPResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_error_response import (
+    VirshSandboxInternalRestErrorResponse as VirshSandboxInternalRestErrorResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_generate_response import (
+    VirshSandboxInternalRestGenerateResponse as VirshSandboxInternalRestGenerateResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_get_sandbox_response import (
+    VirshSandboxInternalRestGetSandboxResponse as VirshSandboxInternalRestGetSandboxResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_health_response import (
+    VirshSandboxInternalRestHealthResponse as VirshSandboxInternalRestHealthResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_inject_ssh_key_request import (
+    VirshSandboxInternalRestInjectSSHKeyRequest as VirshSandboxInternalRestInjectSSHKeyRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_list_certificates_response import (
+    VirshSandboxInternalRestListCertificatesResponse as VirshSandboxInternalRestListCertificatesResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_list_sandbox_commands_response import (
+    VirshSandboxInternalRestListSandboxCommandsResponse as VirshSandboxInternalRestListSandboxCommandsResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_list_sandboxes_response import (
+    VirshSandboxInternalRestListSandboxesResponse as VirshSandboxInternalRestListSandboxesResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_list_sessions_response import (
+    VirshSandboxInternalRestListSessionsResponse as VirshSandboxInternalRestListSessionsResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_list_vms_response import (
+    VirshSandboxInternalRestListVMsResponse as VirshSandboxInternalRestListVMsResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_publish_request import (
+    VirshSandboxInternalRestPublishRequest as VirshSandboxInternalRestPublishRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_publish_response import (
+    VirshSandboxInternalRestPublishResponse as VirshSandboxInternalRestPublishResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_request_access_request import (
+    VirshSandboxInternalRestRequestAccessRequest as VirshSandboxInternalRestRequestAccessRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_request_access_response import (
+    VirshSandboxInternalRestRequestAccessResponse as VirshSandboxInternalRestRequestAccessResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_revoke_certificate_request import (
+    VirshSandboxInternalRestRevokeCertificateRequest as VirshSandboxInternalRestRevokeCertificateRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_revoke_certificate_response import (
+    VirshSandboxInternalRestRevokeCertificateResponse as VirshSandboxInternalRestRevokeCertificateResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_run_command_request import (
+    VirshSandboxInternalRestRunCommandRequest as VirshSandboxInternalRestRunCommandRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_run_command_response import (
+    VirshSandboxInternalRestRunCommandResponse as VirshSandboxInternalRestRunCommandResponse,
+)
 from virsh_sandbox.models.virsh_sandbox_internal_rest_sandbox_info import (
     VirshSandboxInternalRestSandboxInfo as VirshSandboxInternalRestSandboxInfo,
 )
+from virsh_sandbox.models.virsh_sandbox_internal_rest_session_end_request import (
+    VirshSandboxInternalRestSessionEndRequest as VirshSandboxInternalRestSessionEndRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_session_end_response import (
+    VirshSandboxInternalRestSessionEndResponse as VirshSandboxInternalRestSessionEndResponse,
+)
 from virsh_sandbox.models.virsh_sandbox_internal_rest_session_response import (
     VirshSandboxInternalRestSessionResponse as VirshSandboxInternalRestSessionResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_session_start_request import (
+    VirshSandboxInternalRestSessionStartRequest as VirshSandboxInternalRestSessionStartRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_session_start_response import (
+    VirshSandboxInternalRestSessionStartResponse as VirshSandboxInternalRestSessionStartResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_snapshot_request import (
+    VirshSandboxInternalRestSnapshotRequest as VirshSandboxInternalRestSnapshotRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_snapshot_response import (
+    VirshSandboxInternalRestSnapshotResponse as VirshSandboxInternalRestSnapshotResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_start_sandbox_request import (
+    VirshSandboxInternalRestStartSandboxRequest as VirshSandboxInternalRestStartSandboxRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_start_sandbox_response import (
+    VirshSandboxInternalRestStartSandboxResponse as VirshSandboxInternalRestStartSandboxResponse,
 )
 from virsh_sandbox.models.virsh_sandbox_internal_rest_vm_info import (
     VirshSandboxInternalRestVmInfo as VirshSandboxInternalRestVmInfo,
@@ -499,6 +513,12 @@ from virsh_sandbox.models.virsh_sandbox_internal_store_diff import (
 )
 from virsh_sandbox.models.virsh_sandbox_internal_store_package_info import (
     VirshSandboxInternalStorePackageInfo as VirshSandboxInternalStorePackageInfo,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_store_playbook import (
+    VirshSandboxInternalStorePlaybook as VirshSandboxInternalStorePlaybook,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_store_playbook_task import (
+    VirshSandboxInternalStorePlaybookTask as VirshSandboxInternalStorePlaybookTask,
 )
 from virsh_sandbox.models.virsh_sandbox_internal_store_sandbox import (
     VirshSandboxInternalStoreSandbox as VirshSandboxInternalStoreSandbox,

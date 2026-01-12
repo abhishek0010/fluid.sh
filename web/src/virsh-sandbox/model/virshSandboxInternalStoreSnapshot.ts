@@ -5,7 +5,7 @@
  * API for managing virtual machine sandboxes using libvirt
  * OpenAPI spec version: 0.0.1-beta
  */
-import type { VirshSandboxInternalStoreSnapshotKind } from './virshSandboxInternalStoreSnapshotKind';
+import type { VirshSandboxInternalStoreSnapshotKind } from "./virshSandboxInternalStoreSnapshotKind";
 
 export interface VirshSandboxInternalStoreSnapshot {
   created_at?: string;

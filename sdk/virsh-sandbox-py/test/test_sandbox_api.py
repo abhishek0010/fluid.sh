@@ -54,6 +54,13 @@ class TestSandboxApi(unittest.TestCase):
         """
         pass
 
+    def test_discover_sandbox_ip(self) -> None:
+        """Test case for discover_sandbox_ip
+
+        Discover sandbox IP
+        """
+        pass
+
     def test_generate_configuration(self) -> None:
         """Test case for generate_configuration
 
@@ -61,10 +68,31 @@ class TestSandboxApi(unittest.TestCase):
         """
         pass
 
+    def test_get_sandbox(self) -> None:
+        """Test case for get_sandbox
+
+        Get sandbox details
+        """
+        pass
+
     def test_inject_ssh_key(self) -> None:
         """Test case for inject_ssh_key
 
         Inject SSH key into sandbox
+        """
+        pass
+
+    def test_list_sandbox_commands(self) -> None:
+        """Test case for list_sandbox_commands
+
+        List sandbox commands
+        """
+        pass
+
+    def test_list_sandboxes(self) -> None:
+        """Test case for list_sandboxes
+
+        List sandboxes
         """
         pass
 
@@ -86,6 +114,13 @@ class TestSandboxApi(unittest.TestCase):
         """Test case for start_sandbox
 
         Start sandbox
+        """
+        pass
+
+    def test_stream_sandbox_activity(self) -> None:
+        """Test case for stream_sandbox_activity
+
+        Stream sandbox activity
         """
         pass
 

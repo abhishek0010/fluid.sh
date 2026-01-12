@@ -6,12 +6,12 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **agent_id** | **str** | required | [optional] 
+**auto_start** | **bool** | optional; if true, start the VM immediately after creation | [optional] 
 **cpu** | **int** | optional; default from service config if &lt;&#x3D;0 | [optional] 
 **memory_mb** | **int** | optional; default from service config if &lt;&#x3D;0 | [optional] 
 **source_vm_name** | **str** | required; name of existing VM in libvirt to clone from | [optional] 
-**vm_name** | **str** | optional; generated if empty | [optional] 
 **ttl_seconds** | **int** | optional; TTL for auto garbage collection | [optional] 
-**auto_start** | **bool** | optional; if true, start the VM immediately after creation | [optional] 
+**vm_name** | **str** | optional; generated if empty | [optional] 
 **wait_for_ip** | **bool** | optional; if true and auto_start, wait for IP discovery | [optional] 
 
 ## Example

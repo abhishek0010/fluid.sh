@@ -16,21 +16,6 @@ pre-commit:
       root: "virsh-sandbox"
       run: make test
 
-    # Go - tmux-client
-    fmt-tmux-client:
-      glob: "*.go"
-      root: "tmux-client"
-      run: make fmt
-      stage_fixed: true
-    vet-tmux-client:
-      glob: "*.go"
-      root: "tmux-client"
-      run: make vet
-    test-tmux-client:
-      glob: "*.go"
-      root: "tmux-client"
-      run: make test
-
     # Python SDK
     fmt-sdk-black:
       glob: "*.py"
@@ -47,16 +32,12 @@ pre-commit:
     #   root: "sdk/virsh-sandbox-py"
     #   run: ruff check . --fix
     #   stage_fixed: true
-    # test-sdk:
-    #   glob: "*.py"
-    #   root: "sdk/virsh-sandbox-py"
-    #   run: python3 -m pytest test/ -v --tb=short
+    test-sdk:
+      glob: "*.py"
+      root: "sdk/virsh-sandbox-py"
+      run: python3 -m pytest test/ -v --tb=short
 
-    # lint-virsh-sandbox:
-    #   glob: "*.go"
-    #   root: "virsh-sandbox"
-    #   run: make lint
-    # lint-tmux-client:
-    #   glob: "*.go"
-    #   root: "tmux-client"
-    #   run: make lint
+    lint-virsh-sandbox:
+      glob: "*.go"
+      root: "virsh-sandbox"
+      run: make lint

@@ -1,8 +1,8 @@
 # config.yaml
 packageName: virsh_sandbox
 projectName: Virsh Sandbox
-packageVersion: 0.0.15-beta
-packageUrl: https://github.com/aspectrr/virsh-sandbox
+packageVersion: 0.0.21-beta
+packageUrl: https://github.com/aspectrr/fluid.sh
 
 # Better naming
 enumPropertyNaming: UPPERCASE

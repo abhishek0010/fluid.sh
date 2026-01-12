@@ -18,18 +18,13 @@ Example:
     client.command.run_command(command="ls", args=["-la"])
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 from virsh_sandbox.api.access_api import AccessApi
 from virsh_sandbox.api.ansible_api import AnsibleApi
-from virsh_sandbox.api.audit_api import AuditApi
-from virsh_sandbox.api.command_api import CommandApi
-from virsh_sandbox.api.file_api import FileApi
+from virsh_sandbox.api.ansible_playbooks_api import AnsiblePlaybooksApi
 from virsh_sandbox.api.health_api import HealthApi
-from virsh_sandbox.api.human_api import HumanApi
-from virsh_sandbox.api.plan_api import PlanApi
 from virsh_sandbox.api.sandbox_api import SandboxApi
-from virsh_sandbox.api.tmux_api import TmuxApi
 from virsh_sandbox.api.vms_api import VMsApi
 from virsh_sandbox.api_client import ApiClient
 from virsh_sandbox.configuration import Configuration
@@ -39,40 +34,11 @@ from virsh_sandbox.models.internal_rest_ca_public_key_response import (
 from virsh_sandbox.models.internal_rest_certificate_response import (
     InternalRestCertificateResponse,
 )
-from virsh_sandbox.models.internal_rest_create_sandbox_request import (
-    InternalRestCreateSandboxRequest,
-)
-from virsh_sandbox.models.internal_rest_create_sandbox_response import (
-    InternalRestCreateSandboxResponse,
-)
-from virsh_sandbox.models.internal_rest_destroy_sandbox_response import (
-    InternalRestDestroySandboxResponse,
-)
-from virsh_sandbox.models.internal_rest_diff_request import InternalRestDiffRequest
-from virsh_sandbox.models.internal_rest_diff_response import InternalRestDiffResponse
-from virsh_sandbox.models.internal_rest_get_sandbox_response import (
-    InternalRestGetSandboxResponse,
-)
-from virsh_sandbox.models.internal_rest_inject_ssh_key_request import (
-    InternalRestInjectSSHKeyRequest,
-)
 from virsh_sandbox.models.internal_rest_list_certificates_response import (
     InternalRestListCertificatesResponse,
 )
-from virsh_sandbox.models.internal_rest_list_sandbox_commands_response import (
-    InternalRestListSandboxCommandsResponse,
-)
-from virsh_sandbox.models.internal_rest_list_sandboxes_response import (
-    InternalRestListSandboxesResponse,
-)
 from virsh_sandbox.models.internal_rest_list_sessions_response import (
     InternalRestListSessionsResponse,
-)
-from virsh_sandbox.models.internal_rest_list_vms_response import (
-    InternalRestListVMsResponse,
-)
-from virsh_sandbox.models.internal_rest_publish_request import (
-    InternalRestPublishRequest,
 )
 from virsh_sandbox.models.internal_rest_request_access_request import (
     InternalRestRequestAccessRequest,
@@ -83,14 +49,14 @@ from virsh_sandbox.models.internal_rest_request_access_response import (
 from virsh_sandbox.models.internal_rest_revoke_certificate_request import (
     InternalRestRevokeCertificateRequest,
 )
-from virsh_sandbox.models.internal_rest_run_command_request import (
-    InternalRestRunCommandRequest,
-)
-from virsh_sandbox.models.internal_rest_run_command_response import (
-    InternalRestRunCommandResponse,
+from virsh_sandbox.models.internal_rest_revoke_certificate_response import (
+    InternalRestRevokeCertificateResponse,
 )
 from virsh_sandbox.models.internal_rest_session_end_request import (
     InternalRestSessionEndRequest,
+)
+from virsh_sandbox.models.internal_rest_session_end_response import (
+    InternalRestSessionEndResponse,
 )
 from virsh_sandbox.models.internal_rest_session_start_request import (
     InternalRestSessionStartRequest,
@@ -98,152 +64,23 @@ from virsh_sandbox.models.internal_rest_session_start_request import (
 from virsh_sandbox.models.internal_rest_session_start_response import (
     InternalRestSessionStartResponse,
 )
-from virsh_sandbox.models.internal_rest_snapshot_request import (
-    InternalRestSnapshotRequest,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_request import (
+    VirshSandboxInternalAnsibleAddTaskRequest,
 )
-from virsh_sandbox.models.internal_rest_snapshot_response import (
-    InternalRestSnapshotResponse,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_response import (
+    VirshSandboxInternalAnsibleAddTaskResponse,
 )
-from virsh_sandbox.models.internal_rest_start_sandbox_request import (
-    InternalRestStartSandboxRequest,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_request import (
+    VirshSandboxInternalAnsibleCreatePlaybookRequest,
 )
-from virsh_sandbox.models.internal_rest_start_sandbox_response import (
-    InternalRestStartSandboxResponse,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_response import (
+    VirshSandboxInternalAnsibleCreatePlaybookResponse,
 )
-from virsh_sandbox.models.tmux_client_internal_api_create_sandbox_session_request import (
-    TmuxClientInternalApiCreateSandboxSessionRequest,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_export_playbook_response import (
+    VirshSandboxInternalAnsibleExportPlaybookResponse,
 )
-from virsh_sandbox.models.tmux_client_internal_api_create_sandbox_session_response import (
-    TmuxClientInternalApiCreateSandboxSessionResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_api_list_sandbox_sessions_response import (
-    TmuxClientInternalApiListSandboxSessionsResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_api_sandbox_session_info import (
-    TmuxClientInternalApiSandboxSessionInfo,
-)
-from virsh_sandbox.models.tmux_client_internal_types_approve_request import (
-    TmuxClientInternalTypesApproveRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_ask_human_request import (
-    TmuxClientInternalTypesAskHumanRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_ask_human_response import (
-    TmuxClientInternalTypesAskHumanResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_audit_query import (
-    TmuxClientInternalTypesAuditQuery,
-)
-from virsh_sandbox.models.tmux_client_internal_types_audit_query_response import (
-    TmuxClientInternalTypesAuditQueryResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_copy_file_request import (
-    TmuxClientInternalTypesCopyFileRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_copy_file_response import (
-    TmuxClientInternalTypesCopyFileResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_create_pane_request import (
-    TmuxClientInternalTypesCreatePaneRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_create_pane_response import (
-    TmuxClientInternalTypesCreatePaneResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_create_plan_request import (
-    TmuxClientInternalTypesCreatePlanRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_create_plan_response import (
-    TmuxClientInternalTypesCreatePlanResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_delete_file_request import (
-    TmuxClientInternalTypesDeleteFileRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_delete_file_response import (
-    TmuxClientInternalTypesDeleteFileResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_edit_file_request import (
-    TmuxClientInternalTypesEditFileRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_edit_file_response import (
-    TmuxClientInternalTypesEditFileResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_get_plan_response import (
-    TmuxClientInternalTypesGetPlanResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_health_response import (
-    TmuxClientInternalTypesHealthResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_kill_session_response import (
-    TmuxClientInternalTypesKillSessionResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_list_approvals_response import (
-    TmuxClientInternalTypesListApprovalsResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_list_dir_request import (
-    TmuxClientInternalTypesListDirRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_list_dir_response import (
-    TmuxClientInternalTypesListDirResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_list_panes_response import (
-    TmuxClientInternalTypesListPanesResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_list_plans_response import (
-    TmuxClientInternalTypesListPlansResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_pending_approval import (
-    TmuxClientInternalTypesPendingApproval,
-)
-from virsh_sandbox.models.tmux_client_internal_types_read_file_request import (
-    TmuxClientInternalTypesReadFileRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_read_file_response import (
-    TmuxClientInternalTypesReadFileResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_read_pane_request import (
-    TmuxClientInternalTypesReadPaneRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_read_pane_response import (
-    TmuxClientInternalTypesReadPaneResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_run_command_request import (
-    TmuxClientInternalTypesRunCommandRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_run_command_response import (
-    TmuxClientInternalTypesRunCommandResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_send_keys_request import (
-    TmuxClientInternalTypesSendKeysRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_send_keys_response import (
-    TmuxClientInternalTypesSendKeysResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_session_info import (
-    TmuxClientInternalTypesSessionInfo,
-)
-from virsh_sandbox.models.tmux_client_internal_types_step_status import (
-    TmuxClientInternalTypesStepStatus,
-)
-from virsh_sandbox.models.tmux_client_internal_types_switch_pane_request import (
-    TmuxClientInternalTypesSwitchPaneRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_switch_pane_response import (
-    TmuxClientInternalTypesSwitchPaneResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_update_plan_request import (
-    TmuxClientInternalTypesUpdatePlanRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_update_plan_response import (
-    TmuxClientInternalTypesUpdatePlanResponse,
-)
-from virsh_sandbox.models.tmux_client_internal_types_window_info import (
-    TmuxClientInternalTypesWindowInfo,
-)
-from virsh_sandbox.models.tmux_client_internal_types_write_file_request import (
-    TmuxClientInternalTypesWriteFileRequest,
-)
-from virsh_sandbox.models.tmux_client_internal_types_write_file_response import (
-    TmuxClientInternalTypesWriteFileResponse,
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_get_playbook_response import (
+    VirshSandboxInternalAnsibleGetPlaybookResponse,
 )
 from virsh_sandbox.models.virsh_sandbox_internal_ansible_job import (
     VirshSandboxInternalAnsibleJob,
@@ -254,6 +91,75 @@ from virsh_sandbox.models.virsh_sandbox_internal_ansible_job_request import (
 from virsh_sandbox.models.virsh_sandbox_internal_ansible_job_response import (
     VirshSandboxInternalAnsibleJobResponse,
 )
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_list_playbooks_response import (
+    VirshSandboxInternalAnsibleListPlaybooksResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_reorder_tasks_request import (
+    VirshSandboxInternalAnsibleReorderTasksRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_request import (
+    VirshSandboxInternalAnsibleUpdateTaskRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_response import (
+    VirshSandboxInternalAnsibleUpdateTaskResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_create_sandbox_request import (
+    VirshSandboxInternalRestCreateSandboxRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_create_sandbox_response import (
+    VirshSandboxInternalRestCreateSandboxResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_destroy_sandbox_response import (
+    VirshSandboxInternalRestDestroySandboxResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_diff_request import (
+    VirshSandboxInternalRestDiffRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_diff_response import (
+    VirshSandboxInternalRestDiffResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_discover_ip_response import (
+    VirshSandboxInternalRestDiscoverIPResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_get_sandbox_response import (
+    VirshSandboxInternalRestGetSandboxResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_health_response import (
+    VirshSandboxInternalRestHealthResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_inject_ssh_key_request import (
+    VirshSandboxInternalRestInjectSSHKeyRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_list_sandbox_commands_response import (
+    VirshSandboxInternalRestListSandboxCommandsResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_list_sandboxes_response import (
+    VirshSandboxInternalRestListSandboxesResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_list_vms_response import (
+    VirshSandboxInternalRestListVMsResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_publish_request import (
+    VirshSandboxInternalRestPublishRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_run_command_request import (
+    VirshSandboxInternalRestRunCommandRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_run_command_response import (
+    VirshSandboxInternalRestRunCommandResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_snapshot_request import (
+    VirshSandboxInternalRestSnapshotRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_snapshot_response import (
+    VirshSandboxInternalRestSnapshotResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_start_sandbox_request import (
+    VirshSandboxInternalRestStartSandboxRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_rest_start_sandbox_response import (
+    VirshSandboxInternalRestStartSandboxResponse,
+)
 
 
 class AccessOperations:
@@ -262,38 +168,16 @@ class AccessOperations:
     def __init__(self, api: AccessApi):
         self._api = api
 
-    def v1_access_ca_pubkey_get(self) -> InternalRestCaPublicKeyResponse:
+    def get_ca_public_key(self) -> InternalRestCaPublicKeyResponse:
         """Get the SSH CA public key
 
         Returns:
             InternalRestCaPublicKeyResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        return self._api.v1_access_ca_pubkey_get()
+        return self._api.get_ca_public_key()
 
-    def v1_access_certificate_cert_id_delete(
-        self,
-        cert_id: str,
-        reason: Optional[str] = None,
-    ) -> Dict[str, str]:
-        """Revoke a certificate
-
-        Args:
-            cert_id: str
-            reason: reason
-
-        Returns:
-            Dict[str, str]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = InternalRestRevokeCertificateRequest(
-            reason=reason,
-        )
-        return self._api.v1_access_certificate_cert_id_delete(
-            cert_id=cert_id, request=request
-        )
-
-    def v1_access_certificate_cert_id_get(
+    def get_certificate(
         self,
         cert_id: str,
     ) -> InternalRestCertificateResponse:
@@ -306,9 +190,9 @@ class AccessOperations:
             InternalRestCertificateResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        return self._api.v1_access_certificate_cert_id_get(cert_id=cert_id)
+        return self._api.get_certificate(cert_id=cert_id)
 
-    def v1_access_certificates_get(
+    def list_certificates(
         self,
         sandbox_id: Optional[str] = None,
         user_id: Optional[str] = None,
@@ -331,7 +215,7 @@ class AccessOperations:
             InternalRestListCertificatesResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        return self._api.v1_access_certificates_get(
+        return self._api.list_certificates(
             sandbox_id=sandbox_id,
             user_id=user_id,
             status=status,
@@ -340,7 +224,81 @@ class AccessOperations:
             offset=offset,
         )
 
-    def v1_access_request_post(
+    def list_sessions(
+        self,
+        sandbox_id: Optional[str] = None,
+        certificate_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        active_only: Optional[bool] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> InternalRestListSessionsResponse:
+        """List sessions
+
+        Args:
+            sandbox_id: Optional[str]
+            certificate_id: Optional[str]
+            user_id: Optional[str]
+            active_only: Optional[bool]
+            limit: Optional[int]
+            offset: Optional[int]
+
+        Returns:
+            InternalRestListSessionsResponse: Pydantic model with full IDE autocomplete.
+            Call .model_dump() to convert to dict if needed.
+        """
+        return self._api.list_sessions(
+            sandbox_id=sandbox_id,
+            certificate_id=certificate_id,
+            user_id=user_id,
+            active_only=active_only,
+            limit=limit,
+            offset=offset,
+        )
+
+    def record_session_end(
+        self,
+        reason: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ) -> InternalRestSessionEndResponse:
+        """Record session end
+
+        Args:
+            reason: reason
+            session_id: session_id
+
+        Returns:
+            InternalRestSessionEndResponse: Pydantic model with full IDE autocomplete.
+            Call .model_dump() to convert to dict if needed.
+        """
+        request = InternalRestSessionEndRequest(
+            reason=reason,
+            session_id=session_id,
+        )
+        return self._api.record_session_end(request=request)
+
+    def record_session_start(
+        self,
+        certificate_id: Optional[str] = None,
+        source_ip: Optional[str] = None,
+    ) -> InternalRestSessionStartResponse:
+        """Record session start
+
+        Args:
+            certificate_id: certificate_id
+            source_ip: source_ip
+
+        Returns:
+            InternalRestSessionStartResponse: Pydantic model with full IDE autocomplete.
+            Call .model_dump() to convert to dict if needed.
+        """
+        request = InternalRestSessionStartRequest(
+            certificate_id=certificate_id,
+            source_ip=source_ip,
+        )
+        return self._api.record_session_start(request=request)
+
+    def request_access(
         self,
         public_key: Optional[str] = None,
         sandbox_id: Optional[str] = None,
@@ -365,81 +323,27 @@ class AccessOperations:
             ttl_minutes=ttl_minutes,
             user_id=user_id,
         )
-        return self._api.v1_access_request_post(request=request)
+        return self._api.request_access(request=request)
 
-    def v1_access_session_end_post(
+    def revoke_certificate(
         self,
+        cert_id: str,
         reason: Optional[str] = None,
-        session_id: Optional[str] = None,
-    ) -> Dict[str, str]:
-        """Record session end
+    ) -> InternalRestRevokeCertificateResponse:
+        """Revoke a certificate
 
         Args:
+            cert_id: str
             reason: reason
-            session_id: session_id
 
         Returns:
-            Dict[str, str]: Pydantic model with full IDE autocomplete.
+            InternalRestRevokeCertificateResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = InternalRestSessionEndRequest(
+        request = InternalRestRevokeCertificateRequest(
             reason=reason,
-            session_id=session_id,
         )
-        return self._api.v1_access_session_end_post(request=request)
-
-    def v1_access_session_start_post(
-        self,
-        certificate_id: Optional[str] = None,
-        source_ip: Optional[str] = None,
-    ) -> InternalRestSessionStartResponse:
-        """Record session start
-
-        Args:
-            certificate_id: certificate_id
-            source_ip: source_ip
-
-        Returns:
-            InternalRestSessionStartResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = InternalRestSessionStartRequest(
-            certificate_id=certificate_id,
-            source_ip=source_ip,
-        )
-        return self._api.v1_access_session_start_post(request=request)
-
-    def v1_access_sessions_get(
-        self,
-        sandbox_id: Optional[str] = None,
-        certificate_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        active_only: Optional[bool] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-    ) -> InternalRestListSessionsResponse:
-        """List sessions
-
-        Args:
-            sandbox_id: Optional[str]
-            certificate_id: Optional[str]
-            user_id: Optional[str]
-            active_only: Optional[bool]
-            limit: Optional[int]
-            offset: Optional[int]
-
-        Returns:
-            InternalRestListSessionsResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.v1_access_sessions_get(
-            sandbox_id=sandbox_id,
-            certificate_id=certificate_id,
-            user_id=user_id,
-            active_only=active_only,
-            limit=limit,
-            offset=offset,
-        )
+        return self._api.revoke_certificate(cert_id=cert_id, request=request)
 
 
 class AnsibleOperations:
@@ -499,280 +403,174 @@ class AnsibleOperations:
         return self._api.stream_ansible_job_output(job_id=job_id)
 
 
-class AuditOperations:
-    """Wrapper for AuditApi with simplified method signatures."""
+class AnsiblePlaybooksOperations:
+    """Wrapper for AnsiblePlaybooksApi with simplified method signatures."""
 
-    def __init__(self, api: AuditApi):
+    def __init__(self, api: AnsiblePlaybooksApi):
         self._api = api
 
-    def get_audit_stats(self) -> Dict[str, object]:
-        """Get audit stats
-
-        Returns:
-            Dict[str, object]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.get_audit_stats()
-
-    def query_audit_log(
+    def add_playbook_task(
         self,
-        action: Optional[str] = None,
-        limit: Optional[int] = None,
-        request_id: Optional[str] = None,
-        since: Optional[str] = None,
-        tool: Optional[str] = None,
-        until: Optional[str] = None,
-    ) -> TmuxClientInternalTypesAuditQueryResponse:
-        """Query audit log
+        playbook_name: str,
+        module: Optional[str] = None,
+        name: Optional[str] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> VirshSandboxInternalAnsibleAddTaskResponse:
+        """Add task to playbook
 
         Args:
-            action: action
-            limit: limit
-            request_id: request_id
-            since: since
-            tool: tool
-            until: until
+            playbook_name: str
+            module: module
+            name: name
+            params: params
 
         Returns:
-            TmuxClientInternalTypesAuditQueryResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalAnsibleAddTaskResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = TmuxClientInternalTypesAuditQuery(
-            action=action,
-            limit=limit,
-            request_id=request_id,
-            since=since,
-            tool=tool,
-            until=until,
+        request = VirshSandboxInternalAnsibleAddTaskRequest(
+            module=module,
+            name=name,
+            params=params,
         )
-        return self._api.query_audit_log(request=request)
+        return self._api.add_playbook_task(playbook_name=playbook_name, request=request)
 
-
-class CommandOperations:
-    """Wrapper for CommandApi with simplified method signatures."""
-
-    def __init__(self, api: CommandApi):
-        self._api = api
-
-    def get_allowed_commands(self) -> Dict[str, object]:
-        """Get allowed commands
-
-        Returns:
-            Dict[str, object]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.get_allowed_commands()
-
-    def run_command(
+    def create_playbook(
         self,
-        args: Optional[List[str]] = None,
-        command: Optional[str] = None,
-        dry_run: Optional[bool] = None,
-        env: Optional[List[str]] = None,
-        timeout: Optional[int] = None,
-        work_dir: Optional[str] = None,
-    ) -> TmuxClientInternalTypesRunCommandResponse:
-        """Run command
+        become: Optional[bool] = None,
+        hosts: Optional[str] = None,
+        name: Optional[str] = None,
+    ) -> VirshSandboxInternalAnsibleCreatePlaybookResponse:
+        """Create playbook
 
         Args:
-            args: Arguments as separate items
-            command: Executable name only
-            dry_run: If true, don
-            env: Additional env vars (KEY=VALUE)
-            timeout: Seconds, 0 = default (30s)
-            work_dir: Working directory
+            become: become
+            hosts: hosts
+            name: name
 
         Returns:
-            TmuxClientInternalTypesRunCommandResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalAnsibleCreatePlaybookResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = TmuxClientInternalTypesRunCommandRequest(
-            args=args,
-            command=command,
-            dry_run=dry_run,
-            env=env,
-            timeout=timeout,
-            work_dir=work_dir,
+        request = VirshSandboxInternalAnsibleCreatePlaybookRequest(
+            become=become,
+            hosts=hosts,
+            name=name,
         )
-        return self._api.run_command(request=request)
+        return self._api.create_playbook(request=request)
 
-
-class FileOperations:
-    """Wrapper for FileApi with simplified method signatures."""
-
-    def __init__(self, api: FileApi):
-        self._api = api
-
-    def check_file_exists(self) -> Dict[str, object]:
-        """Check if file exists
-
-        Returns:
-            Dict[str, object]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.check_file_exists(request={})
-
-    def copy_file(
+    def delete_playbook(
         self,
-        destination: Optional[str] = None,
-        overwrite: Optional[bool] = None,
-        source: Optional[str] = None,
-    ) -> TmuxClientInternalTypesCopyFileResponse:
-        """Copy file
+        playbook_name: str,
+    ) -> None:
+        """Delete playbook
 
         Args:
-            destination: destination
-            overwrite: overwrite
-            source: source
-
-        Returns:
-            TmuxClientInternalTypesCopyFileResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
+            playbook_name: str
         """
-        request = TmuxClientInternalTypesCopyFileRequest(
-            destination=destination,
-            overwrite=overwrite,
-            source=source,
-        )
-        return self._api.copy_file(request=request)
+        return self._api.delete_playbook(playbook_name=playbook_name)
 
-    def delete_file(
+    def delete_playbook_task(
         self,
-        path: Optional[str] = None,
-        recursive: Optional[bool] = None,
-    ) -> TmuxClientInternalTypesDeleteFileResponse:
-        """Delete file
+        playbook_name: str,
+        task_id: str,
+    ) -> None:
+        """Delete task
 
         Args:
-            path: path
-            recursive: For directories
-
-        Returns:
-            TmuxClientInternalTypesDeleteFileResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
+            playbook_name: str
+            task_id: str
         """
-        request = TmuxClientInternalTypesDeleteFileRequest(
-            path=path,
-            recursive=recursive,
+        return self._api.delete_playbook_task(
+            playbook_name=playbook_name, task_id=task_id
         )
-        return self._api.delete_file(request=request)
 
-    def edit_file(
+    def export_playbook(
         self,
-        all: Optional[bool] = None,
-        new_text: Optional[str] = None,
-        old_text: Optional[str] = None,
-        path: Optional[str] = None,
-    ) -> TmuxClientInternalTypesEditFileResponse:
-        """Edit file
+        playbook_name: str,
+    ) -> VirshSandboxInternalAnsibleExportPlaybookResponse:
+        """Export playbook
 
         Args:
-            all: Replace all occurrences (default: first only)
-            new_text: Replacement text
-            old_text: Text to find and replace
-            path: path
+            playbook_name: str
 
         Returns:
-            TmuxClientInternalTypesEditFileResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalAnsibleExportPlaybookResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = TmuxClientInternalTypesEditFileRequest(
-            all=all,
-            new_text=new_text,
-            old_text=old_text,
-            path=path,
-        )
-        return self._api.edit_file(request=request)
+        return self._api.export_playbook(playbook_name=playbook_name)
 
-    def get_file_hash(self) -> Dict[str, str]:
-        """Get file hash
-
-        Returns:
-            Dict[str, str]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.get_file_hash(request={})
-
-    def list_directory(
+    def get_playbook(
         self,
-        max_depth: Optional[int] = None,
-        path: Optional[str] = None,
-        recursive: Optional[bool] = None,
-    ) -> TmuxClientInternalTypesListDirResponse:
-        """List directory contents
+        playbook_name: str,
+    ) -> VirshSandboxInternalAnsibleGetPlaybookResponse:
+        """Get playbook
 
         Args:
-            max_depth: max_depth
-            path: path
-            recursive: recursive
+            playbook_name: str
 
         Returns:
-            TmuxClientInternalTypesListDirResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalAnsibleGetPlaybookResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = TmuxClientInternalTypesListDirRequest(
-            max_depth=max_depth,
-            path=path,
-            recursive=recursive,
-        )
-        return self._api.list_directory(request=request)
+        return self._api.get_playbook(playbook_name=playbook_name)
 
-    def read_file(
+    def list_playbooks(self) -> VirshSandboxInternalAnsibleListPlaybooksResponse:
+        """List playbooks
+
+        Returns:
+            VirshSandboxInternalAnsibleListPlaybooksResponse: Pydantic model with full IDE autocomplete.
+            Call .model_dump() to convert to dict if needed.
+        """
+        return self._api.list_playbooks()
+
+    def reorder_playbook_tasks(
         self,
-        from_line: Optional[int] = None,
-        max_lines: Optional[int] = None,
-        path: Optional[str] = None,
-        to_line: Optional[int] = None,
-    ) -> TmuxClientInternalTypesReadFileResponse:
-        """Read file
+        playbook_name: str,
+        task_ids: Optional[List[str]] = None,
+    ) -> None:
+        """Reorder tasks
 
         Args:
-            from_line: 1-indexed, 0 = start
-            max_lines: 0 = no limit
-            path: path
-            to_line: 1-indexed, 0 = end
-
-        Returns:
-            TmuxClientInternalTypesReadFileResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
+            playbook_name: str
+            task_ids: task_ids
         """
-        request = TmuxClientInternalTypesReadFileRequest(
-            from_line=from_line,
-            max_lines=max_lines,
-            path=path,
-            to_line=to_line,
+        request = VirshSandboxInternalAnsibleReorderTasksRequest(
+            task_ids=task_ids,
         )
-        return self._api.read_file(request=request)
+        return self._api.reorder_playbook_tasks(
+            playbook_name=playbook_name, request=request
+        )
 
-    def write_file(
+    def update_playbook_task(
         self,
-        content: Optional[str] = None,
-        create_dir: Optional[bool] = None,
-        mode: Optional[str] = None,
-        overwrite: Optional[bool] = None,
-        path: Optional[str] = None,
-    ) -> TmuxClientInternalTypesWriteFileResponse:
-        """Write file
+        playbook_name: str,
+        task_id: str,
+        module: Optional[str] = None,
+        name: Optional[str] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> VirshSandboxInternalAnsibleUpdateTaskResponse:
+        """Update task
 
         Args:
-            content: content
-            create_dir: Create parent directories if needed
-            mode: e.g., \
-            overwrite: Must be true to overwrite existing
-            path: path
+            playbook_name: str
+            task_id: str
+            module: module
+            name: name
+            params: params
 
         Returns:
-            TmuxClientInternalTypesWriteFileResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalAnsibleUpdateTaskResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = TmuxClientInternalTypesWriteFileRequest(
-            content=content,
-            create_dir=create_dir,
-            mode=mode,
-            overwrite=overwrite,
-            path=path,
+        request = VirshSandboxInternalAnsibleUpdateTaskRequest(
+            module=module,
+            name=name,
+            params=params,
         )
-        return self._api.write_file(request=request)
+        return self._api.update_playbook_task(
+            playbook_name=playbook_name, task_id=task_id, request=request
+        )
 
 
 class HealthOperations:
@@ -781,287 +579,14 @@ class HealthOperations:
     def __init__(self, api: HealthApi):
         self._api = api
 
-    def get_health(self) -> TmuxClientInternalTypesHealthResponse:
-        """Get health status
+    def get_health(self) -> VirshSandboxInternalRestHealthResponse:
+        """Health check
 
         Returns:
-            TmuxClientInternalTypesHealthResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalRestHealthResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.get_health()
-
-
-class HumanOperations:
-    """Wrapper for HumanApi with simplified method signatures."""
-
-    def __init__(self, api: HumanApi):
-        self._api = api
-
-    def ask_human(
-        self,
-        action_type: Optional[str] = None,
-        alternatives: Optional[List[str]] = None,
-        context: Optional[str] = None,
-        prompt: Optional[str] = None,
-        timeout_secs: Optional[int] = None,
-        urgency: Optional[str] = None,
-    ) -> TmuxClientInternalTypesAskHumanResponse:
-        """Request human approval
-
-        Args:
-            action_type: Category: \
-            alternatives: Suggested alternative actions
-            context: Additional context
-            prompt: Human-readable description
-            timeout_secs: Auto-reject after timeout, 0 = no timeout
-            urgency: \
-
-        Returns:
-            TmuxClientInternalTypesAskHumanResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = TmuxClientInternalTypesAskHumanRequest(
-            action_type=action_type,
-            alternatives=alternatives,
-            context=context,
-            prompt=prompt,
-            timeout_secs=timeout_secs,
-            urgency=urgency,
-        )
-        return self._api.ask_human(request=request)
-
-    def ask_human_async(
-        self,
-        action_type: Optional[str] = None,
-        alternatives: Optional[List[str]] = None,
-        context: Optional[str] = None,
-        prompt: Optional[str] = None,
-        timeout_secs: Optional[int] = None,
-        urgency: Optional[str] = None,
-    ) -> Dict[str, str]:
-        """Request human approval asynchronously
-
-        Args:
-            action_type: Category: \
-            alternatives: Suggested alternative actions
-            context: Additional context
-            prompt: Human-readable description
-            timeout_secs: Auto-reject after timeout, 0 = no timeout
-            urgency: \
-
-        Returns:
-            Dict[str, str]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = TmuxClientInternalTypesAskHumanRequest(
-            action_type=action_type,
-            alternatives=alternatives,
-            context=context,
-            prompt=prompt,
-            timeout_secs=timeout_secs,
-            urgency=urgency,
-        )
-        return self._api.ask_human_async(request=request)
-
-    def cancel_approval(
-        self,
-        request_id: str,
-    ) -> Dict[str, object]:
-        """Cancel approval
-
-        Args:
-            request_id: str
-
-        Returns:
-            Dict[str, object]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.cancel_approval(request_id=request_id)
-
-    def get_pending_approval(
-        self,
-        request_id: str,
-    ) -> TmuxClientInternalTypesPendingApproval:
-        """Get pending approval
-
-        Args:
-            request_id: str
-
-        Returns:
-            TmuxClientInternalTypesPendingApproval: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.get_pending_approval(request_id=request_id)
-
-    def list_pending_approvals(self) -> TmuxClientInternalTypesListApprovalsResponse:
-        """List pending approvals
-
-        Returns:
-            TmuxClientInternalTypesListApprovalsResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.list_pending_approvals()
-
-    def respond_to_approval(
-        self,
-        approved: Optional[bool] = None,
-        approved_by: Optional[str] = None,
-        comment: Optional[str] = None,
-        request_id: Optional[str] = None,
-    ) -> TmuxClientInternalTypesAskHumanResponse:
-        """Respond to approval
-
-        Args:
-            approved: approved
-            approved_by: approved_by
-            comment: comment
-            request_id: request_id
-
-        Returns:
-            TmuxClientInternalTypesAskHumanResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = TmuxClientInternalTypesApproveRequest(
-            approved=approved,
-            approved_by=approved_by,
-            comment=comment,
-            request_id=request_id,
-        )
-        return self._api.respond_to_approval(request=request)
-
-
-class PlanOperations:
-    """Wrapper for PlanApi with simplified method signatures."""
-
-    def __init__(self, api: PlanApi):
-        self._api = api
-
-    def abort_plan(
-        self,
-        plan_id: str,
-        request: Optional[object] = None,
-    ) -> Dict[str, object]:
-        """Abort plan
-
-        Args:
-            plan_id: str
-            request: Optional[object]
-
-        Returns:
-            Dict[str, object]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.abort_plan(plan_id=plan_id, request=request)
-
-    def advance_plan_step(
-        self,
-        plan_id: str,
-        request: Optional[object] = None,
-    ) -> Dict[str, object]:
-        """Advance plan step
-
-        Args:
-            plan_id: str
-            request: Optional[object]
-
-        Returns:
-            Dict[str, object]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.advance_plan_step(plan_id=plan_id, request=request)
-
-    def create_plan(
-        self,
-        description: Optional[str] = None,
-        name: Optional[str] = None,
-        steps: Optional[List[str]] = None,
-    ) -> TmuxClientInternalTypesCreatePlanResponse:
-        """Create plan
-
-        Args:
-            description: description
-            name: name
-            steps: Step descriptions
-
-        Returns:
-            TmuxClientInternalTypesCreatePlanResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = TmuxClientInternalTypesCreatePlanRequest(
-            description=description,
-            name=name,
-            steps=steps,
-        )
-        return self._api.create_plan(request=request)
-
-    def delete_plan(
-        self,
-        plan_id: str,
-    ) -> Dict[str, object]:
-        """Delete plan
-
-        Args:
-            plan_id: str
-
-        Returns:
-            Dict[str, object]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.delete_plan(plan_id=plan_id)
-
-    def get_plan(
-        self,
-        plan_id: str,
-    ) -> TmuxClientInternalTypesGetPlanResponse:
-        """Get plan
-
-        Args:
-            plan_id: str
-
-        Returns:
-            TmuxClientInternalTypesGetPlanResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.get_plan(plan_id=plan_id)
-
-    def list_plans(self) -> TmuxClientInternalTypesListPlansResponse:
-        """List plans
-
-        Returns:
-            TmuxClientInternalTypesListPlansResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.list_plans()
-
-    def update_plan(
-        self,
-        error: Optional[str] = None,
-        plan_id: Optional[str] = None,
-        result: Optional[str] = None,
-        status: Optional[TmuxClientInternalTypesStepStatus] = None,
-        step_index: Optional[int] = None,
-    ) -> TmuxClientInternalTypesUpdatePlanResponse:
-        """Update plan
-
-        Args:
-            error: error
-            plan_id: plan_id
-            result: result
-            status: status
-            step_index: step_index
-
-        Returns:
-            TmuxClientInternalTypesUpdatePlanResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = TmuxClientInternalTypesUpdatePlanRequest(
-            error=error,
-            plan_id=plan_id,
-            result=result,
-            status=status,
-            step_index=step_index,
-        )
-        return self._api.update_plan(request=request)
 
 
 class SandboxOperations:
@@ -1080,7 +605,8 @@ class SandboxOperations:
         ttl_seconds: Optional[int] = None,
         vm_name: Optional[str] = None,
         wait_for_ip: Optional[bool] = None,
-    ) -> InternalRestCreateSandboxResponse:
+        request_timeout: Union[None, float, Tuple[float, float]] = None,
+    ) -> VirshSandboxInternalRestCreateSandboxResponse:
         """Create a new sandbox
 
         Args:
@@ -1091,13 +617,14 @@ class SandboxOperations:
             source_vm_name: required; name of existing VM in libvirt to clone from
             ttl_seconds: optional; TTL for auto garbage collection
             vm_name: optional; generated if empty
-            wait_for_ip: optional; if true and auto_start, wait for IP discovery
+            wait_for_ip: optional; if true and auto_start, wait for IP discovery. When True, consider setting request_timeout to accommodate IP discovery (server default is 120s)
+            request_timeout: HTTP request timeout in seconds. Can be a single float for total timeout, or a tuple (connect_timeout, read_timeout). For operations with wait_for_ip=True, set this to at least 180 seconds.
 
         Returns:
-            InternalRestCreateSandboxResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalRestCreateSandboxResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = InternalRestCreateSandboxRequest(
+        request = VirshSandboxInternalRestCreateSandboxRequest(
             agent_id=agent_id,
             auto_start=auto_start,
             cpu=cpu,
@@ -1107,38 +634,16 @@ class SandboxOperations:
             vm_name=vm_name,
             wait_for_ip=wait_for_ip,
         )
-        return self._api.create_sandbox(request=request)
-
-    def create_sandbox_session(
-        self,
-        sandbox_id: Optional[str] = None,
-        session_name: Optional[str] = None,
-        ttl_minutes: Optional[int] = None,
-    ) -> TmuxClientInternalApiCreateSandboxSessionResponse:
-        """Create sandbox session
-
-        Args:
-            sandbox_id: SandboxID is the ID of the sandbox to connect to
-            session_name: SessionName is the optional tmux session name (auto-generated if empty)
-            ttl_minutes: TTLMinutes is the certificate TTL in minutes (1-10, default 5)
-
-        Returns:
-            TmuxClientInternalApiCreateSandboxSessionResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = TmuxClientInternalApiCreateSandboxSessionRequest(
-            sandbox_id=sandbox_id,
-            session_name=session_name,
-            ttl_minutes=ttl_minutes,
+        return self._api.create_sandbox(
+            request=request, _request_timeout=request_timeout
         )
-        return self._api.create_sandbox_session(request=request)
 
     def create_snapshot(
         self,
         id: str,
         external: Optional[bool] = None,
         name: Optional[str] = None,
-    ) -> InternalRestSnapshotResponse:
+    ) -> VirshSandboxInternalRestSnapshotResponse:
         """Create snapshot
 
         Args:
@@ -1147,10 +652,10 @@ class SandboxOperations:
             name: required
 
         Returns:
-            InternalRestSnapshotResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalRestSnapshotResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = InternalRestSnapshotRequest(
+        request = VirshSandboxInternalRestSnapshotRequest(
             external=external,
             name=name,
         )
@@ -1159,14 +664,14 @@ class SandboxOperations:
     def destroy_sandbox(
         self,
         id: str,
-    ) -> InternalRestDestroySandboxResponse:
+    ) -> VirshSandboxInternalRestDestroySandboxResponse:
         """Destroy sandbox
 
         Args:
             id: str
 
         Returns:
-            InternalRestDestroySandboxResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalRestDestroySandboxResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.destroy_sandbox(id=id)
@@ -1176,7 +681,7 @@ class SandboxOperations:
         id: str,
         from_snapshot: Optional[str] = None,
         to_snapshot: Optional[str] = None,
-    ) -> InternalRestDiffResponse:
+    ) -> VirshSandboxInternalRestDiffResponse:
         """Diff snapshots
 
         Args:
@@ -1185,14 +690,29 @@ class SandboxOperations:
             to_snapshot: required
 
         Returns:
-            InternalRestDiffResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalRestDiffResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = InternalRestDiffRequest(
+        request = VirshSandboxInternalRestDiffRequest(
             from_snapshot=from_snapshot,
             to_snapshot=to_snapshot,
         )
         return self._api.diff_snapshots(id=id, request=request)
+
+    def discover_sandbox_ip(
+        self,
+        id: str,
+    ) -> VirshSandboxInternalRestDiscoverIPResponse:
+        """Discover sandbox IP
+
+        Args:
+            id: str
+
+        Returns:
+            VirshSandboxInternalRestDiscoverIPResponse: Pydantic model with full IDE autocomplete.
+            Call .model_dump() to convert to dict if needed.
+        """
+        return self._api.discover_sandbox_ip(id=id)
 
     def generate_configuration(
         self,
@@ -1211,7 +731,7 @@ class SandboxOperations:
         self,
         id: str,
         include_commands: Optional[bool] = None,
-    ) -> InternalRestGetSandboxResponse:
+    ) -> VirshSandboxInternalRestGetSandboxResponse:
         """Get sandbox details
 
         Args:
@@ -1219,25 +739,10 @@ class SandboxOperations:
             include_commands: Optional[bool]
 
         Returns:
-            InternalRestGetSandboxResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalRestGetSandboxResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.get_sandbox(id=id, include_commands=include_commands)
-
-    def get_sandbox_session(
-        self,
-        session_name: str,
-    ) -> TmuxClientInternalApiSandboxSessionInfo:
-        """Get sandbox session
-
-        Args:
-            session_name: str
-
-        Returns:
-            TmuxClientInternalApiSandboxSessionInfo: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.get_sandbox_session(session_name=session_name)
 
     def inject_ssh_key(
         self,
@@ -1252,33 +757,18 @@ class SandboxOperations:
             public_key: required
             username: required (explicit); typical: \
         """
-        request = InternalRestInjectSSHKeyRequest(
+        request = VirshSandboxInternalRestInjectSSHKeyRequest(
             public_key=public_key,
             username=username,
         )
         return self._api.inject_ssh_key(id=id, request=request)
-
-    def kill_sandbox_session(
-        self,
-        session_name: str,
-    ) -> Dict[str, object]:
-        """Kill sandbox session
-
-        Args:
-            session_name: str
-
-        Returns:
-            Dict[str, object]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.kill_sandbox_session(session_name=session_name)
 
     def list_sandbox_commands(
         self,
         id: str,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-    ) -> InternalRestListSandboxCommandsResponse:
+    ) -> VirshSandboxInternalRestListSandboxCommandsResponse:
         """List sandbox commands
 
         Args:
@@ -1287,19 +777,10 @@ class SandboxOperations:
             offset: Optional[int]
 
         Returns:
-            InternalRestListSandboxCommandsResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalRestListSandboxCommandsResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.list_sandbox_commands(id=id, limit=limit, offset=offset)
-
-    def list_sandbox_sessions(self) -> TmuxClientInternalApiListSandboxSessionsResponse:
-        """List sandbox sessions
-
-        Returns:
-            TmuxClientInternalApiListSandboxSessionsResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.list_sandbox_sessions()
 
     def list_sandboxes(
         self,
@@ -1310,7 +791,7 @@ class SandboxOperations:
         vm_name: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-    ) -> InternalRestListSandboxesResponse:
+    ) -> VirshSandboxInternalRestListSandboxesResponse:
         """List sandboxes
 
         Args:
@@ -1323,7 +804,7 @@ class SandboxOperations:
             offset: Optional[int]
 
         Returns:
-            InternalRestListSandboxesResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalRestListSandboxesResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.list_sandboxes(
@@ -1351,7 +832,7 @@ class SandboxOperations:
             message: optional commit/PR message
             reviewers: optional
         """
-        request = InternalRestPublishRequest(
+        request = VirshSandboxInternalRestPublishRequest(
             job_id=job_id,
             message=message,
             reviewers=reviewers,
@@ -1365,59 +846,58 @@ class SandboxOperations:
         env: Optional[Dict[str, str]] = None,
         private_key_path: Optional[str] = None,
         timeout_sec: Optional[int] = None,
-        username: Optional[str] = None,
-    ) -> InternalRestRunCommandResponse:
+        user: Optional[str] = None,
+        request_timeout: Union[None, float, Tuple[float, float]] = None,
+    ) -> VirshSandboxInternalRestRunCommandResponse:
         """Run command in sandbox
 
         Args:
             id: str
             command: required
             env: optional
-            private_key_path: required; path on API host
+            private_key_path: optional; if empty, uses managed credentials (requires SSH CA)
             timeout_sec: optional; default from service config
-            username: required
+            user: optional; defaults to \
+            request_timeout: HTTP request timeout in seconds. Can be a single float for total timeout, or a tuple (connect_timeout, read_timeout). For operations with wait_for_ip=True, set this to at least 180 seconds.
 
         Returns:
-            InternalRestRunCommandResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalRestRunCommandResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = InternalRestRunCommandRequest(
+        request = VirshSandboxInternalRestRunCommandRequest(
             command=command,
             env=env,
             private_key_path=private_key_path,
             timeout_sec=timeout_sec,
-            username=username,
+            user=user,
         )
-        return self._api.run_sandbox_command(id=id, request=request)
-
-    def sandbox_api_health(self) -> Dict[str, object]:
-        """Check sandbox API health
-
-        Returns:
-            Dict[str, object]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.sandbox_api_health()
+        return self._api.run_sandbox_command(
+            id=id, request=request, _request_timeout=request_timeout
+        )
 
     def start_sandbox(
         self,
         id: str,
         wait_for_ip: Optional[bool] = None,
-    ) -> InternalRestStartSandboxResponse:
+        request_timeout: Union[None, float, Tuple[float, float]] = None,
+    ) -> VirshSandboxInternalRestStartSandboxResponse:
         """Start sandbox
 
         Args:
             id: str
-            wait_for_ip: optional; default false
+            wait_for_ip: optional; default false. When True, consider setting request_timeout to accommodate IP discovery (server default is 120s)
+            request_timeout: HTTP request timeout in seconds. Can be a single float for total timeout, or a tuple (connect_timeout, read_timeout). For operations with wait_for_ip=True, set this to at least 180 seconds.
 
         Returns:
-            InternalRestStartSandboxResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalRestStartSandboxResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = InternalRestStartSandboxRequest(
+        request = VirshSandboxInternalRestStartSandboxRequest(
             wait_for_ip=wait_for_ip,
         )
-        return self._api.start_sandbox(id=id, request=request)
+        return self._api.start_sandbox(
+            id=id, request=request, _request_timeout=request_timeout
+        )
 
     def stream_sandbox_activity(
         self,
@@ -1431,207 +911,17 @@ class SandboxOperations:
         return self._api.stream_sandbox_activity(id=id)
 
 
-class TmuxOperations:
-    """Wrapper for TmuxApi with simplified method signatures."""
-
-    def __init__(self, api: TmuxApi):
-        self._api = api
-
-    def create_tmux_pane(
-        self,
-        command: Optional[str] = None,
-        horizontal: Optional[bool] = None,
-        new_window: Optional[bool] = None,
-        session_name: Optional[str] = None,
-        window_name: Optional[str] = None,
-    ) -> TmuxClientInternalTypesCreatePaneResponse:
-        """Create tmux pane
-
-        Args:
-            command: command
-            horizontal: false = vertical split
-            new_window: true = create new window instead of split
-            session_name: session_name
-            window_name: window_name
-
-        Returns:
-            TmuxClientInternalTypesCreatePaneResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = TmuxClientInternalTypesCreatePaneRequest(
-            command=command,
-            horizontal=horizontal,
-            new_window=new_window,
-            session_name=session_name,
-            window_name=window_name,
-        )
-        return self._api.create_tmux_pane(request=request)
-
-    def create_tmux_session(self) -> Dict[str, str]:
-        """Create tmux session
-
-        Returns:
-            Dict[str, str]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.create_tmux_session(request={})
-
-    def kill_tmux_pane(
-        self,
-        pane_id: str,
-    ) -> Dict[str, object]:
-        """Kill tmux pane
-
-        Args:
-            pane_id: str
-
-        Returns:
-            Dict[str, object]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.kill_tmux_pane(pane_id=pane_id)
-
-    def kill_tmux_session(
-        self,
-        session_name: str,
-    ) -> Dict[str, object]:
-        """Kill tmux session
-
-        Args:
-            session_name: str
-
-        Returns:
-            Dict[str, object]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.kill_tmux_session(session_name=session_name)
-
-    def list_tmux_panes(
-        self,
-        session: Optional[str] = None,
-    ) -> TmuxClientInternalTypesListPanesResponse:
-        """List tmux panes
-
-        Args:
-            session: Optional[str]
-
-        Returns:
-            TmuxClientInternalTypesListPanesResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.list_tmux_panes(session=session)
-
-    def list_tmux_sessions(self) -> List[TmuxClientInternalTypesSessionInfo]:
-        """List tmux sessions
-
-        Returns:
-            List[TmuxClientInternalTypesSessionInfo]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.list_tmux_sessions()
-
-    def list_tmux_windows(
-        self,
-        session: Optional[str] = None,
-    ) -> List[TmuxClientInternalTypesWindowInfo]:
-        """List tmux windows
-
-        Args:
-            session: Optional[str]
-
-        Returns:
-            List[TmuxClientInternalTypesWindowInfo]: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.list_tmux_windows(session=session)
-
-    def read_tmux_pane(
-        self,
-        last_n_lines: Optional[int] = None,
-        pane_id: Optional[str] = None,
-    ) -> TmuxClientInternalTypesReadPaneResponse:
-        """Read tmux pane
-
-        Args:
-            last_n_lines: 0 means all visible content
-            pane_id: pane_id
-
-        Returns:
-            TmuxClientInternalTypesReadPaneResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = TmuxClientInternalTypesReadPaneRequest(
-            last_n_lines=last_n_lines,
-            pane_id=pane_id,
-        )
-        return self._api.read_tmux_pane(request=request)
-
-    def release_tmux_session(
-        self,
-        session_id: str,
-    ) -> TmuxClientInternalTypesKillSessionResponse:
-        """Release tmux session
-
-        Args:
-            session_id: str
-
-        Returns:
-            TmuxClientInternalTypesKillSessionResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        return self._api.release_tmux_session(session_id=session_id)
-
-    def send_keys_to_pane(
-        self,
-        key: Optional[str] = None,
-        pane_id: Optional[str] = None,
-    ) -> TmuxClientInternalTypesSendKeysResponse:
-        """Send keys to tmux pane
-
-        Args:
-            key: Must be from approved list: \
-            pane_id: pane_id
-
-        Returns:
-            TmuxClientInternalTypesSendKeysResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = TmuxClientInternalTypesSendKeysRequest(
-            key=key,
-            pane_id=pane_id,
-        )
-        return self._api.send_keys_to_pane(request=request)
-
-    def switch_tmux_pane(
-        self,
-        pane_id: Optional[str] = None,
-    ) -> TmuxClientInternalTypesSwitchPaneResponse:
-        """Switch tmux pane
-
-        Args:
-            pane_id: pane_id
-
-        Returns:
-            TmuxClientInternalTypesSwitchPaneResponse: Pydantic model with full IDE autocomplete.
-            Call .model_dump() to convert to dict if needed.
-        """
-        request = TmuxClientInternalTypesSwitchPaneRequest(
-            pane_id=pane_id,
-        )
-        return self._api.switch_tmux_pane(request=request)
-
-
 class VMsOperations:
     """Wrapper for VMsApi with simplified method signatures."""
 
     def __init__(self, api: VMsApi):
         self._api = api
 
-    def list_virtual_machines(self) -> InternalRestListVMsResponse:
+    def list_virtual_machines(self) -> VirshSandboxInternalRestListVMsResponse:
         """List all VMs
 
         Returns:
-            InternalRestListVMsResponse: Pydantic model with full IDE autocomplete.
+            VirshSandboxInternalRestListVMsResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.list_virtual_machines()
@@ -1640,13 +930,11 @@ class VMsOperations:
 class VirshSandbox:
     """Unified client for the virsh-sandbox API.
 
-    This class provides a single entry point for all virsh-sandbox API operations,
-    with support for separate hosts for the main API and tmux API.
+    This class provides a single entry point for all virsh-sandbox API operations.
     All methods use flattened parameters instead of request objects.
 
     Args:
         host: Base URL for the main virsh-sandbox API
-        tmux_host: Base URL for the tmux API (defaults to host)
         api_key: Optional API key for authentication
         verify_ssl: Whether to verify SSL certificates
 
@@ -1659,7 +947,6 @@ class VirshSandbox:
     def __init__(
         self,
         host: str = "http://localhost:8080",
-        tmux_host: Optional[str] = None,
         api_key: Optional[str] = None,
         access_token: Optional[str] = None,
         username: Optional[str] = None,
@@ -1681,33 +968,11 @@ class VirshSandbox:
         self._main_config.verify_ssl = verify_ssl
         self._main_api_client = ApiClient(configuration=self._main_config)
 
-        tmux_host = tmux_host or host
-        if tmux_host != host:
-            self._tmux_config = Configuration(
-                host=tmux_host,
-                api_key={"Authorization": api_key} if api_key else None,
-                access_token=access_token,
-                username=username,
-                password=password,
-                ssl_ca_cert=ssl_ca_cert,
-                retries=retries,
-            )
-            self._tmux_config.verify_ssl = verify_ssl
-            self._tmux_api_client = ApiClient(configuration=self._tmux_config)
-        else:
-            self._tmux_config = self._main_config
-            self._tmux_api_client = self._main_api_client
-
         self._access: Optional[AccessOperations] = None
         self._ansible: Optional[AnsibleOperations] = None
-        self._audit: Optional[AuditOperations] = None
-        self._command: Optional[CommandOperations] = None
-        self._file: Optional[FileOperations] = None
+        self._ansible_playbooks: Optional[AnsiblePlaybooksOperations] = None
         self._health: Optional[HealthOperations] = None
-        self._human: Optional[HumanOperations] = None
-        self._plan: Optional[PlanOperations] = None
         self._sandbox: Optional[SandboxOperations] = None
-        self._tmux: Optional[TmuxOperations] = None
         self._vms: Optional[VMsOperations] = None
 
     @property
@@ -1727,52 +992,20 @@ class VirshSandbox:
         return self._ansible
 
     @property
-    def audit(self) -> AuditOperations:
-        """Access AuditApi operations."""
-        if self._audit is None:
-            api = AuditApi(api_client=self._tmux_api_client)
-            self._audit = AuditOperations(api)
-        return self._audit
-
-    @property
-    def command(self) -> CommandOperations:
-        """Access CommandApi operations."""
-        if self._command is None:
-            api = CommandApi(api_client=self._tmux_api_client)
-            self._command = CommandOperations(api)
-        return self._command
-
-    @property
-    def file(self) -> FileOperations:
-        """Access FileApi operations."""
-        if self._file is None:
-            api = FileApi(api_client=self._tmux_api_client)
-            self._file = FileOperations(api)
-        return self._file
+    def ansible_playbooks(self) -> AnsiblePlaybooksOperations:
+        """Access AnsiblePlaybooksApi operations."""
+        if self._ansible_playbooks is None:
+            api = AnsiblePlaybooksApi(api_client=self._main_api_client)
+            self._ansible_playbooks = AnsiblePlaybooksOperations(api)
+        return self._ansible_playbooks
 
     @property
     def health(self) -> HealthOperations:
         """Access HealthApi operations."""
         if self._health is None:
-            api = HealthApi(api_client=self._tmux_api_client)
+            api = HealthApi(api_client=self._main_api_client)
             self._health = HealthOperations(api)
         return self._health
-
-    @property
-    def human(self) -> HumanOperations:
-        """Access HumanApi operations."""
-        if self._human is None:
-            api = HumanApi(api_client=self._tmux_api_client)
-            self._human = HumanOperations(api)
-        return self._human
-
-    @property
-    def plan(self) -> PlanOperations:
-        """Access PlanApi operations."""
-        if self._plan is None:
-            api = PlanApi(api_client=self._tmux_api_client)
-            self._plan = PlanOperations(api)
-        return self._plan
 
     @property
     def sandbox(self) -> SandboxOperations:
@@ -1781,14 +1014,6 @@ class VirshSandbox:
             api = SandboxApi(api_client=self._main_api_client)
             self._sandbox = SandboxOperations(api)
         return self._sandbox
-
-    @property
-    def tmux(self) -> TmuxOperations:
-        """Access TmuxApi operations."""
-        if self._tmux is None:
-            api = TmuxApi(api_client=self._tmux_api_client)
-            self._tmux = TmuxOperations(api)
-        return self._tmux
 
     @property
     def vms(self) -> VMsOperations:
@@ -1803,24 +1028,14 @@ class VirshSandbox:
         """Get the main API configuration."""
         return self._main_config
 
-    @property
-    def tmux_configuration(self) -> Configuration:
-        """Get the tmux API configuration."""
-        return self._tmux_config
-
     def set_debug(self, debug: bool) -> None:
         """Enable or disable debug mode."""
         self._main_config.debug = debug
-        if self._tmux_config is not self._main_config:
-            self._tmux_config.debug = debug
 
     def close(self) -> None:
         """Close the API client connections."""
         if hasattr(self._main_api_client.rest_client, "close"):
             self._main_api_client.rest_client.close()
-        if self._tmux_api_client is not self._main_api_client:
-            if hasattr(self._tmux_api_client.rest_client, "close"):
-                self._tmux_api_client.rest_client.close()
 
     def __enter__(self) -> "VirshSandbox":
         """Context manager entry."""

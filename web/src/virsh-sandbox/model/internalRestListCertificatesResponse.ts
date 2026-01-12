@@ -5,7 +5,7 @@
  * API for managing virtual machine sandboxes using libvirt
  * OpenAPI spec version: 0.0.1-beta
  */
-import type { InternalRestCertificateResponse } from './internalRestCertificateResponse';
+import type { InternalRestCertificateResponse } from "./internalRestCertificateResponse";
 
 export interface InternalRestListCertificatesResponse {
   certificates?: InternalRestCertificateResponse[];

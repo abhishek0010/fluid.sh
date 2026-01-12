@@ -18,21 +18,21 @@ import {
 import { Button } from "~/components/ui/button";
 import { useListVirtualMachines } from "~/virsh-sandbox/vms/vms";
 import { useCreateSandbox } from "~/virsh-sandbox/sandbox/sandbox";
-import { type VirshSandboxInternalRestVmInfo } from "~/virsh-sandbox/model";
-// import { toast } from "sonner";
+import { type InternalRestVmInfo } from "~/virsh-sandbox/model";
 
 export function VMTable() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [cloningId, setCloningId] = React.useState<string | null>(null);
 
   // Fetch VMs using React Query
-  const { data: vms = [], isLoading, isError } = useListVirtualMachines();
+  const { data: response, isLoading, isError } = useListVirtualMachines();
+  const vms = response?.data?.vms ?? [];
 
   // Clone VM mutation
   const cloneMutation = useCreateSandbox();
 
   // Define columns
-  const columns: ColumnDef<VirshSandboxInternalRestVmInfo>[] = [
+  const columns: ColumnDef<InternalRestVmInfo>[] = [
     {
       accessorKey: "name",
       header: "Name",
@@ -74,7 +74,7 @@ export function VMTable() {
 
   // Create table instance
   const table = useReactTable({
-    data: vms as VirshSandboxInternalRestVmInfo[],
+    data: vms as InternalRestVmInfo[],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),

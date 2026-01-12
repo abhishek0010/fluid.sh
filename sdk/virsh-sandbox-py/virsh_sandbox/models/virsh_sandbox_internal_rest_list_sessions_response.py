@@ -21,8 +21,9 @@ from typing import Any, ClassVar, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict, StrictInt
 from typing_extensions import Self
 
-from virsh_sandbox.models.virsh_sandbox_internal_rest_session_response import \
-    VirshSandboxInternalRestSessionResponse
+from virsh_sandbox.models.virsh_sandbox_internal_rest_session_response import (
+    VirshSandboxInternalRestSessionResponse,
+)
 
 
 class VirshSandboxInternalRestListSessionsResponse(BaseModel):
