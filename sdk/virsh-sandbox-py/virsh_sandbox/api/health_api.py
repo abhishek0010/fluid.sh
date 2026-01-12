@@ -9,8 +9,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from virsh_sandbox.api_client import ApiClient, RequestSerialized
 from virsh_sandbox.api_response import ApiResponse
-from virsh_sandbox.models.virsh_sandbox_internal_rest_health_response import \
-    VirshSandboxInternalRestHealthResponse
+from virsh_sandbox.exceptions import ApiException
+from virsh_sandbox.models.virsh_sandbox_internal_rest_health_response import (
+    VirshSandboxInternalRestHealthResponse,
+)
 
 
 class HealthApi:

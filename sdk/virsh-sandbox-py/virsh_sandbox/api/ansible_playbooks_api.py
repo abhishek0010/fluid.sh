@@ -7,28 +7,42 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from pydantic import Field, StrictStr
+from typing_extensions import Annotated
+
 from virsh_sandbox.api_client import ApiClient, RequestSerialized
 from virsh_sandbox.api_response import ApiResponse
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_request import \
-    VirshSandboxInternalAnsibleAddTaskRequest
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_response import \
-    VirshSandboxInternalAnsibleAddTaskResponse
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_request import \
-    VirshSandboxInternalAnsibleCreatePlaybookRequest
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_response import \
-    VirshSandboxInternalAnsibleCreatePlaybookResponse
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_export_playbook_response import \
-    VirshSandboxInternalAnsibleExportPlaybookResponse
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_get_playbook_response import \
-    VirshSandboxInternalAnsibleGetPlaybookResponse
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_list_playbooks_response import \
-    VirshSandboxInternalAnsibleListPlaybooksResponse
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_reorder_tasks_request import \
-    VirshSandboxInternalAnsibleReorderTasksRequest
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_request import \
-    VirshSandboxInternalAnsibleUpdateTaskRequest
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_response import \
-    VirshSandboxInternalAnsibleUpdateTaskResponse
+from virsh_sandbox.exceptions import ApiException
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_request import (
+    VirshSandboxInternalAnsibleAddTaskRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_response import (
+    VirshSandboxInternalAnsibleAddTaskResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_request import (
+    VirshSandboxInternalAnsibleCreatePlaybookRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_response import (
+    VirshSandboxInternalAnsibleCreatePlaybookResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_export_playbook_response import (
+    VirshSandboxInternalAnsibleExportPlaybookResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_get_playbook_response import (
+    VirshSandboxInternalAnsibleGetPlaybookResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_list_playbooks_response import (
+    VirshSandboxInternalAnsibleListPlaybooksResponse,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_reorder_tasks_request import (
+    VirshSandboxInternalAnsibleReorderTasksRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_request import (
+    VirshSandboxInternalAnsibleUpdateTaskRequest,
+)
+from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_response import (
+    VirshSandboxInternalAnsibleUpdateTaskResponse,
+)
 
 
 class AnsiblePlaybooksApi:

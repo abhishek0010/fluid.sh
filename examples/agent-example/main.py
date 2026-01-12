@@ -23,12 +23,11 @@ load_dotenv()
 # ---------------------------
 
 API_BASE = "http://localhost:8080"
-TMUX_BASE = "http://localhost:8081"
 MODEL = "gpt-5.2"
 
 openai_client = OpenAI()
 
-client = VirshSandbox(API_BASE, TMUX_BASE)
+client = VirshSandbox(API_BASE)
 
 # ---------------------------
 # Tool dispatcher

@@ -351,7 +351,7 @@ class Configuration:
             f"OS: {sys.platform}\n"
             f"Python Version: {sys.version}\n"
             f"Version of the API: 0.0.1-beta\n"
-            f"SDK Package Version: 0.0.20-beta"
+            f"SDK Package Version: 0.0.21-beta"
         )
 
     def get_host_settings(self) -> List[Dict[str, Any]]:
@@ -412,6 +412,6 @@ class Configuration:
                         f"Must be one of {var_config['enum_values']}."
                     )
 
-                url = url.replace("", var_value)
+                url = url.replace(f"", var_value)
 
         return url

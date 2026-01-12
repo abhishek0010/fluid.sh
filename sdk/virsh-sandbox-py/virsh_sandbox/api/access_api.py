@@ -7,32 +7,48 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from pydantic import Field, StrictBool, StrictInt, StrictStr
+from typing_extensions import Annotated
+
 from virsh_sandbox.api_client import ApiClient, RequestSerialized
 from virsh_sandbox.api_response import ApiResponse
-from virsh_sandbox.models.internal_rest_ca_public_key_response import \
-    InternalRestCaPublicKeyResponse
-from virsh_sandbox.models.internal_rest_certificate_response import \
-    InternalRestCertificateResponse
-from virsh_sandbox.models.internal_rest_list_certificates_response import \
-    InternalRestListCertificatesResponse
-from virsh_sandbox.models.internal_rest_list_sessions_response import \
-    InternalRestListSessionsResponse
-from virsh_sandbox.models.internal_rest_request_access_request import \
-    InternalRestRequestAccessRequest
-from virsh_sandbox.models.internal_rest_request_access_response import \
-    InternalRestRequestAccessResponse
-from virsh_sandbox.models.internal_rest_revoke_certificate_request import \
-    InternalRestRevokeCertificateRequest
-from virsh_sandbox.models.internal_rest_revoke_certificate_response import \
-    InternalRestRevokeCertificateResponse
-from virsh_sandbox.models.internal_rest_session_end_request import \
-    InternalRestSessionEndRequest
-from virsh_sandbox.models.internal_rest_session_end_response import \
-    InternalRestSessionEndResponse
-from virsh_sandbox.models.internal_rest_session_start_request import \
-    InternalRestSessionStartRequest
-from virsh_sandbox.models.internal_rest_session_start_response import \
-    InternalRestSessionStartResponse
+from virsh_sandbox.exceptions import ApiException
+from virsh_sandbox.models.internal_rest_ca_public_key_response import (
+    InternalRestCaPublicKeyResponse,
+)
+from virsh_sandbox.models.internal_rest_certificate_response import (
+    InternalRestCertificateResponse,
+)
+from virsh_sandbox.models.internal_rest_list_certificates_response import (
+    InternalRestListCertificatesResponse,
+)
+from virsh_sandbox.models.internal_rest_list_sessions_response import (
+    InternalRestListSessionsResponse,
+)
+from virsh_sandbox.models.internal_rest_request_access_request import (
+    InternalRestRequestAccessRequest,
+)
+from virsh_sandbox.models.internal_rest_request_access_response import (
+    InternalRestRequestAccessResponse,
+)
+from virsh_sandbox.models.internal_rest_revoke_certificate_request import (
+    InternalRestRevokeCertificateRequest,
+)
+from virsh_sandbox.models.internal_rest_revoke_certificate_response import (
+    InternalRestRevokeCertificateResponse,
+)
+from virsh_sandbox.models.internal_rest_session_end_request import (
+    InternalRestSessionEndRequest,
+)
+from virsh_sandbox.models.internal_rest_session_end_response import (
+    InternalRestSessionEndResponse,
+)
+from virsh_sandbox.models.internal_rest_session_start_request import (
+    InternalRestSessionStartRequest,
+)
+from virsh_sandbox.models.internal_rest_session_start_response import (
+    InternalRestSessionStartResponse,
+)
 
 
 class AccessApi:
