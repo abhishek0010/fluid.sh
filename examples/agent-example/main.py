@@ -291,16 +291,15 @@ def run_agent(user_goal: str, sandbox_id: str | None | Any) -> None:
 def main():
     print("Starting Fluid agent...")
     print("=" * 50)
-
+    prompt = "Install 'cowsay' and run it, create an Ansible playbook to recreate the task."
+    print("Prompt: ", prompt)
     sandbox = None
     agent_id = str(uuid4())
     try:
         sandbox = run_blocking_with_loader(client.sandbox.create_sandbox, source_vm_name="test-vm", agent_id=agent_id, auto_start=True, wait_for_ip=True, request_timeout=180.0, title="Creating sandbox...").sandbox
 
         if(sandbox and sandbox.id):
-            run_agent(
-                "Install 'cowsay' and run it, create an Ansible playbook to recreate the task.", sandbox.id
-            )
+            run_agent(prompt, sandbox.id)
     except Exception as e:
         print(f"Error: {e}")
     finally:
