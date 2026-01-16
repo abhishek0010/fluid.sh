@@ -91,5 +91,5 @@ nfpms:
 
 release:
   github:
-    owner: fluid-sh
-    name: virsh-sandbox
+    owner: aspectrr
+    name: fluid.s
