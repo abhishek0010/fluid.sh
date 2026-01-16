@@ -2,17 +2,17 @@ package main
 
 import (
 	"context"
-	"log"
+	"flag"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"virsh-sandbox/internal/ansible"
+	"virsh-sandbox/internal/config"
 	"virsh-sandbox/internal/libvirt"
 	"virsh-sandbox/internal/rest"
 	"virsh-sandbox/internal/sshca"
@@ -20,8 +20,6 @@ import (
 	"virsh-sandbox/internal/store"
 	postgresStore "virsh-sandbox/internal/store/postgres"
 	"virsh-sandbox/internal/vm"
-
-	"github.com/joho/godotenv"
 )
 
 // @title virsh-sandbox API
@@ -41,54 +39,43 @@ import (
 // @tag.name Health
 // @tag.description Health check endpoints
 func main() {
+	// Parse command line flags
+	configPath := flag.String("config", "config.yaml", "path to config file")
+	flag.Parse()
+
 	// Context with OS signal cancellation
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Load .env file if present
-	_ = godotenv.Load()
+	// Load config from YAML (with env var overrides for backward compatibility)
+	cfg, err := config.LoadWithEnvOverride(*configPath)
+	if err != nil {
+		slog.Error("failed to load config", "path", *configPath, "error", err)
+		os.Exit(1)
+	}
 
 	// Logging setup
-	logger := setupLogger()
+	logger := setupLogger(cfg.Logging.Level, cfg.Logging.Format)
 	slog.SetDefault(logger)
 
-	// Read configuration from environment
-	apiAddr := getenv("API_HTTP_ADDR", ":8080")
-	dbURL := getenv("DATABASE_URL", "postgresql://virsh_sandbox:virsh_sandbox@postgres:5432/virsh_sandbox")
-	network := getenv("LIBVIRT_NETWORK", "default")
-	libvirtURI := getenv("LIBVIRT_URI", "qemu:///system")
-
-	defaultVCPUs := atoiDefault(getenv("DEFAULT_VCPUS", "2"), 2)
-	defaultMemMB := atoiDefault(getenv("DEFAULT_MEMORY_MB", "2048"), 2048)
-	cmdTimeout := durationFromSecondsEnv("COMMAND_TIMEOUT_SEC", 600)              // 10m default
-	ipDiscoveryTimeout := durationFromSecondsEnv("IP_DISCOVERY_TIMEOUT_SEC", 120) // 2m default
-
-	// SSH proxy for reaching VMs on isolated networks (e.g., through Lima)
-	sshProxyJump := getenv("SSH_PROXY_JUMP", "")
-
-	// Ansible configuration
-	ansibleInventoryPath := getenv("ANSIBLE_INVENTORY_PATH", "/Users/collinpfeifer/GitHub/fluid.sh/.ansible/inventory")
-	ansibleImage := getenv("ANSIBLE_IMAGE", "ansible-sandbox")
-	ansiblePlaybooks := strings.Split(getenv("ANSIBLE_ALLOWED_PLAYBOOKS", "ping.yml"), ",")
-	ansiblePlaybooksDir := getenv("ANSIBLE_PLAYBOOKS_DIR", "/Users/collinpfeifer/GitHub/fluid.sh/.ansible/playbooks")
-
 	logger.Info("starting virsh-sandbox API",
-		"addr", apiAddr,
-		"db", dbURL,
-		"network", network,
-		"default_vcpus", defaultVCPUs,
-		"default_memory_mb", defaultMemMB,
-		"command_timeout", cmdTimeout.String(),
-		"ip_discovery_timeout", ipDiscoveryTimeout.String(),
-		"ansible_playbooks_dir", ansiblePlaybooksDir,
+		"config", *configPath,
+		"addr", cfg.API.Addr,
+		"db", cfg.Database.URL,
+		"network", cfg.Libvirt.Network,
+		"default_vcpus", cfg.VM.DefaultVCPUs,
+		"default_memory_mb", cfg.VM.DefaultMemoryMB,
+		"command_timeout", cfg.VM.CommandTimeout.String(),
+		"ip_discovery_timeout", cfg.VM.IPDiscoveryTimeout.String(),
+		"ansible_playbooks_dir", cfg.Ansible.PlaybooksDir,
 	)
 
 	st, err := postgresStore.New(ctx, store.Config{
-		DatabaseURL:     dbURL,
-		MaxOpenConns:    16,
-		MaxIdleConns:    8,
-		ConnMaxLifetime: time.Hour,
-		AutoMigrate:     true,
+		DatabaseURL:     cfg.Database.URL,
+		MaxOpenConns:    cfg.Database.MaxOpenConns,
+		MaxIdleConns:    cfg.Database.MaxIdleConns,
+		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+		AutoMigrate:     cfg.Database.AutoMigrate,
 		ReadOnly:        false,
 	})
 	if err != nil {
@@ -101,28 +88,38 @@ func main() {
 		}
 	}()
 
-	// Initialize libvirt manager from environment with logger
-	lvMgr := libvirt.NewVirshManager(libvirt.ConfigFromEnv(), logger)
+	// Initialize libvirt manager with config
+	lvCfg := libvirt.Config{
+		LibvirtURI:         cfg.Libvirt.URI,
+		BaseImageDir:       cfg.Libvirt.BaseImageDir,
+		WorkDir:            cfg.Libvirt.WorkDir,
+		DefaultNetwork:     cfg.Libvirt.Network,
+		SSHKeyInjectMethod: cfg.Libvirt.SSHKeyInjectMethod,
+		SSHProxyJump:       cfg.SSH.ProxyJump,
+		SocketVMNetWrapper: cfg.Libvirt.SocketVMNetWrapper,
+		DefaultVCPUs:       cfg.VM.DefaultVCPUs,
+		DefaultMemoryMB:    cfg.VM.DefaultMemoryMB,
+	}
+	// Read SSH CA public key if it exists
+	if pubKeyData, err := os.ReadFile(cfg.SSH.CAPubPath); err == nil {
+		lvCfg.SSHCAPubKey = string(pubKeyData)
+	}
+	lvMgr := libvirt.NewVirshManager(lvCfg, logger)
 
 	// Initialize domain manager for direct libvirt queries
-	domainMgr := libvirt.NewDomainManager(libvirtURI)
+	domainMgr := libvirt.NewDomainManager(cfg.Libvirt.URI)
 
 	// Initialize SSH CA and key manager (optional - for managed credentials)
-	sshCAKeyPath := getenv("SSH_CA_KEY_PATH", "/etc/virsh-sandbox/ssh_ca")
-	sshCAPubKeyPath := getenv("SSH_CA_PUB_KEY_PATH", "/etc/virsh-sandbox/ssh_ca.pub")
-	sshKeyDir := getenv("SSH_KEY_DIR", "/tmp/sandbox-keys")
-	sshCertTTL := durationFromSecondsEnv("SSH_CERT_TTL_SEC", 300) // 5 minutes default
-
 	var keyMgr sshkeys.KeyProvider
-	if _, err := os.Stat(sshCAKeyPath); err == nil {
+	if _, err := os.Stat(cfg.SSH.CAKeyPath); err == nil {
 		// SSH CA key exists, initialize managed key support
 		caCfg := sshca.Config{
-			CAKeyPath:             sshCAKeyPath,
-			CAPubKeyPath:          sshCAPubKeyPath,
-			WorkDir:               "/tmp/sshca",
-			DefaultTTL:            sshCertTTL,
-			MaxTTL:                10 * time.Minute,
-			DefaultPrincipals:     []string{"sandbox"},
+			CAKeyPath:             cfg.SSH.CAKeyPath,
+			CAPubKeyPath:          cfg.SSH.CAPubPath,
+			WorkDir:               cfg.SSH.WorkDir,
+			DefaultTTL:            cfg.SSH.CertTTL,
+			MaxTTL:                cfg.SSH.MaxTTL,
+			DefaultPrincipals:     []string{cfg.SSH.DefaultUser},
 			EnforceKeyPermissions: true,
 		}
 		ca, err := sshca.NewCA(caCfg)
@@ -136,10 +133,10 @@ func main() {
 		}
 
 		keyMgrCfg := sshkeys.Config{
-			KeyDir:          sshKeyDir,
-			CertificateTTL:  sshCertTTL,
+			KeyDir:          cfg.SSH.KeyDir,
+			CertificateTTL:  cfg.SSH.CertTTL,
 			RefreshMargin:   30 * time.Second,
-			DefaultUsername: "sandbox",
+			DefaultUsername: cfg.SSH.DefaultUser,
 		}
 		keyMgr, err = sshkeys.NewKeyManager(ca, keyMgrCfg, logger)
 		if err != nil {
@@ -152,12 +149,12 @@ func main() {
 			}
 		}()
 		logger.Info("SSH key management enabled",
-			"key_dir", sshKeyDir,
-			"cert_ttl", sshCertTTL,
+			"key_dir", cfg.SSH.KeyDir,
+			"cert_ttl", cfg.SSH.CertTTL,
 		)
 	} else {
 		logger.Info("SSH CA not found, managed credentials disabled",
-			"ca_key_path", sshCAKeyPath,
+			"ca_key_path", cfg.SSH.CAKeyPath,
 		)
 	}
 
@@ -167,42 +164,42 @@ func main() {
 		vmOpts = append(vmOpts, vm.WithKeyManager(keyMgr))
 	}
 	vmSvc := vm.NewService(lvMgr, st, vm.Config{
-		Network:            network,
-		DefaultVCPUs:       defaultVCPUs,
-		DefaultMemoryMB:    defaultMemMB,
-		CommandTimeout:     cmdTimeout,
-		IPDiscoveryTimeout: ipDiscoveryTimeout,
-		SSHProxyJump:       sshProxyJump,
+		Network:            cfg.Libvirt.Network,
+		DefaultVCPUs:       cfg.VM.DefaultVCPUs,
+		DefaultMemoryMB:    cfg.VM.DefaultMemoryMB,
+		CommandTimeout:     cfg.VM.CommandTimeout,
+		IPDiscoveryTimeout: cfg.VM.IPDiscoveryTimeout,
+		SSHProxyJump:       cfg.SSH.ProxyJump,
 	}, vmOpts...)
 
 	// Initialize Ansible runner
-	ansibleRunner := ansible.NewRunner(ansibleInventoryPath, ansibleImage, ansiblePlaybooks)
+	ansibleRunner := ansible.NewRunner(cfg.Ansible.InventoryPath, cfg.Ansible.Image, cfg.Ansible.AllowedPlaybooks)
 
 	// Initialize Ansible playbook service
-	playbookSvc := ansible.NewPlaybookService(st, ansiblePlaybooksDir)
+	playbookSvc := ansible.NewPlaybookService(st, cfg.Ansible.PlaybooksDir)
 
 	// REST server setup with playbook support
 	restSrv := rest.NewServerWithPlaybooks(vmSvc, domainMgr, ansibleRunner, playbookSvc)
 
 	// Build http.Server so we can gracefully shutdown
 	// WriteTimeout must be > IPDiscoveryTimeout to allow wait_for_ip to complete
-	writeTimeout := ipDiscoveryTimeout + 30*time.Second
-	if writeTimeout < 120*time.Second {
-		writeTimeout = 120 * time.Second
+	writeTimeout := cfg.VM.IPDiscoveryTimeout + 30*time.Second
+	if writeTimeout < cfg.API.WriteTimeout {
+		writeTimeout = cfg.API.WriteTimeout
 	}
 	httpSrv := &http.Server{
-		Addr:              apiAddr,
+		Addr:              cfg.API.Addr,
 		Handler:           restSrv.Router, // use the chi router directly for graceful shutdowns
 		ReadHeaderTimeout: 15 * time.Second,
-		ReadTimeout:       60 * time.Second,
+		ReadTimeout:       cfg.API.ReadTimeout,
 		WriteTimeout:      writeTimeout,
-		IdleTimeout:       120 * time.Second,
+		IdleTimeout:       cfg.API.IdleTimeout,
 	}
 
 	// Start HTTP server
 	serverErrCh := make(chan error, 1)
 	go func() {
-		logger.Info("http server listening", "addr", apiAddr)
+		logger.Info("http server listening", "addr", cfg.API.Addr)
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			serverErrCh <- err
 		}
@@ -227,10 +224,10 @@ func main() {
 	}
 }
 
-// setupLogger configures slog with level and format from environment.
-func setupLogger() *slog.Logger {
+// setupLogger configures slog with level and format.
+func setupLogger(levelStr, format string) *slog.Logger {
 	var level slog.Level
-	switch strings.ToLower(getenv("LOG_LEVEL", "info")) {
+	switch strings.ToLower(levelStr) {
 	case "debug":
 		level = slog.LevelDebug
 	case "warn", "warning":
@@ -240,7 +237,7 @@ func setupLogger() *slog.Logger {
 	default:
 		level = slog.LevelInfo
 	}
-	jsonFmt := strings.ToLower(getenv("LOG_FORMAT", "text")) == "json"
+	jsonFmt := strings.ToLower(format) == "json"
 
 	var handler slog.Handler
 	if jsonFmt {
@@ -249,43 +246,4 @@ func setupLogger() *slog.Logger {
 		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})
 	}
 	return slog.New(handler)
-}
-
-// getenv returns the value of the environment variable k or def if not set.
-func getenv(k, def string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
-	}
-	return def
-}
-
-// atoiDefault parses s as int, returning def if empty or invalid.
-func atoiDefault(s string, def int) int {
-	if s == "" {
-		return def
-	}
-	i, err := strconv.Atoi(s)
-	if err != nil {
-		return def
-	}
-	return i
-}
-
-// durationFromSecondsEnv reads an environment variable name as seconds and returns a duration.
-// If missing or invalid, returns the defaultSeconds value.
-func durationFromSecondsEnv(envName string, defaultSeconds int) time.Duration {
-	raw := os.Getenv(envName)
-	if raw == "" {
-		return time.Duration(defaultSeconds) * time.Second
-	}
-	// Support plain int seconds or Golang duration format
-	if d, err := time.ParseDuration(raw); err == nil {
-		return d
-	}
-	sec, err := strconv.Atoi(raw)
-	if err != nil {
-		log.Printf("invalid %s=%q, falling back to default %ds", envName, raw, defaultSeconds)
-		return time.Duration(defaultSeconds) * time.Second
-	}
-	return time.Duration(sec) * time.Second
 }

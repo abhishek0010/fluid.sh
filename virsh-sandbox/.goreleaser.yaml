@@ -1,0 +1,95 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: virsh-sandbox
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: virsh-sandbox
+    dir: .
+    main: ./cmd/api/main.go
+    binary: virsh-sandbox
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+
+archives:
+  - id: default
+    # format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - README.md
+      - LICENSE
+      - systemd/virsh-sandbox.service
+
+checksum:
+  name_template: checksums.txt
+
+signs:
+  - id: checksums-gpg
+    artifacts: checksum
+    cmd: gpg
+    args:
+      - "--batch"
+      - "--yes"
+      - "--armor"
+      - "--detach-sign"
+      - "--local-user={{ .Env.GPG_FINGERPRINT }}"
+      - "{{ .ArtifactPath }}"
+
+# snapshot:
+#   name_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+nfpms:
+  - id: packages
+    package_name: virsh-sandbox
+    vendor: "Fluid.sh"
+    homepage: "https://github.com/fluid-sh/virsh-sandbox"
+    maintainer: "Collin Pfeifer <cpfeifer@madcactus.org>"
+    description: "Control-plane API for managing libvirt-based VM sandboxes"
+    license: "MIT"
+    formats:
+      - deb
+      - rpm
+
+    # IMPORTANT: control node does NOT require hypervisor packages
+    dependencies:
+      - openssh-client
+      - postgresql-client
+
+    contents:
+      - src: virsh-sandbox
+        dst: /usr/local/bin/virsh-sandbox
+
+      - src: systemd/virsh-sandbox.service
+        dst: /lib/systemd/system/virsh-sandbox.service
+
+    scripts:
+      postinstall: scripts/postinstall.sh
+      preremove: scripts/preremove.sh
+
+release:
+  github:
+    owner: fluid-sh
+    name: virsh-sandbox
