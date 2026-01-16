@@ -22,6 +22,7 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
+      - -libvirt
       - -X main.version={{ .Version }}
       - -X main.commit={{ .Commit }}
       - -X main.date={{ .Date }}
@@ -38,6 +39,7 @@ archives:
 
 checksum:
   name_template: checksums.txt
+  algorithm: sha256
 
 signs:
   - id: checksums-gpg
