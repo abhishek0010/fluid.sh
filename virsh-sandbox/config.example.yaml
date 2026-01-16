@@ -8,6 +8,12 @@ api:
   write_timeout: 120s
   idle_timeout: 120s
 
+hosts:
+  - name: kvm-01
+    address: 10.0.0.11
+  - name: kvm-02
+    address: 10.0.0.12
+
 database:
   url: "postgresql://virsh_sandbox:virsh_sandbox@postgres:5432/virsh_sandbox"
   max_open_conns: 16
@@ -25,7 +31,7 @@ libvirt:
   network: "default"
   base_image_dir: "/var/lib/libvirt/images/base"
   work_dir: "/var/lib/libvirt/images/jobs"
-  ssh_key_inject_method: "virt-customize"  # or "cloud-init"
+  ssh_key_inject_method: "virt-customize" # or "cloud-init"
   # socket_vmnet_wrapper: "/path/to/qemu-socket-vmnet-wrapper.sh"  # macOS only
 
 vm:
@@ -52,5 +58,5 @@ ansible:
     - "ping.yml"
 
 logging:
-  level: "info"    # debug, info, warn, error
-  format: "text"   # text or json
+  level: "info" # debug, info, warn, error
+  format: "text" # text or json

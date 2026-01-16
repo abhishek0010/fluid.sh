@@ -180,6 +180,7 @@ func main() {
 	// Initialize VM service with logger and optional key manager
 	vmOpts := []vm.Option{
 		vm.WithLogger(logger),
+		vm.WithVirshConfig(lvCfg), // Pass virsh config for remote manager creation
 	}
 	if telemetrySvc != nil {
 		vmOpts = append(vmOpts, vm.WithTelemetry(telemetrySvc))
@@ -202,8 +203,17 @@ func main() {
 	// Initialize Ansible playbook service
 	playbookSvc := ansible.NewPlaybookService(st, cfg.Ansible.PlaybooksDir)
 
-	// REST server setup with playbook support
-	restSrv := rest.NewServerWithPlaybooks(vmSvc, domainMgr, ansibleRunner, playbookSvc)
+	// Initialize multi-host manager if hosts are configured
+	var multiHostMgr *libvirt.MultiHostDomainManager
+	if len(cfg.Hosts) > 0 {
+		multiHostMgr = libvirt.NewMultiHostDomainManager(cfg.Hosts, logger)
+		logger.Info("multi-host VM listing enabled",
+			"host_count", len(cfg.Hosts),
+		)
+	}
+
+	// REST server setup with multi-host support
+	restSrv := rest.NewServerWithMultiHost(vmSvc, domainMgr, multiHostMgr, ansibleRunner, playbookSvc)
 
 	// Build http.Server so we can gracefully shutdown
 	// WriteTimeout must be > IPDiscoveryTimeout to allow wait_for_ip to complete

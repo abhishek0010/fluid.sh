@@ -25,7 +25,7 @@
 AI agents are ready to do infrastructure work, but they can't touch prod:
 
 - Agents can install packages, configure services, write scripts—autonomously
-- But one mistake on production and you're getting called at 3 am to fix it
+- But one mistake on production and you're getting paged at 3 AM to fix it
 - So we limit agents to chatbots instead of letting them *do the work*
 
 ## Solution
@@ -97,7 +97,7 @@ finally:
 
 ### Prerequisites
 
-Virsh-sandbox is setup to be ran on a control plane on the same network as the VM hosts it needs to connect with. It will also need a postgres instance running on the control plan to keep tack of commands run, sandboxes, and other auditting.
+`virsh-sandbox` is setup to be ran on a control plane on the same network as the VM hosts it needs to connect with. It will also need a postgres instance running on the control plan to keep tack of commands run, sandboxes, and other auditting.
 
 If you need another way of accessing VMs, open an issue and we will get back to you.
 
@@ -164,7 +164,7 @@ Download the appropriate binary and checksum from the release page:
 
 ```bash
 curl -LO https://github.com/aspectrr/fluid.sh/releases/download/v0.0.1-beta/virsh-sandbox_0.0.1-beta_linux_amd64.tar.gz
-curl -LO https://releases.example.com/virsh-sandbox/0.1.0/virsh-sandbox-linux-amd64.sha256
+curl -LO https://releases.example.com/virsh-sandbox/v0.0.1-beta/checksums.txt
 ```
 
 ### 2. Verify the Checksum
@@ -332,18 +332,6 @@ virsh-sandbox hosts list
 
 ---
 
-## Optional Installation Methods
-
-### Quick Install (Labs / Demos Only)
-
-A `curl | sh` installer is available for non‑production use. Review the script before running.
-
-### Containerized Deployment
-
-`virsh-sandbox` can also be run in a container using Podman or Docker. This is optional and not the reference deployment.
-
----
-
 ## Upgrade Strategy
 
 * Download the new binary
@@ -370,9 +358,6 @@ rm /etc/systemd/system/virsh-sandbox.service
 userdel virsh-sandbox
 rm -rf /etc/virsh-sandbox /var/lib/virsh-sandbox /var/log/virsh-sandbox
 ```
-
-
-
 
 ## ⛵ Contributing Quickstart
 

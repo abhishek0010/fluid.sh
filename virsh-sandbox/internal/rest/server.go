@@ -25,6 +25,7 @@ type Server struct {
 	Router          chi.Router
 	vmSvc           *vm.Service
 	domainMgr       *libvirt.DomainManager
+	multiHostMgr    *libvirt.MultiHostDomainManager
 	ansibleHandler  *ansible.Handler
 	playbookHandler *ansible.PlaybookHandler
 }
@@ -36,6 +37,11 @@ func NewServer(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, ansibleRunne
 
 // NewServerWithPlaybooks constructs a REST server with playbook management support.
 func NewServerWithPlaybooks(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, ansibleRunner *ansible.Runner, playbookSvc *ansible.PlaybookService) *Server {
+	return NewServerWithMultiHost(vmSvc, domainMgr, nil, ansibleRunner, playbookSvc)
+}
+
+// NewServerWithMultiHost constructs a REST server with multi-host VM listing support.
+func NewServerWithMultiHost(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, multiHostMgr *libvirt.MultiHostDomainManager, ansibleRunner *ansible.Runner, playbookSvc *ansible.PlaybookService) *Server {
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
@@ -56,6 +62,7 @@ func NewServerWithPlaybooks(vmSvc *vm.Service, domainMgr *libvirt.DomainManager,
 		Router:          router,
 		vmSvc:           vmSvc,
 		domainMgr:       domainMgr,
+		multiHostMgr:    multiHostMgr,
 		ansibleHandler:  ansibleHandler,
 		playbookHandler: playbookHandler,
 	}
@@ -231,15 +238,24 @@ type ErrorResponse struct {
 }
 
 type vmInfo struct {
-	Name       string `json:"name"`
-	UUID       string `json:"uuid"`
-	State      string `json:"state"`
-	Persistent bool   `json:"persistent"`
-	DiskPath   string `json:"disk_path,omitempty"`
+	Name        string `json:"name"`
+	UUID        string `json:"uuid"`
+	State       string `json:"state"`
+	Persistent  bool   `json:"persistent"`
+	DiskPath    string `json:"disk_path,omitempty"`
+	HostName    string `json:"host_name,omitempty"`    // Host display name (multi-host mode)
+	HostAddress string `json:"host_address,omitempty"` // Host IP/hostname (multi-host mode)
+}
+
+type hostError struct {
+	HostName    string `json:"host_name"`
+	HostAddress string `json:"host_address"`
+	Error       string `json:"error"`
 }
 
 type listVMsResponse struct {
-	VMs []vmInfo `json:"vms"`
+	VMs        []vmInfo    `json:"vms"`
+	HostErrors []hostError `json:"host_errors,omitempty"` // Errors from unreachable hosts (multi-host mode)
 }
 
 type sandboxInfo struct {
@@ -281,7 +297,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 // @Summary Create a new sandbox
-// @Description Creates a new virtual machine sandbox by cloning from an existing VM
+// @Description Creates a new virtual machine sandbox by cloning from an existing VM. When multi-host is configured, automatically routes to the host containing the source VM.
 // @Tags Sandbox
 // @Accept json
 // @Produce json
@@ -302,6 +318,23 @@ func (s *Server) handleCreateSandbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If multi-host is configured, find which host has the source VM
+	if s.multiHostMgr != nil {
+		host, err := s.multiHostMgr.FindHostForVM(r.Context(), req.SourceVMName)
+		if err == nil && host != nil {
+			// Source VM found on a remote host - create sandbox there
+			sb, ip, createErr := s.vmSvc.CreateSandboxOnHost(r.Context(), host, req.SourceVMName, req.AgentID, req.VMName, req.CPU, req.MemoryMB, req.TTLSeconds, req.AutoStart, req.WaitForIP)
+			if createErr != nil {
+				serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("create sandbox on host %s: %w", host.Name, createErr))
+				return
+			}
+			_ = serverJSON.RespondJSON(w, http.StatusCreated, createSandboxResponse{Sandbox: sb, IPAddress: ip})
+			return
+		}
+		// If not found on any remote host, fall through to local creation
+	}
+
+	// Create sandbox locally (single-host mode or source VM not on remote hosts)
 	sb, ip, err := s.vmSvc.CreateSandbox(r.Context(), req.SourceVMName, req.AgentID, req.VMName, req.CPU, req.MemoryMB, req.TTLSeconds, req.AutoStart, req.WaitForIP)
 	if err != nil {
 		serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("create sandbox: %w", err))
@@ -565,7 +598,7 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request) {
 }
 
 // @Summary List all VMs
-// @Description Returns a list of all virtual machines from the libvirt instance
+// @Description Returns a list of all virtual machines from libvirt. When multi-host is configured, aggregates VMs from all hosts.
 // @Tags VMs
 // @Accept json
 // @Produce json
@@ -574,6 +607,41 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request) {
 // @Id listVirtualMachines
 // @Router /v1/vms [get]
 func (s *Server) handleListVMs(w http.ResponseWriter, r *http.Request) {
+	// Use multi-host manager if configured
+	if s.multiHostMgr != nil {
+		result, err := s.multiHostMgr.ListDomains(r.Context())
+		if err != nil {
+			serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("list vms (multi-host): %w", err))
+			return
+		}
+
+		vms := make([]vmInfo, 0, len(result.Domains))
+		for _, d := range result.Domains {
+			vms = append(vms, vmInfo{
+				Name:        d.Name,
+				UUID:        d.UUID,
+				State:       d.State.String(),
+				Persistent:  d.Persistent,
+				DiskPath:    d.DiskPath,
+				HostName:    d.HostName,
+				HostAddress: d.HostAddress,
+			})
+		}
+
+		var hostErrors []hostError
+		for _, he := range result.HostErrors {
+			hostErrors = append(hostErrors, hostError{
+				HostName:    he.HostName,
+				HostAddress: he.HostAddress,
+				Error:       he.Error,
+			})
+		}
+
+		_ = serverJSON.RespondJSON(w, http.StatusOK, listVMsResponse{VMs: vms, HostErrors: hostErrors})
+		return
+	}
+
+	// Fall back to single-host mode
 	domains, err := s.domainMgr.ListDomains(r.Context())
 	if err != nil {
 		serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("list vms: %w", err))

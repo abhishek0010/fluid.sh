@@ -18,6 +18,7 @@ type Config struct {
 	Ansible   AnsibleConfig   `yaml:"ansible"`
 	Logging   LoggingConfig   `yaml:"logging"`
 	Telemetry TelemetryConfig `yaml:"telemetry"`
+	Hosts     []HostConfig    `yaml:"hosts"` // Remote libvirt hosts for multi-host VM listing
 }
 
 // APIConfig holds HTTP server settings.
@@ -86,6 +87,15 @@ type AnsibleConfig struct {
 type LoggingConfig struct {
 	Level  string `yaml:"level"`
 	Format string `yaml:"format"`
+}
+
+// HostConfig represents a remote libvirt host for multi-host VM management.
+// Authentication uses system SSH config (~/.ssh/config and ssh-agent).
+type HostConfig struct {
+	Name    string `yaml:"name"`     // Display name (e.g., "kvm-01")
+	Address string `yaml:"address"`  // IP or hostname
+	SSHUser string `yaml:"ssh_user"` // SSH user (default: root)
+	SSHPort int    `yaml:"ssh_port"` // SSH port (default: 22)
 }
 
 // DefaultConfig returns config with sensible defaults.

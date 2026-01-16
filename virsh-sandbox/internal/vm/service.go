@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"virsh-sandbox/internal/config"
 	"virsh-sandbox/internal/libvirt"
 	"virsh-sandbox/internal/sshkeys"
 	"virsh-sandbox/internal/store"
@@ -30,6 +31,7 @@ type Service struct {
 	keyMgr    sshkeys.KeyProvider // Optional: manages SSH keys for RunCommand
 	telemetry telemetry.Service
 	cfg       Config
+	virshCfg  libvirt.Config // Virsh config for creating remote managers
 	timeNowFn func() time.Time
 	logger    *slog.Logger
 }
@@ -82,6 +84,11 @@ func WithLogger(l *slog.Logger) Option {
 // When set, RunCommand can be called without explicit privateKeyPath.
 func WithKeyManager(km sshkeys.KeyProvider) Option {
 	return func(s *Service) { s.keyMgr = km }
+}
+
+// WithVirshConfig sets the libvirt/virsh configuration for creating remote managers.
+func WithVirshConfig(cfg libvirt.Config) Option {
+	return func(s *Service) { s.virshCfg = cfg }
 }
 
 // NewService constructs a VM service with the provided libvirt manager, store and config.
@@ -325,6 +332,181 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID,
 		"wait_for_ip": waitForIP,
 		"agent_id":    agentID,
 		"success":     true,
+	})
+
+	return sb, ip, nil
+}
+
+// CreateSandboxOnHost creates a sandbox on a specific remote host.
+// This is used when multi-host support is enabled and the source VM is on a remote host.
+func (s *Service) CreateSandboxOnHost(ctx context.Context, host *config.HostConfig, sourceSandboxName, agentID, sandboxName string, cpu, memoryMB int, ttlSeconds *int, autoStart, waitForIP bool) (*store.Sandbox, string, error) {
+	if host == nil {
+		return nil, "", fmt.Errorf("host is required for remote sandbox creation")
+	}
+	if strings.TrimSpace(sourceSandboxName) == "" {
+		return nil, "", fmt.Errorf("sourceSandboxName is required")
+	}
+	if strings.TrimSpace(agentID) == "" {
+		return nil, "", fmt.Errorf("agentID is required")
+	}
+	if cpu <= 0 {
+		cpu = s.cfg.DefaultVCPUs
+	}
+	if memoryMB <= 0 {
+		memoryMB = s.cfg.DefaultMemoryMB
+	}
+	if sandboxName == "" {
+		sandboxName = fmt.Sprintf("sbx-%s", shortID())
+	}
+
+	s.logger.Info("creating sandbox on remote host",
+		"host_name", host.Name,
+		"host_address", host.Address,
+		"source_vm_name", sourceSandboxName,
+		"agent_id", agentID,
+		"sandbox_name", sandboxName,
+		"cpu", cpu,
+		"memory_mb", memoryMB,
+		"auto_start", autoStart,
+		"wait_for_ip", waitForIP,
+	)
+
+	// Create a remote manager for this host
+	remoteMgr := libvirt.NewRemoteVirshManager(*host, s.virshCfg, s.logger)
+
+	jobID := fmt.Sprintf("JOB-%s", shortID())
+
+	// Create the VM via remote libvirt manager
+	_, err := remoteMgr.CloneFromVM(ctx, sourceSandboxName, sandboxName, cpu, memoryMB, s.cfg.Network)
+	if err != nil {
+		s.logger.Error("failed to clone VM on remote host",
+			"host", host.Name,
+			"source_vm_name", sourceSandboxName,
+			"sandbox_name", sandboxName,
+			"error", err,
+		)
+		return nil, "", fmt.Errorf("clone vm on host %s: %w", host.Name, err)
+	}
+
+	hostName := host.Name
+	hostAddr := host.Address
+	sb := &store.Sandbox{
+		ID:          fmt.Sprintf("SBX-%s", shortID()),
+		JobID:       jobID,
+		AgentID:     agentID,
+		SandboxName: sandboxName,
+		BaseImage:   sourceSandboxName,
+		Network:     s.cfg.Network,
+		State:       store.SandboxStateCreated,
+		TTLSeconds:  ttlSeconds,
+		HostName:    &hostName,
+		HostAddress: &hostAddr,
+		CreatedAt:   s.timeNowFn().UTC(),
+		UpdatedAt:   s.timeNowFn().UTC(),
+	}
+	if err := s.store.CreateSandbox(ctx, sb); err != nil {
+		return nil, "", fmt.Errorf("persist sandbox: %w", err)
+	}
+
+	s.logger.Debug("sandbox cloned on remote host",
+		"sandbox_id", sb.ID,
+		"sandbox_name", sandboxName,
+		"host", host.Name,
+	)
+
+	// If autoStart is requested, start the VM immediately
+	var ip string
+	if autoStart {
+		s.logger.Info("auto-starting sandbox on remote host",
+			"sandbox_id", sb.ID,
+			"sandbox_name", sb.SandboxName,
+			"host", host.Name,
+		)
+
+		if err := remoteMgr.StartVM(ctx, sb.SandboxName); err != nil {
+			s.logger.Error("auto-start failed on remote host",
+				"sandbox_id", sb.ID,
+				"sandbox_name", sb.SandboxName,
+				"host", host.Name,
+				"error", err,
+			)
+			_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateError, nil)
+			return sb, "", fmt.Errorf("auto-start vm on host %s: %w", host.Name, err)
+		}
+
+		// Update state -> STARTING
+		if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateStarting, nil); err != nil {
+			return sb, "", err
+		}
+		sb.State = store.SandboxStateStarting
+
+		if waitForIP {
+			s.logger.Info("waiting for IP address on remote host",
+				"sandbox_id", sb.ID,
+				"host", host.Name,
+				"timeout", s.cfg.IPDiscoveryTimeout,
+			)
+
+			var mac string
+			ip, mac, err = remoteMgr.GetIPAddress(ctx, sb.SandboxName, s.cfg.IPDiscoveryTimeout)
+			if err != nil {
+				s.logger.Warn("IP discovery failed on remote host",
+					"sandbox_id", sb.ID,
+					"sandbox_name", sb.SandboxName,
+					"host", host.Name,
+					"error", err,
+				)
+				_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, nil)
+				sb.State = store.SandboxStateRunning
+				return sb, "", fmt.Errorf("get ip on host %s: %w", host.Name, err)
+			}
+
+			// Validate IP uniqueness
+			if err := s.validateIPUniqueness(ctx, sb.ID, ip); err != nil {
+				s.logger.Error("IP conflict on remote host",
+					"sandbox_id", sb.ID,
+					"sandbox_name", sb.SandboxName,
+					"ip_address", ip,
+					"mac_address", mac,
+					"host", host.Name,
+					"error", err,
+				)
+				_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, nil)
+				sb.State = store.SandboxStateRunning
+				return sb, "", fmt.Errorf("ip conflict on host %s: %w", host.Name, err)
+			}
+
+			if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, &ip); err != nil {
+				return sb, ip, err
+			}
+			sb.State = store.SandboxStateRunning
+			sb.IPAddress = &ip
+		} else {
+			if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, nil); err != nil {
+				return sb, "", err
+			}
+			sb.State = store.SandboxStateRunning
+		}
+	}
+
+	s.logger.Info("sandbox created on remote host",
+		"sandbox_id", sb.ID,
+		"host", host.Name,
+		"state", sb.State,
+		"ip_address", ip,
+	)
+
+	s.telemetry.Track("sandbox_create", map[string]interface{}{
+		"sandbox_id":   sb.ID,
+		"base_image":   sb.BaseImage,
+		"cpu":          cpu,
+		"memory_mb":    memoryMB,
+		"auto_start":   autoStart,
+		"wait_for_ip":  waitForIP,
+		"agent_id":     agentID,
+		"host_name":    host.Name,
+		"host_address": host.Address,
+		"success":      true,
 	})
 
 	return sb, ip, nil
