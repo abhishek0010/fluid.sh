@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 
 from agent import AgentLoop
 from llm import create_provider
+from middleware import create_default_middleware_chain
 from tools import ToolRegistry
 from tui import run_tui
 from session_manager import SessionState
@@ -231,10 +232,19 @@ async def create_agent() -> tuple[AgentLoop, str, str, MCPManager]:
     await discover_mcp_servers(mcp_manager)
     mcp_manager.register_tools(registry)
 
+    # Configure middleware
+    playbook_nudge_enabled = os.getenv("PLAYBOOK_NUDGE_ENABLED", "true").lower() == "true"
+    playbook_nudge_max = int(os.getenv("PLAYBOOK_NUDGE_MAX", "3"))
+    middleware = create_default_middleware_chain(
+        playbook_nudge_enabled=playbook_nudge_enabled,
+        playbook_nudge_max=playbook_nudge_max,
+    )
+
     agent = AgentLoop.from_registry(
         provider=provider,
         system_prompt=DEFAULT_SYSTEM_PROMPT,
         registry=registry,
+        middleware=middleware,
     )
 
     return agent, provider_type, model, mcp_manager

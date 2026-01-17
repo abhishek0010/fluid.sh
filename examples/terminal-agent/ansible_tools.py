@@ -13,54 +13,54 @@ class AnsibleDumper(yaml.SafeDumper):
     def increase_indent(self, flow=False, indentless=False):
         return super(AnsibleDumper, self).increase_indent(flow, False)
 
-@dataclass
-class PlaybookManager:
-    """Manages the state of the Ansible playbook."""
-    
-    playbook: list[dict[str, Any]] = field(default_factory=list)
-    
-    def init_playbook(self, name: str, hosts: str = "all") -> None:
-        """Initialize a new playbook."""
-        self.playbook = [{
-            "name": name,
-            "hosts": hosts,
-            "tasks": []
-        }]
-    
-    def get_playbook(self) -> list[dict[str, Any]]:
-        """Get the current playbook."""
-        return self.playbook
 
-    def to_yaml(self) -> str:
+class PlaybookSerializer:
+    """Handles YAML serialization of playbooks."""
+
+    def to_yaml(self, playbook: list[dict[str, Any]]) -> str:
         """Convert playbook to YAML string."""
-        return yaml.dump(self.playbook, Dumper=AnsibleDumper, sort_keys=False, indent=2)
-        
-    def add_task(self, name: str, module: str, args: dict[str, Any]) -> None:
-        """Add a task to the current playbook."""
-        if not self.playbook:
-            raise ValueError("No playbook initialized. Call init_playbook first.")
-            
-        task = {
-            "name": name,
-            module: args
-        }
-        self.playbook[0]["tasks"].append(task)
+        return yaml.dump(playbook, Dumper=AnsibleDumper, sort_keys=False, indent=2)
 
-    def validate_playbook(self) -> tuple[bool, list[str]]:
+    def write_temp_file(self, playbook: list[dict[str, Any]]) -> str:
+        """Write playbook to a temporary file and return the path."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as tmp:
+            tmp.write(self.to_yaml(playbook))
+            return tmp.name
+
+
+class PlaybookValidator:
+    """Handles playbook validation: structural checks, ansible-lint, syntax-check."""
+
+    def __init__(self, serializer: PlaybookSerializer) -> None:
+        self._serializer = serializer
+
+    def validate(self, playbook: list[dict[str, Any]]) -> tuple[bool, list[str]]:
         """
-        Perform validation of the playbook using structural checks,
-        ansible-lint, and ansible-playbook --syntax-check.
-        
+        Perform validation of the playbook.
+
         Returns:
             Tuple of (is_valid, list of error messages)
         """
         errors = []
-        if not self.playbook:
+        if not playbook:
             errors.append("Playbook is empty or not initialized.")
             return False, errors
 
-        # 1. Basic structural validation
-        for i, play in enumerate(self.playbook):
+        # Structural validation
+        structural_errors = self._validate_structure(playbook)
+        if structural_errors:
+            return False, structural_errors
+
+        # External tool validation
+        tool_errors = self._validate_with_tools(playbook)
+        errors.extend(tool_errors)
+
+        return len(errors) == 0, errors
+
+    def _validate_structure(self, playbook: list[dict[str, Any]]) -> list[str]:
+        """Check basic playbook structure."""
+        errors = []
+        for i, play in enumerate(playbook):
             if not isinstance(play, dict):
                 errors.append(f"Play at index {i} is not a dictionary.")
                 continue
@@ -70,17 +70,15 @@ class PlaybookManager:
                 errors.append(f"Play at index {i} is missing 'hosts'.")
             if "tasks" not in play:
                 errors.append(f"Play at index {i} is missing 'tasks'.")
+        return errors
 
-        if errors:
-            return False, errors
-
-        # 2. External command validation (ansible-lint and syntax-check)
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as tmp:
-            tmp.write(self.to_yaml())
-            tmp_path = tmp.name
+    def _validate_with_tools(self, playbook: list[dict[str, Any]]) -> list[str]:
+        """Run ansible-playbook --syntax-check and ansible-lint."""
+        errors = []
+        tmp_path = self._serializer.write_temp_file(playbook)
 
         try:
-            # Run ansible-playbook --syntax-check
+            # Syntax check
             syntax_check = subprocess.run(
                 ["ansible-playbook", "--syntax-check", tmp_path],
                 capture_output=True,
@@ -90,16 +88,13 @@ class PlaybookManager:
                 errors.append("Ansible syntax check failed:")
                 errors.append(syntax_check.stderr or syntax_check.stdout)
 
-            # Run ansible-lint
-            # We use --offline to avoid network calls and --nocolor for cleaner output
+            # Lint check
             lint_check = subprocess.run(
                 ["ansible-lint", "--offline", "--nocolor", tmp_path],
                 capture_output=True,
                 text=True
             )
             if lint_check.returncode != 0:
-                # ansible-lint often has many "warnings" that might be too strict
-                # but we'll report them if the return code is non-zero
                 errors.append("Ansible-lint found issues:")
                 errors.append(lint_check.stdout or lint_check.stderr)
 
@@ -111,36 +106,45 @@ class PlaybookManager:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
 
-        return len(errors) == 0, errors
+        return errors
 
-    def run_playbook(self, check_mode: bool = False, target_host: Optional[str] = None) -> tuple[bool, str, str]:
+
+class PlaybookExecutor:
+    """Handles playbook execution via ansible-playbook."""
+
+    def __init__(self, serializer: PlaybookSerializer) -> None:
+        self._serializer = serializer
+
+    def run(
+        self,
+        playbook: list[dict[str, Any]],
+        check_mode: bool = False,
+        target_host: Optional[str] = None
+    ) -> tuple[bool, str, str]:
         """
         Run the playbook using ansible-playbook.
-        
+
         Args:
+            playbook: The playbook data to run.
             check_mode: If True, run with --check (dry run).
-            target_host: Optional host to target. If provided, uses -i host,
-            
+            target_host: Optional host to target.
+
         Returns:
             Tuple of (success, stdout, stderr)
         """
-        if not self.playbook:
+        if not playbook:
             return False, "", "Playbook is empty or not initialized."
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as tmp:
-            tmp.write(self.to_yaml())
-            tmp_path = tmp.name
+        tmp_path = self._serializer.write_temp_file(playbook)
 
         try:
             cmd = ["ansible-playbook", tmp_path]
             if check_mode:
                 cmd.append("--check")
-            
+
             if target_host:
-                # Use -i host, format for single host targeting
                 cmd.extend(["-i", f"{target_host},"])
-            
-            # Set ANSIBLE_HOST_KEY_CHECKING=False to avoid interactive prompts
+
             env = os.environ.copy()
             env["ANSIBLE_HOST_KEY_CHECKING"] = "False"
 
@@ -150,7 +154,7 @@ class PlaybookManager:
                 text=True,
                 env=env
             )
-            
+
             return result.returncode == 0, result.stdout, result.stderr
 
         except Exception as e:
@@ -158,6 +162,59 @@ class PlaybookManager:
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
+
+
+@dataclass
+class PlaybookManager:
+    """Manages playbook state and coordinates serialization, validation, execution."""
+
+    playbook: list[dict[str, Any]] = field(default_factory=list)
+    _serializer: PlaybookSerializer = field(default_factory=PlaybookSerializer)
+    _validator: PlaybookValidator = field(init=False)
+    _executor: PlaybookExecutor = field(init=False)
+
+    def __post_init__(self) -> None:
+        self._validator = PlaybookValidator(self._serializer)
+        self._executor = PlaybookExecutor(self._serializer)
+
+    def init_playbook(self, name: str, hosts: str = "all") -> None:
+        """Initialize a new playbook."""
+        self.playbook = [{
+            "name": name,
+            "hosts": hosts,
+            "tasks": []
+        }]
+
+    def get_playbook(self) -> list[dict[str, Any]]:
+        """Get the current playbook."""
+        return self.playbook
+
+    def to_yaml(self) -> str:
+        """Convert playbook to YAML string."""
+        return self._serializer.to_yaml(self.playbook)
+
+    def add_task(self, name: str, module: str, args: dict[str, Any]) -> None:
+        """Add a task to the current playbook."""
+        if not self.playbook:
+            raise ValueError("No playbook initialized. Call init_playbook first.")
+
+        task = {
+            "name": name,
+            module: args
+        }
+        self.playbook[0]["tasks"].append(task)
+
+    def validate_playbook(self) -> tuple[bool, list[str]]:
+        """Validate the playbook."""
+        return self._validator.validate(self.playbook)
+
+    def run_playbook(
+        self,
+        check_mode: bool = False,
+        target_host: Optional[str] = None
+    ) -> tuple[bool, str, str]:
+        """Run the playbook."""
+        return self._executor.run(self.playbook, check_mode, target_host)
 
 
 class InitPlaybookTool(Tool):

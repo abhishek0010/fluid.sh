@@ -110,23 +110,17 @@ func main() {
 	// Initialize domain manager for direct libvirt queries
 	domainMgr := libvirt.NewDomainManager(cfg.Libvirt.URI)
 
-	// Initialize telemetry service
+	// Initialize telemetry service.
+	// Design decision: telemetry failures should not crash the application.
+	// If telemetry initialization fails, we log the error and use a noop service
+	// that silently discards all events. This ensures the core API functionality
+	// remains available even when analytics infrastructure is unavailable.
 	telemetrySvc, err := telemetry.NewService(cfg.Telemetry)
 	if err != nil {
-		// Don't fail startup if telemetry fails, just log it and continue with noop?
-		// Or fail? Telemetry failure shouldn't crash the app usually.
-		// Since NewService returns noop on error? No, it returns error on NewWithConfig failure.
-		// But I'll log and ignore or maybe continue.
-		// Let's log error and continue with nil (vm service handles nil/noop check? No, I added a check in NewService).
-		// Wait, vm.NewService checks if telemetry is nil and uses noop.
-		// So if NewService fails, I can just log error.
-		logger.Error("failed to initialize telemetry", "error", err)
-		// We can't use the nil interface if we returned error.
-		// But we can create a noop one if we had access to it, or just pass nil.
-		// vm.NewService handles nil.
-	} else {
-		defer telemetrySvc.Close()
+		logger.Warn("telemetry initialization failed, using noop service", "error", err)
+		telemetrySvc = telemetry.NewNoopService()
 	}
+	defer telemetrySvc.Close()
 
 	// Initialize SSH CA and key manager (optional - for managed credentials)
 	var keyMgr sshkeys.KeyProvider
@@ -181,9 +175,7 @@ func main() {
 	vmOpts := []vm.Option{
 		vm.WithLogger(logger),
 		vm.WithVirshConfig(lvCfg), // Pass virsh config for remote manager creation
-	}
-	if telemetrySvc != nil {
-		vmOpts = append(vmOpts, vm.WithTelemetry(telemetrySvc))
+		vm.WithTelemetry(telemetrySvc),
 	}
 	if keyMgr != nil {
 		vmOpts = append(vmOpts, vm.WithKeyManager(keyMgr))
@@ -248,7 +240,7 @@ func main() {
 	}
 
 	// Attempt graceful shutdown
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.API.ShutdownTimeout)
 	defer cancel()
 	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
 		logger.Error("http server graceful shutdown failed", "error", err)

@@ -3,12 +3,14 @@ package libvirt
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os/exec"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"virsh-sandbox/internal/config"
 )
@@ -18,8 +20,10 @@ const (
 	DefaultSSHUser = "root"
 	// DefaultSSHPort is the default SSH port.
 	DefaultSSHPort = 22
-	// HostQueryTimeout is the per-host query timeout.
-	HostQueryTimeout = 30 * time.Second
+	// DefaultHostQueryTimeout is the default per-host query timeout.
+	DefaultHostQueryTimeout = 30 * time.Second
+	// MaxShellInputLength is the maximum allowed length for shell input.
+	MaxShellInputLength = 4096
 )
 
 // MultiHostDomainInfo extends DomainInfo with host identification.
@@ -46,17 +50,57 @@ type MultiHostListResult struct {
 	HostErrors []HostError
 }
 
+// SSHRunner executes commands on a remote host via SSH.
+// This interface enables testing without actual SSH connections.
+type SSHRunner interface {
+	Run(ctx context.Context, address, user string, port int, command string) (string, error)
+}
+
+// defaultSSHRunner implements SSHRunner using actual SSH commands.
+type defaultSSHRunner struct{}
+
+func (r *defaultSSHRunner) Run(ctx context.Context, address, user string, port int, command string) (string, error) {
+	args := []string{
+		"-o", "BatchMode=yes",
+		"-o", "StrictHostKeyChecking=accept-new",
+		"-o", "ConnectTimeout=10",
+		"-p", fmt.Sprintf("%d", port),
+		fmt.Sprintf("%s@%s", user, address),
+		command,
+	}
+
+	cmd := exec.CommandContext(ctx, "ssh", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("ssh command failed: %w (output: %s)", err, string(output))
+	}
+
+	return string(output), nil
+}
+
 // MultiHostDomainManager queries multiple libvirt hosts via SSH.
 type MultiHostDomainManager struct {
-	hosts  []config.HostConfig
-	logger *slog.Logger
+	hosts     []config.HostConfig
+	logger    *slog.Logger
+	sshRunner SSHRunner
 }
 
 // NewMultiHostDomainManager creates a new MultiHostDomainManager.
 func NewMultiHostDomainManager(hosts []config.HostConfig, logger *slog.Logger) *MultiHostDomainManager {
 	return &MultiHostDomainManager{
-		hosts:  hosts,
-		logger: logger,
+		hosts:     hosts,
+		logger:    logger,
+		sshRunner: &defaultSSHRunner{},
+	}
+}
+
+// NewMultiHostDomainManagerWithRunner creates a MultiHostDomainManager with a custom SSH runner.
+// This is primarily useful for testing.
+func NewMultiHostDomainManagerWithRunner(hosts []config.HostConfig, logger *slog.Logger, runner SSHRunner) *MultiHostDomainManager {
+	return &MultiHostDomainManager{
+		hosts:     hosts,
+		logger:    logger,
+		sshRunner: runner,
 	}
 }
 
@@ -135,9 +179,13 @@ func (m *MultiHostDomainManager) queryHost(ctx context.Context, host config.Host
 	if sshPort == 0 {
 		sshPort = DefaultSSHPort
 	}
+	queryTimeout := host.QueryTimeout
+	if queryTimeout == 0 {
+		queryTimeout = DefaultHostQueryTimeout
+	}
 
 	// Create context with timeout
-	queryCtx, cancel := context.WithTimeout(ctx, HostQueryTimeout)
+	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 
 	// Get list of VM names
@@ -182,9 +230,14 @@ func (m *MultiHostDomainManager) queryHost(ctx context.Context, host config.Host
 
 // getDomainInfo gets detailed information for a single domain.
 func (m *MultiHostDomainManager) getDomainInfo(ctx context.Context, host config.HostConfig, sshUser string, sshPort int, name string) (*MultiHostDomainInfo, error) {
+	escapedName, err := shellEscape(name)
+	if err != nil {
+		return nil, fmt.Errorf("invalid domain name: %w", err)
+	}
+
 	// Get domain info using virsh dominfo
 	output, err := m.runSSHCommand(ctx, host.Address, sshUser, sshPort,
-		fmt.Sprintf("virsh dominfo %s", shellEscape(name)))
+		fmt.Sprintf("virsh dominfo %s", escapedName))
 	if err != nil {
 		return nil, fmt.Errorf("dominfo: %w", err)
 	}
@@ -216,9 +269,9 @@ func (m *MultiHostDomainManager) getDomainInfo(ctx context.Context, host config.
 		}
 	}
 
-	// Get disk path using virsh domblklist
+	// Get disk path using virsh domblklist (reuse escapedName from above)
 	diskOutput, err := m.runSSHCommand(ctx, host.Address, sshUser, sshPort,
-		fmt.Sprintf("virsh domblklist %s --details", shellEscape(name)))
+		fmt.Sprintf("virsh domblklist %s --details", escapedName))
 	if err == nil {
 		domain.DiskPath = parseDiskPath(diskOutput)
 	}
@@ -228,22 +281,7 @@ func (m *MultiHostDomainManager) getDomainInfo(ctx context.Context, host config.
 
 // runSSHCommand executes a command on a remote host via SSH.
 func (m *MultiHostDomainManager) runSSHCommand(ctx context.Context, address, user string, port int, command string) (string, error) {
-	args := []string{
-		"-o", "BatchMode=yes",
-		"-o", "StrictHostKeyChecking=accept-new",
-		"-o", "ConnectTimeout=10",
-		"-p", fmt.Sprintf("%d", port),
-		fmt.Sprintf("%s@%s", user, address),
-		command,
-	}
-
-	cmd := exec.CommandContext(ctx, "ssh", args...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("ssh command failed: %w (output: %s)", err, string(output))
-	}
-
-	return string(output), nil
+	return m.sshRunner.Run(ctx, address, user, port, command)
 }
 
 // parseVirshState converts virsh state string to DomainState.
@@ -289,10 +327,40 @@ func parseDiskPath(output string) string {
 	return ""
 }
 
+// ErrShellInputTooLong is returned when input exceeds MaxShellInputLength.
+var ErrShellInputTooLong = errors.New("shell input exceeds maximum length")
+
+// ErrShellInputNullByte is returned when input contains null bytes.
+var ErrShellInputNullByte = errors.New("shell input contains null byte")
+
+// ErrShellInputControlChar is returned when input contains control characters.
+var ErrShellInputControlChar = errors.New("shell input contains control character")
+
+// validateShellInput checks input for dangerous characters before shell escaping.
+func validateShellInput(s string) error {
+	if len(s) > MaxShellInputLength {
+		return ErrShellInputTooLong
+	}
+	for _, r := range s {
+		if r == 0 {
+			return ErrShellInputNullByte
+		}
+		// Reject control characters (0x00-0x1F) except tab (0x09) and newline (0x0A)
+		if unicode.IsControl(r) && r != '\t' && r != '\n' {
+			return ErrShellInputControlChar
+		}
+	}
+	return nil
+}
+
 // shellEscape escapes a string for safe use in shell commands.
-func shellEscape(s string) string {
-	// Simple escaping: wrap in single quotes and escape existing single quotes
-	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+// Returns an error if the input contains dangerous characters.
+func shellEscape(s string) (string, error) {
+	if err := validateShellInput(s); err != nil {
+		return "", err
+	}
+	// Wrap in single quotes and escape existing single quotes
+	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'", nil
 }
 
 // FindHostForVM searches all configured hosts to find which one has the given VM.
@@ -358,6 +426,11 @@ func (m *MultiHostDomainManager) FindHostForVM(ctx context.Context, vmName strin
 
 // hostHasVM checks if a specific host has the given VM.
 func (m *MultiHostDomainManager) hostHasVM(ctx context.Context, host config.HostConfig, vmName string) (bool, error) {
+	escapedName, err := shellEscape(vmName)
+	if err != nil {
+		return false, fmt.Errorf("invalid VM name: %w", err)
+	}
+
 	sshUser := host.SSHUser
 	if sshUser == "" {
 		sshUser = DefaultSSHUser
@@ -366,13 +439,17 @@ func (m *MultiHostDomainManager) hostHasVM(ctx context.Context, host config.Host
 	if sshPort == 0 {
 		sshPort = DefaultSSHPort
 	}
+	queryTimeout := host.QueryTimeout
+	if queryTimeout == 0 {
+		queryTimeout = DefaultHostQueryTimeout
+	}
 
-	queryCtx, cancel := context.WithTimeout(ctx, HostQueryTimeout)
+	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 
 	// Check if VM exists using virsh dominfo
-	_, err := m.runSSHCommand(queryCtx, host.Address, sshUser, sshPort,
-		fmt.Sprintf("virsh dominfo %s", shellEscape(vmName)))
+	_, err = m.runSSHCommand(queryCtx, host.Address, sshUser, sshPort,
+		fmt.Sprintf("virsh dominfo %s", escapedName))
 	if err != nil {
 		// If virsh dominfo fails, the VM doesn't exist on this host
 		return false, nil

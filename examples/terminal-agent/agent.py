@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from openai.types.chat import ChatCompletionMessageToolCall, ChatCompletionMessageParam
 
+from middleware import MiddlewareChain, ToolExecutionContext
 from telemetry import get_telemetry
 
 if TYPE_CHECKING:
@@ -25,6 +26,7 @@ class ToolResult:
 
     tool_call_id: str
     name: str
+    args: dict[str, Any]
     result: dict[str, Any]
     error: bool = False
 
@@ -61,6 +63,7 @@ class AgentLoop:
         tools: list[dict[str, Any]],
         tool_handler: ToolHandler,
         max_history_messages: int = 20,
+        middleware: MiddlewareChain | None = None,
     ) -> None:
         """
         Initialize the agent loop.
@@ -71,11 +74,13 @@ class AgentLoop:
             tools: List of tool definitions in OpenAI format
             tool_handler: Function to execute tools, takes (name, args) returns dict
             max_history_messages: Maximum number of messages to keep in history (excluding system prompt)
+            middleware: Optional middleware chain for hooking into tool execution
         """
         self.provider = provider
         self.tools = tools
         self.tool_handler = tool_handler
         self.max_history_messages = max_history_messages
+        self.middleware = middleware or MiddlewareChain()
         self.messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system_prompt}
         ]
@@ -110,6 +115,7 @@ class AgentLoop:
             return ToolResult(
                 tool_call_id=tool_call.id,
                 name=name,
+                args={},
                 result={"error": "Invalid JSON in tool arguments"},
                 error=True,
             )
@@ -127,6 +133,7 @@ class AgentLoop:
             return ToolResult(
                 tool_call_id=tool_call.id,
                 name=name,
+                args=args,
                 result=result,
                 error=is_error,
             )
@@ -135,6 +142,7 @@ class AgentLoop:
             return ToolResult(
                 tool_call_id=tool_call.id,
                 name=name,
+                args=args,
                 result={"error": str(e)},
                 error=True,
             )
@@ -179,15 +187,17 @@ class AgentLoop:
                 if tool_call.function.name == "request_review":
                     agent_response.awaiting_input = True
 
-                # Task 2.8: Auto-playbook tracking nudge
-                # If run_command was successful, add a system nudge to consider adding to playbook
-                if tool_call.function.name == "run_command" and not tool_result.error:
-                    self.messages.append(
-                        {
-                            "role": "system",
-                            "content": "Hint: The command was successful. If this command modifies system state, remember to add it to the Ansible playbook using 'add_task'.",
-                        }
-                    )
+                # Process middleware hooks
+                context = ToolExecutionContext(
+                    tool_name=tool_result.name,
+                    tool_args=tool_result.args,
+                    result=tool_result.result,
+                    error=tool_result.error,
+                    tool_call_id=tool_result.tool_call_id,
+                )
+                middleware_messages = self.middleware.process_tool_execution(context)
+                for msg_to_add in middleware_messages:
+                    self.messages.append(msg_to_add)  # type: ignore
         else:
             # Regular assistant message
             content = msg.content or ""
@@ -258,6 +268,9 @@ class AgentLoop:
             # Keep only system message
             self.messages = [m for m in self.messages if m.get("role") == "system"][:1]
 
+        # Reset middleware state
+        self.middleware.reset()
+
     @classmethod
     def from_registry(
         cls,
@@ -265,6 +278,7 @@ class AgentLoop:
         system_prompt: str,
         registry: ToolRegistry,
         max_history_messages: int = 20,
+        middleware: MiddlewareChain | None = None,
     ) -> AgentLoop:
         """
         Create an AgentLoop from a ToolRegistry.
@@ -276,6 +290,7 @@ class AgentLoop:
             system_prompt: System prompt for the agent
             registry: ToolRegistry containing available tools
             max_history_messages: Maximum number of messages to keep in history
+            middleware: Optional middleware chain for hooking into tool execution
 
         Returns:
             Configured AgentLoop instance
@@ -286,4 +301,5 @@ class AgentLoop:
             tools=registry.get_definitions(),
             tool_handler=registry.execute,
             max_history_messages=max_history_messages,
+            middleware=middleware,
         )

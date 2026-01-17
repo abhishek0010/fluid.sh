@@ -23,10 +23,11 @@ type Config struct {
 
 // APIConfig holds HTTP server settings.
 type APIConfig struct {
-	Addr         string        `yaml:"addr"`
-	ReadTimeout  time.Duration `yaml:"read_timeout"`
-	WriteTimeout time.Duration `yaml:"write_timeout"`
-	IdleTimeout  time.Duration `yaml:"idle_timeout"`
+	Addr            string        `yaml:"addr"`
+	ReadTimeout     time.Duration `yaml:"read_timeout"`
+	WriteTimeout    time.Duration `yaml:"write_timeout"`
+	IdleTimeout     time.Duration `yaml:"idle_timeout"`
+	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
 }
 
 // DatabaseConfig holds PostgreSQL connection settings.
@@ -92,20 +93,22 @@ type LoggingConfig struct {
 // HostConfig represents a remote libvirt host for multi-host VM management.
 // Authentication uses system SSH config (~/.ssh/config and ssh-agent).
 type HostConfig struct {
-	Name    string `yaml:"name"`     // Display name (e.g., "kvm-01")
-	Address string `yaml:"address"`  // IP or hostname
-	SSHUser string `yaml:"ssh_user"` // SSH user (default: root)
-	SSHPort int    `yaml:"ssh_port"` // SSH port (default: 22)
+	Name         string        `yaml:"name"`          // Display name (e.g., "kvm-01")
+	Address      string        `yaml:"address"`       // IP or hostname
+	SSHUser      string        `yaml:"ssh_user"`      // SSH user (default: root)
+	SSHPort      int           `yaml:"ssh_port"`      // SSH port (default: 22)
+	QueryTimeout time.Duration `yaml:"query_timeout"` // Per-host query timeout (default: 30s)
 }
 
 // DefaultConfig returns config with sensible defaults.
 func DefaultConfig() *Config {
 	return &Config{
 		API: APIConfig{
-			Addr:         ":8080",
-			ReadTimeout:  60 * time.Second,
-			WriteTimeout: 120 * time.Second,
-			IdleTimeout:  120 * time.Second,
+			Addr:            ":8080",
+			ReadTimeout:     60 * time.Second,
+			WriteTimeout:    120 * time.Second,
+			IdleTimeout:     120 * time.Second,
+			ShutdownTimeout: 20 * time.Second,
 		},
 		Database: DatabaseConfig{
 			URL:             "postgresql://virsh_sandbox:virsh_sandbox@postgres:5432/virsh_sandbox",
@@ -193,6 +196,11 @@ func applyEnvOverrides(cfg *Config) {
 	// API
 	if v := os.Getenv("API_HTTP_ADDR"); v != "" {
 		cfg.API.Addr = v
+	}
+	if v := os.Getenv("API_SHUTDOWN_TIMEOUT_SEC"); v != "" {
+		if d := parseDuration(v); d > 0 {
+			cfg.API.ShutdownTimeout = d
+		}
 	}
 
 	// Database

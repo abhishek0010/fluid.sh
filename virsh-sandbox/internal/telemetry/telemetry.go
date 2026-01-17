@@ -15,10 +15,19 @@ type Service interface {
 	Close()
 }
 
-type noopService struct{}
+// NoopService is a telemetry service that does nothing.
+// Use this when telemetry is disabled or initialization fails.
+type NoopService struct{}
 
-func (s *noopService) Track(event string, properties map[string]any) {}
-func (s *noopService) Close()                                        {}
+func (s *NoopService) Track(event string, properties map[string]any) {}
+func (s *NoopService) Close()                                        {}
+
+// NewNoopService returns a telemetry service that does nothing.
+// Use this as a fallback when telemetry initialization fails
+// or when you explicitly want to disable telemetry.
+func NewNoopService() Service {
+	return &NoopService{}
+}
 
 type posthogService struct {
 	client     posthog.Client
@@ -28,7 +37,7 @@ type posthogService struct {
 // NewService creates a new telemetry service based on configuration.
 func NewService(cfg config.TelemetryConfig) (Service, error) {
 	if !cfg.EnableAnonymousUsage {
-		return &noopService{}, nil
+		return &NoopService{}, nil
 	}
 
 	client, err := posthog.NewWithConfig("phc_GYlAA4sZbgoDEjkhaziuNwP7qiKaEOmVM7khlwMW5xP", posthog.Config{Endpoint: "https://us.i.posthog.com"})

@@ -52,6 +52,17 @@ func (m *RemoteVirshManager) CloneFromVM(ctx context.Context, sourceVMName, newV
 	if sourceVMName == "" {
 		return DomainRef{}, fmt.Errorf("source VM name is required")
 	}
+
+	// Validate inputs for shell escaping
+	escapedSourceVM, err := shellEscape(sourceVMName)
+	if err != nil {
+		return DomainRef{}, fmt.Errorf("invalid source VM name: %w", err)
+	}
+	escapedNewVM, err := shellEscape(newVMName)
+	if err != nil {
+		return DomainRef{}, fmt.Errorf("invalid new VM name: %w", err)
+	}
+
 	if cpu <= 0 {
 		cpu = m.cfg.DefaultVCPUs
 	}
@@ -69,7 +80,7 @@ func (m *RemoteVirshManager) CloneFromVM(ctx context.Context, sourceVMName, newV
 	)
 
 	// Get source VM's disk path
-	out, err := m.runSSH(ctx, fmt.Sprintf("virsh domblklist %s --details", shellEscape(sourceVMName)))
+	out, err := m.runSSH(ctx, fmt.Sprintf("virsh domblklist %s --details", escapedSourceVM))
 	if err != nil {
 		return DomainRef{}, fmt.Errorf("lookup source VM %q: %w", sourceVMName, err)
 	}
@@ -87,21 +98,35 @@ func (m *RemoteVirshManager) CloneFromVM(ctx context.Context, sourceVMName, newV
 		return DomainRef{}, fmt.Errorf("could not find disk path for source VM %q", sourceVMName)
 	}
 
-	// Create job directory on remote host
+	// Validate and escape paths
 	jobDir := fmt.Sprintf("%s/%s", m.cfg.WorkDir, newVMName)
-	if _, err := m.runSSH(ctx, fmt.Sprintf("mkdir -p %s", shellEscape(jobDir))); err != nil {
+	escapedJobDir, err := shellEscape(jobDir)
+	if err != nil {
+		return DomainRef{}, fmt.Errorf("invalid job directory path: %w", err)
+	}
+
+	// Create job directory on remote host
+	if _, err := m.runSSH(ctx, fmt.Sprintf("mkdir -p %s", escapedJobDir)); err != nil {
 		return DomainRef{}, fmt.Errorf("create job dir: %w", err)
 	}
 
 	// Create overlay disk
 	overlayPath := fmt.Sprintf("%s/disk-overlay.qcow2", jobDir)
+	escapedBasePath, err := shellEscape(basePath)
+	if err != nil {
+		return DomainRef{}, fmt.Errorf("invalid base path: %w", err)
+	}
+	escapedOverlayPath, err := shellEscape(overlayPath)
+	if err != nil {
+		return DomainRef{}, fmt.Errorf("invalid overlay path: %w", err)
+	}
 	if _, err := m.runSSH(ctx, fmt.Sprintf("qemu-img create -f qcow2 -F qcow2 -b %s %s",
-		shellEscape(basePath), shellEscape(overlayPath))); err != nil {
+		escapedBasePath, escapedOverlayPath)); err != nil {
 		return DomainRef{}, fmt.Errorf("create overlay: %w", err)
 	}
 
 	// Dump source VM XML and modify it
-	sourceXML, err := m.runSSH(ctx, fmt.Sprintf("virsh dumpxml %s", shellEscape(sourceVMName)))
+	sourceXML, err := m.runSSH(ctx, fmt.Sprintf("virsh dumpxml %s", escapedSourceVM))
 	if err != nil {
 		return DomainRef{}, fmt.Errorf("dumpxml source vm: %w", err)
 	}
@@ -113,18 +138,22 @@ func (m *RemoteVirshManager) CloneFromVM(ctx context.Context, sourceVMName, newV
 
 	// Write domain XML to remote host using base64 to avoid shell escaping issues
 	xmlPath := fmt.Sprintf("%s/domain.xml", jobDir)
+	escapedXMLPath, err := shellEscape(xmlPath)
+	if err != nil {
+		return DomainRef{}, fmt.Errorf("invalid XML path: %w", err)
+	}
 	encodedXML := base64.StdEncoding.EncodeToString([]byte(newXML))
-	if _, err := m.runSSH(ctx, fmt.Sprintf("echo %s | base64 -d > %s", encodedXML, shellEscape(xmlPath))); err != nil {
+	if _, err := m.runSSH(ctx, fmt.Sprintf("echo %s | base64 -d > %s", encodedXML, escapedXMLPath)); err != nil {
 		return DomainRef{}, fmt.Errorf("write domain xml: %w", err)
 	}
 
 	// Define the domain
-	if _, err := m.runSSH(ctx, fmt.Sprintf("virsh define %s", shellEscape(xmlPath))); err != nil {
+	if _, err := m.runSSH(ctx, fmt.Sprintf("virsh define %s", escapedXMLPath)); err != nil {
 		return DomainRef{}, fmt.Errorf("virsh define: %w", err)
 	}
 
 	// Get UUID
-	out, err = m.runSSH(ctx, fmt.Sprintf("virsh domuuid %s", shellEscape(newVMName)))
+	out, err = m.runSSH(ctx, fmt.Sprintf("virsh domuuid %s", escapedNewVM))
 	if err != nil {
 		return DomainRef{Name: newVMName}, nil
 	}
@@ -147,14 +176,28 @@ func (m *RemoteVirshManager) InjectSSHKey(ctx context.Context, sandboxName, user
 	jobDir := fmt.Sprintf("%s/%s", m.cfg.WorkDir, sandboxName)
 	overlay := fmt.Sprintf("%s/disk-overlay.qcow2", jobDir)
 
+	// Validate inputs for shell escaping
+	escapedOverlay, err := shellEscape(overlay)
+	if err != nil {
+		return fmt.Errorf("invalid overlay path: %w", err)
+	}
+	escapedUsername, err := shellEscape(username)
+	if err != nil {
+		return fmt.Errorf("invalid username: %w", err)
+	}
+	escapedPublicKey, err := shellEscape(publicKey)
+	if err != nil {
+		return fmt.Errorf("invalid public key: %w", err)
+	}
+
 	switch strings.ToLower(m.cfg.SSHKeyInjectMethod) {
 	case "virt-customize":
 		cmdArgs := fmt.Sprintf("virt-customize -a %s --run-command 'id -u %s >/dev/null 2>&1 || useradd -m -s /bin/bash %s' --ssh-inject '%s:string:%s'",
-			shellEscape(overlay),
-			shellEscape(username),
-			shellEscape(username),
-			shellEscape(username),
-			shellEscape(publicKey),
+			escapedOverlay,
+			escapedUsername,
+			escapedUsername,
+			escapedUsername,
+			escapedPublicKey,
 		)
 		if _, err := m.runSSH(ctx, cmdArgs); err != nil {
 			return fmt.Errorf("virt-customize inject: %w", err)
@@ -171,12 +214,17 @@ func (m *RemoteVirshManager) StartVM(ctx context.Context, vmName string) error {
 		return fmt.Errorf("vmName is required")
 	}
 
+	escapedName, err := shellEscape(vmName)
+	if err != nil {
+		return fmt.Errorf("invalid VM name: %w", err)
+	}
+
 	m.logger.Info("starting VM on remote host",
 		"host", m.host.Name,
 		"vm_name", vmName,
 	)
 
-	_, err := m.runSSH(ctx, fmt.Sprintf("virsh start %s", shellEscape(vmName)))
+	_, err = m.runSSH(ctx, fmt.Sprintf("virsh start %s", escapedName))
 	if err != nil {
 		return fmt.Errorf("virsh start: %w", err)
 	}
@@ -189,12 +237,17 @@ func (m *RemoteVirshManager) StopVM(ctx context.Context, vmName string, force bo
 		return fmt.Errorf("vmName is required")
 	}
 
+	escapedName, err := shellEscape(vmName)
+	if err != nil {
+		return fmt.Errorf("invalid VM name: %w", err)
+	}
+
 	cmd := "shutdown"
 	if force {
 		cmd = "destroy"
 	}
 
-	_, err := m.runSSH(ctx, fmt.Sprintf("virsh %s %s", cmd, shellEscape(vmName)))
+	_, err = m.runSSH(ctx, fmt.Sprintf("virsh %s %s", cmd, escapedName))
 	return err
 }
 
@@ -204,18 +257,27 @@ func (m *RemoteVirshManager) DestroyVM(ctx context.Context, vmName string) error
 		return fmt.Errorf("vmName is required")
 	}
 
+	escapedName, err := shellEscape(vmName)
+	if err != nil {
+		return fmt.Errorf("invalid VM name: %w", err)
+	}
+
 	// Best-effort destroy if running
-	_, _ = m.runSSH(ctx, fmt.Sprintf("virsh destroy %s", shellEscape(vmName)))
+	_, _ = m.runSSH(ctx, fmt.Sprintf("virsh destroy %s", escapedName))
 
 	// Undefine
-	if _, err := m.runSSH(ctx, fmt.Sprintf("virsh undefine %s", shellEscape(vmName))); err != nil {
+	if _, err := m.runSSH(ctx, fmt.Sprintf("virsh undefine %s", escapedName)); err != nil {
 		// Continue to remove files
 		_ = err
 	}
 
 	// Remove workspace
 	jobDir := fmt.Sprintf("%s/%s", m.cfg.WorkDir, vmName)
-	_, _ = m.runSSH(ctx, fmt.Sprintf("rm -rf %s", shellEscape(jobDir)))
+	escapedJobDir, err := shellEscape(jobDir)
+	if err != nil {
+		return fmt.Errorf("invalid job directory path: %w", err)
+	}
+	_, _ = m.runSSH(ctx, fmt.Sprintf("rm -rf %s", escapedJobDir))
 
 	return nil
 }
@@ -226,11 +288,24 @@ func (m *RemoteVirshManager) CreateSnapshot(ctx context.Context, vmName, snapsho
 		return SnapshotRef{}, fmt.Errorf("vmName and snapshotName are required")
 	}
 
+	escapedVMName, err := shellEscape(vmName)
+	if err != nil {
+		return SnapshotRef{}, fmt.Errorf("invalid VM name: %w", err)
+	}
+	escapedSnapshotName, err := shellEscape(snapshotName)
+	if err != nil {
+		return SnapshotRef{}, fmt.Errorf("invalid snapshot name: %w", err)
+	}
+
 	if external {
 		jobDir := fmt.Sprintf("%s/%s", m.cfg.WorkDir, vmName)
 		snapPath := fmt.Sprintf("%s/snap-%s.qcow2", jobDir, snapshotName)
+		escapedSnapPath, err := shellEscape(snapPath)
+		if err != nil {
+			return SnapshotRef{}, fmt.Errorf("invalid snapshot path: %w", err)
+		}
 		args := fmt.Sprintf("virsh snapshot-create-as %s %s --disk-only --atomic --no-metadata --diskspec vda,file=%s",
-			shellEscape(vmName), shellEscape(snapshotName), shellEscape(snapPath))
+			escapedVMName, escapedSnapshotName, escapedSnapPath)
 		if _, err := m.runSSH(ctx, args); err != nil {
 			return SnapshotRef{}, fmt.Errorf("external snapshot create: %w", err)
 		}
@@ -238,7 +313,7 @@ func (m *RemoteVirshManager) CreateSnapshot(ctx context.Context, vmName, snapsho
 	}
 
 	if _, err := m.runSSH(ctx, fmt.Sprintf("virsh snapshot-create-as %s %s",
-		shellEscape(vmName), shellEscape(snapshotName))); err != nil {
+		escapedVMName, escapedSnapshotName)); err != nil {
 		return SnapshotRef{}, fmt.Errorf("internal snapshot create: %w", err)
 	}
 	return SnapshotRef{Name: snapshotName, Kind: "INTERNAL", Ref: snapshotName}, nil
@@ -265,6 +340,11 @@ func (m *RemoteVirshManager) GetIPAddress(ctx context.Context, vmName string, ti
 		return "", "", fmt.Errorf("vmName is required")
 	}
 
+	escapedName, err := shellEscape(vmName)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid VM name: %w", err)
+	}
+
 	m.logger.Info("discovering IP on remote host",
 		"host", m.host.Name,
 		"vm_name", vmName,
@@ -276,7 +356,7 @@ func (m *RemoteVirshManager) GetIPAddress(ctx context.Context, vmName string, ti
 
 	for {
 		attempt++
-		out, err := m.runSSH(ctx, fmt.Sprintf("virsh domifaddr %s --source lease", shellEscape(vmName)))
+		out, err := m.runSSH(ctx, fmt.Sprintf("virsh domifaddr %s --source lease", escapedName))
 		if err == nil {
 			ip, mac := parseDomIfAddrIPv4WithMACHelper(out)
 			if ip != "" {
@@ -305,7 +385,12 @@ func (m *RemoteVirshManager) GetVMState(ctx context.Context, vmName string) (VMS
 		return VMStateUnknown, fmt.Errorf("vmName is required")
 	}
 
-	out, err := m.runSSH(ctx, fmt.Sprintf("virsh domstate %s", shellEscape(vmName)))
+	escapedName, err := shellEscape(vmName)
+	if err != nil {
+		return VMStateUnknown, fmt.Errorf("invalid VM name: %w", err)
+	}
+
+	out, err := m.runSSH(ctx, fmt.Sprintf("virsh domstate %s", escapedName))
 	if err != nil {
 		return VMStateUnknown, fmt.Errorf("get vm state: %w", err)
 	}

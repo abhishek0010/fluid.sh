@@ -703,6 +703,45 @@ virsh-sandbox/
 -  Full audit trail
 -  Snapshot rollback
 
+### SSH Host Key Verification
+
+The control node connects to hypervisor hosts via SSH. You **must** configure proper host key verification to prevent man-in-the-middle attacks.
+
+**Required: Configure `~/.ssh/config` on the control node:**
+
+```ssh-config
+# /home/virsh-sandbox/.ssh/config (for the virsh-sandbox user)
+
+# Global defaults - strict verification
+Host *
+    StrictHostKeyChecking yes
+    UserKnownHostsFile ~/.ssh/known_hosts
+
+# Hypervisor hosts - explicitly trusted
+Host kvm-01
+    HostName 10.0.0.11
+    User root
+    IdentityFile ~/.ssh/id_ed25519
+
+Host kvm-02
+    HostName 10.0.0.12
+    User root
+    IdentityFile ~/.ssh/id_ed25519
+```
+
+**Pre-populate known_hosts before first use:**
+
+```bash
+# As the virsh-sandbox user, add each host's key
+sudo -u virsh-sandbox ssh-keyscan -H 10.0.0.11 >> /home/virsh-sandbox/.ssh/known_hosts
+sudo -u virsh-sandbox ssh-keyscan -H 10.0.0.12 >> /home/virsh-sandbox/.ssh/known_hosts
+
+# Verify the fingerprints match your hosts
+sudo -u virsh-sandbox ssh-keygen -lf /home/virsh-sandbox/.ssh/known_hosts
+```
+
+**Warning:** Never use `StrictHostKeyChecking=no` in production. This disables host verification and exposes you to MITM attacks.
+
 ##  Documentation
 
 - [Docs from Previous Issues](./docs/) - Documentation on common issues working with the project

@@ -118,25 +118,10 @@ func NewService(mgr libvirt.Manager, st store.Store, cfg Config, opts ...Option)
 	}
 	// Default to noop telemetry if not provided
 	if s.telemetry == nil {
-		// Use a temporary struct that implements the interface locally if possible,
-		// or rely on the fact that telemetry package provides a public interface
-		// but the noop implementation is private.
-		// Actually, I can just create a noop implementation here or expose NewNoopService in telemetry package.
-		// Since noopService is private in telemetry package, I can't instantiate it directly.
-		// I should expose a NewNoopService or similar, OR just handle nil in calls (risky),
-		// OR just let the caller be responsible (bad).
-		// Best is to add NewNoopService to telemetry package.
-		// But I can't edit that file again right now easily without another call.
-		// Wait, I can implement a local noop.
-		s.telemetry = &noopTelemetry{}
+		s.telemetry = telemetry.NewNoopService()
 	}
 	return s
 }
-
-type noopTelemetry struct{}
-
-func (n *noopTelemetry) Track(event string, properties map[string]interface{}) {}
-func (n *noopTelemetry) Close()                                                {}
 
 // CreateSandbox clones a VM from an existing VM and persists a Sandbox record.
 //

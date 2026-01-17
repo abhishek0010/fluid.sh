@@ -15,6 +15,7 @@ func TestDefaultConfig(t *testing.T) {
 
 	assert.Equal(t, ":8080", cfg.API.Addr)
 	assert.Equal(t, 60*time.Second, cfg.API.ReadTimeout)
+	assert.Equal(t, 20*time.Second, cfg.API.ShutdownTimeout)
 	assert.Equal(t, 2, cfg.VM.DefaultVCPUs)
 	assert.Equal(t, 2048, cfg.VM.DefaultMemoryMB)
 	assert.Equal(t, "qemu:///system", cfg.Libvirt.URI)
@@ -135,6 +136,7 @@ func TestApplyEnvOverrides_AllFields(t *testing.T) {
 	cfg := DefaultConfig()
 
 	t.Setenv("API_HTTP_ADDR", ":7777")
+	t.Setenv("API_SHUTDOWN_TIMEOUT_SEC", "30")
 	t.Setenv("DATABASE_URL", "postgresql://test/test")
 	t.Setenv("LIBVIRT_URI", "qemu:///session")
 	t.Setenv("LIBVIRT_NETWORK", "custom-net")
@@ -157,6 +159,7 @@ func TestApplyEnvOverrides_AllFields(t *testing.T) {
 	applyEnvOverrides(cfg)
 
 	assert.Equal(t, ":7777", cfg.API.Addr)
+	assert.Equal(t, 30*time.Second, cfg.API.ShutdownTimeout)
 	assert.Equal(t, "postgresql://test/test", cfg.Database.URL)
 	assert.Equal(t, "qemu:///session", cfg.Libvirt.URI)
 	assert.Equal(t, "custom-net", cfg.Libvirt.Network)
