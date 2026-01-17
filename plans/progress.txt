@@ -1,0 +1,434 @@
+## 2026-01-14: Task 1.1 - Basic Agent Loop
+
+Implemented the core agent loop for the terminal-agent project.
+
+### Files Created/Modified:
+- examples/terminal-agent/agent.py - Core AgentLoop class with:
+  - Message history management
+  - LLM API calls via OpenAI client
+  - Tool execution framework (processes tool calls from LLM)
+  - Completion detection (done phrases)
+  - step() method for single turns
+  - run() method for full conversation loops
+  - reset() for clearing history
+
+- examples/terminal-agent/main.py - Interactive terminal entry point with:
+  - Environment variable configuration (OPENAI_API_KEY, MODEL)
+  - Basic REPL with exit/quit/reset commands
+  - Response formatting
+
+- examples/terminal-agent/pyproject.toml - Updated with:
+  - Dependencies: openai, pydantic, typing-extensions, python-dotenv
+  - Dev dependencies: pytest
+  - Hatch build configuration
+
+- examples/terminal-agent/tests/test_agent.py - 13 unit tests covering:
+  - Agent initialization
+  - Message handling
+  - Tool call execution
+  - Error handling
+  - Completion detection
+  - Conversation reset
+
+### Test Results:
+All 13 tests passing.
+
+### Next Steps:
+Task 1.1 dependencies unlock: 1.2 (LLM abstraction), 1.3 (Tool framework), 1.4 (History management), 1.5 (Terminal UI)
+
+## 2026-01-14: Task 1.3 - Tool Execution Framework
+
+Implemented the tool execution framework for the terminal-agent project.
+
+### Files Created/Modified:
+- examples/terminal-agent/tools.py - Tool framework with:
+  - Tool (ABC): Base class for all tools with abstract properties (name, description, parameters) and execute method
+  - ToolDefinition: Dataclass for OpenAI-compatible tool definitions with to_openai_format() conversion
+  - ToolExecutionResult: Dataclass for tool execution results with success/error handling
+  - ToolRegistry: Registry for managing tools with register/unregister/get/execute/list_tools methods
+
+- examples/terminal-agent/agent.py - Updated with:
+  - Added from_registry() classmethod to create AgentLoop from ToolRegistry
+  - TYPE_CHECKING import for ToolRegistry type hint
+
+- examples/terminal-agent/main.py - Updated with:
+  - create_tool_registry() function to configure available tools
+  - Uses AgentLoop.from_registry() instead of direct constructor
+
+- examples/terminal-agent/__init__.py - New public API exports:
+  - AgentLoop, AgentResponse, ToolResult from agent
+  - Tool, ToolDefinition, ToolExecutionResult, ToolRegistry from tools
+
+- examples/terminal-agent/tests/test_tools.py - 22 unit tests covering:
+  - ToolDefinition.to_openai_format()
+  - ToolExecutionResult.to_dict() for success/error cases
+  - Tool.get_definition() and execute()
+  - ToolRegistry: register, unregister, get, execute, get_definitions, list_tools
+  - Error handling: duplicate registration, missing tools, invalid args, exceptions
+
+### Test Results:
+All Python files pass syntax validation (py_compile).
+
+### Next Steps:
+Task 1.3 unlocks Phase 2 tools: 2.1 (CreateSandboxFromVM), 2.2 (RunCommand), 2.3 (PlanMode), 2.4-2.7 (Ansible commands)
+
+## 2026-01-14: Task 1.2 - LLM Abstraction Layer
+
+Implemented provider-agnostic LLM interface supporting OpenAI, OpenRouter, and local models (Ollama/LMStudio).
+
+### Files Created/Modified:
+- examples/terminal-agent/llm.py (NEW) - LLM abstraction with:
+  - LLMConfig: Dataclass for provider configuration (api_key, model, base_url, extra_headers)
+  - LLMProvider: Abstract base class defining chat_completion interface
+  - OpenAIProvider: Direct OpenAI API access
+  - OpenRouterProvider: Privacy-focused model access via OpenRouter gateway
+  - LocalProvider: Local models via OpenAI-compatible APIs (Ollama, LMStudio)
+  - create_provider(): Factory function for instantiating providers
+
+- examples/terminal-agent/agent.py - Updated with:
+  - Changed AgentLoop to accept LLMProvider instead of OpenAI client
+  - step() now uses provider.chat_completion() instead of direct client calls
+  - from_registry() updated to use provider parameter
+
+- examples/terminal-agent/main.py - Updated with:
+  - get_provider_config(): Environment variable handling
+  - Supported env vars: LLM_PROVIDER, LLM_API_KEY, LLM_MODEL, LLM_BASE_URL, OPENROUTER_SITE_URL
+  - Falls back to OPENAI_API_KEY/OPENROUTER_API_KEY based on provider
+  - Terminal header shows provider type and model
+
+- examples/terminal-agent/tests/test_llm.py (NEW) - 24 unit tests covering:
+  - LLMConfig dataclass initialization
+  - OpenAIProvider: init, base_url, chat_completion
+  - OpenRouterProvider: init, site_url, custom base_url, chat_completion
+  - LocalProvider: init, no api_key handling, chat_completion
+  - create_provider factory for all types
+  - Unknown provider error handling
+
+- examples/terminal-agent/tests/test_agent.py - Updated with:
+  - MockProvider class implementing LLMProvider interface
+  - All existing tests updated to use provider-based approach
+
+### Test Results:
+All Python files pass syntax validation. Tests require Python 3.12+ and uv: `uv run pytest tests/ -v`
+
+### Next Steps:
+Tasks 1.4 (Conversation history management) and 1.5 (Terminal UI) remain in Phase 1. Phase 2 tools are unblocked.
+
+## 2026-01-14: Task 2.1 - CreateSandboxFromVM Tool
+
+Implemented the CreateSandboxTool for creating sandboxes from VMs using the virsh-sandbox SDK.
+
+### Files Created/Modified:
+- examples/terminal-agent/pyproject.toml - Added virsh-sandbox dependency.
+- examples/terminal-agent/sandbox_tools.py (NEW) - Implemented CreateSandboxTool with parameter schema and execution logic.
+- examples/terminal-agent/main.py - Updated to initialize VirshSandbox client and register the tool if the client is available.
+- examples/terminal-agent/tests/test_sandbox_tools.py (NEW) - Added unit tests for the new tool, mocking the SDK.
+
+### Test Results:
+- Added 4 new tests in test_sandbox_tools.py.
+- All 77 tests passing (examples/terminal-agent).
+- Build successful (uv build).
+
+### Next Steps:
+Task 2.2 (RunCommand tool) is the logical next step to interact with the created sandboxes.
+
+## 2026-01-14: Task 2.2 - RunCommand Tool
+
+Implemented the RunCommandTool for executing commands in sandboxes using the virsh-sandbox SDK.
+
+### Files Created/Modified:
+- examples/terminal-agent/sandbox_tools.py - Implemented RunCommandTool with parameter schema, command chaining validation, and execution logic.
+- examples/terminal-agent/main.py - Updated to register the new RunCommandTool if the sandbox client is available.
+- examples/terminal-agent/tests/test_sandbox_tools.py - Added unit tests for the new tool, mocking the SDK.
+
+### Test Results:
+- Added 4 new tests in test_sandbox_tools.py.
+- All 81 tests passing (examples/terminal-agent) after fixing uv environment and pytest-asyncio installation.
+
+### Next Steps:
+Task 1.4 (Conversation history management) and 1.5 (Terminal UI) from Phase 1 are still pending or in progress. Task 2.3 (PlanMode tool) is the next logical step in Phase 2 tools.
+
+## 2026-01-14: Task 1.5 - Terminal UI
+
+Implemented the rich Terminal UI using Textual, featuring Markdown support and improved tool output visualization.
+
+### Files Created/Modified:
+- examples/terminal-agent/tui.py - Refactored TUI components:
+  - Updated Message widget to use textual.widgets.Markdown for rich text rendering.
+  - Enhanced ToolCallDisplay to show detailed result information (args/output/errors) with proper formatting and icons.
+  - Integrated ToolResult handling in the UI flow.
+- examples/terminal-agent/tests/test_tui.py - Updated tests to reflect API changes:
+  - Updated TestToolCallDisplay and TestConversationView to use ToolResult objects.
+  - Ensuired async tests are properly marked and pytest-asyncio is available.
+
+### Test Results:
+- Fixed test environment by syncing dev dependencies (pytest-asyncio).
+- All 81 tests passing, including 10 TUI-specific tests.
+
+### Next Steps:
+Task 1.4 (Conversation history management) is the remaining Phase 1 task. Phase 2 tools (PlanMode, Ansible integration) are also ready for development.
+
+## 2026-01-14: Task 1.4 - Conversation History Management
+
+Implemented message history management with context window limits and automatic pruning.
+
+### Files Created/Modified:
+- examples/terminal-agent/agent.py - Updated AgentLoop to:
+  - Accept `max_history_messages` (default 20).
+  - Implement `_prune_history()` to keep system prompt + recent messages.
+  - Automatically prune history during interaction loop.
+  - Update `from_registry` factory to support new config.
+- examples/terminal-agent/tests/test_history.py (NEW) - Added tests for:
+  - Verification of infinite growth without pruning (conceptually).
+  - Verification of strict pruning to max limits.
+  - Preservation of System Prompt at index 0.
+  - Correct rolling window behavior (oldest non-system messages dropped).
+
+### Test Results:
+- Added 2 new tests in test_history.py.
+- All 83 tests passing (including TUI and core agent tests).
+
+### Next Steps:
+Phase 1 is now complete. Moving to Phase 2: Task 2.3 (PlanMode tool) and Ansible integrations.
+
+## 2026-01-14: Task 2.3 - PlanMode Tool
+
+Implemented the PlanMode tool for creating and displaying execution plans.
+
+### Files Created/Modified:
+- examples/terminal-agent/planning_tools.py (NEW) - Implemented `PlanModeTool` with:
+  - `set_plan` functionality to accept a list of steps.
+  - Validation ensuring steps are a list of strings.
+- examples/terminal-agent/main.py - Updated to register the new `PlanModeTool`.
+- examples/terminal-agent/tests/test_planning_tools.py (NEW) - Added unit tests covering:
+  - Valid plan creation.
+  - Validation error handling for invalid input types.
+
+### Test Results:
+- Added 1 new test in test_planning_tools.py.
+- All 84 tests passing.
+
+### Next Steps:
+Proceed with Ansible integration (Tasks 2.4 - 2.8).
+
+## 2026-01-14: Task 2.4 - AnsibleCommands: InitPlaybook
+
+Implemented the InitPlaybook tool and PlaybookManager for Ansible integration.
+
+### Files Created/Modified:
+- examples/terminal-agent/ansible_tools.py (NEW) - Created `AnsibleCommands` module with:
+  - `PlaybookManager`: Handles internal state of the playbook and YAML export.
+  - `InitPlaybookTool`: Tool to initialize a new playbook with `name` and `hosts`.
+- examples/terminal-agent/main.py - Registered `InitPlaybookTool` in tool registry.
+- examples/terminal-agent/pyproject.toml - Added `pyyaml` dependency.
+- examples/terminal-agent/tests/test_ansible_tools.py (NEW) - Added unit tests for playbook initialization and YAML generation.
+
+### Test Results:
+- Added 2 new tests in test_ansible_tools.py.
+- All 86 tests passing.
+
+### Next Steps:
+Task 2.5 (AnsibleCommands - AddTask) to start building playbooks.
+
+## 2026-01-14: Task 2.5 - AnsibleCommands: AddTask
+
+Implemented the AddTask tool for Ansible integration.
+
+### Files Created/Modified:
+- examples/terminal-agent/ansible_tools.py - Added `add_task` to `PlaybookManager` and implemented `AddTaskTool`.
+- examples/terminal-agent/main.py - Registered `AddTaskTool` in tool registry.
+- examples/terminal-agent/tests/test_ansible_tools.py - Added unit tests for adding tasks to the playbook.
+
+### Test Results:
+- Added 2 new tests in test_ansible_tools.py.
+- All 88 tests passing.
+
+### Next Steps:
+Task 2.6 (AnsibleCommands - ViewPlaybook) to display the current playbook.
+
+## 2026-01-14: Tasks 2.6 & 2.7 - AnsibleCommands: ViewPlaybook and ValidatePlaybook
+
+Implemented the ViewPlaybook and ValidatePlaybook tools for Ansible integration. Verified that ViewPlaybook was already partially implemented and ensured it is fully functional and registered.
+
+### Files Created/Modified:
+- examples/terminal-agent/ansible_tools.py - Added `validate_playbook` to `PlaybookManager` and implemented `ValidatePlaybookTool`. Ensured `ViewPlaybookTool` is correctly implemented.
+- examples/terminal-agent/main.py - Registered `ViewPlaybookTool` and `ValidatePlaybookTool` in the tool registry.
+- examples/terminal-agent/tests/test_ansible_tools.py - Added tests for `ValidatePlaybookTool` and structural validation logic.
+
+### Test Results:
+- Added 2 new tests for validation in test_ansible_tools.py.
+- All 91 tests passing.
+
+### Next Steps:
+Task 2.8 (Auto-playbook tracking) to automatically suggest adding commands to the playbook.
+
+## 2026-01-14: Task 2.8 - Auto-playbook tracking
+
+Implemented auto-playbook tracking to encourage the agent to add successful commands to Ansible playbooks.
+
+### Files Created/Modified:
+- examples/terminal-agent/agent.py: Added a system nudge in the `step()` loop that triggers after a successful `run_command` call.
+- examples/terminal-agent/main.py: Updated `DEFAULT_SYSTEM_PROMPT` with explicit guidelines for auto-tracking successful commands.
+- examples/terminal-agent/tests/test_auto_tracking.py (NEW): Added unit tests to verify the nudge logic and ensure it only triggers on success.
+
+### Test Results:
+- All 93 tests passing (including new auto-tracking tests and restored TUI/Ansible tests).
+- Verified environment sync with `uv sync`.
+
+### Next Steps:
+Phase 2 (Core Tools) and Milestone 2 (Ansible Integration) are now complete.
+Moving to Phase 3 (MCP Integrations) or Phase 4 (Workflow & Approval).
+
+## 2026-01-14: Task 4.2 - Human Review Interface
+
+Implemented the human review interface and workflow.
+
+### Files Created/Modified:
+- examples/terminal-agent/agent.py:
+  - Added `awaiting_input` flag to `AgentResponse`.
+  - Updated `AgentLoop.step()` to set the flag when `request_review` is called.
+  - Updated `AgentLoop.run()` to break early when the agent is awaiting human input.
+- examples/terminal-agent/session_manager.py:
+  - Implemented `RequestReviewTool` which captures the current session summary and a reason for the review.
+- examples/terminal-agent/tui.py:
+  - Implemented `ReviewScreen` (ModalScreen) to display session summary and playbook for human approval.
+  - Updated `TerminalAgentApp` to intercept `awaiting_input` and push the `ReviewScreen`.
+  - Implemented continuation logic to resume the agent loop with "Review approved" feedback.
+- examples/terminal-agent/main.py:
+  - Registered `RequestReviewTool` in the tool registry.
+  - Updated `DEFAULT_SYSTEM_PROMPT` with guidelines on when to request human review.
+- examples/terminal-agent/tests/test_review.py (NEW):
+  - Unit tests for `RequestReviewTool` and `AgentLoop` interaction logic.
+
+### Test Results:
+- All 101 tests passing.
+- Verified TUI tests and new review logic.
+
+### Next Steps:
+Task 4.3 (Playbook dry-run on prod) or Phase 3 (MCP Integrations).
+
+## 2026-01-14: Task 4.3 - Playbook dry-run on prod
+
+Implemented the DryRunPlaybookTool for executing Ansible playbooks in check mode on target hosts.
+
+### Files Created/Modified:
+- examples/terminal-agent/ansible_tools.py:
+  - Added `run_playbook` method to `PlaybookManager` to handle execution via `subprocess.run`.
+  - Implemented `DryRunPlaybookTool` which uses `ansible-playbook --check`.
+  - Added `ANSIBLE_HOST_KEY_CHECKING=False` environment variable to avoid interactive SSH prompts.
+- examples/terminal-agent/main.py:
+  - Registered `DryRunPlaybookTool` in the tool registry.
+- examples/terminal-agent/tests/test_ansible_tools.py:
+  - Added unit tests for `DryRunPlaybookTool` and `run_playbook` method using mocks.
+
+### Test Results:
+- All 102 tests passing.
+- Verified dry-run logic and subprocess command generation.
+
+### Next Steps:
+Task 4.4 (Playbook execution on prod).
+
+## 2026-01-14: Task 4.4 - Playbook execution on prod
+
+Implemented the RunPlaybookTool for executing Ansible playbooks on target hosts with mandatory confirmation.
+
+### Files Created/Modified:
+- examples/terminal-agent/ansible_tools.py:
+  - Implemented `RunPlaybookTool` which executes `ansible-playbook` without the check flag.
+  - Added a `confirm` parameter to `RunPlaybookTool` to ensure intentional execution of critical actions.
+- examples/terminal-agent/main.py:
+  - Registered `RunPlaybookTool` in the tool registry.
+  - Updated `DEFAULT_SYSTEM_PROMPT` to advise performing a dry-run before actual execution.
+- examples/terminal-agent/tests/test_ansible_tools.py:
+  - Added unit tests for `RunPlaybookTool`, including confirmation validation and subprocess execution.
+
+### Test Results:
+- All 103 tests passing.
+- Verified execution logic and confirmation requirement.
+
+### Next Steps:
+Task 4.5 (Task completion feedback).
+
+## 2026-01-14: Task 4.5 - Task completion feedback
+
+Implemented the TaskCompletionTool and integrated it with the TUI.
+
+### Files Created/Modified:
+- examples/terminal-agent/session_manager.py:
+  - Implemented `TaskCompletionTool` to signal task completion and provide a final summary.
+- examples/terminal-agent/main.py:
+  - Registered `TaskCompletionTool` in the tool registry.
+  - Updated `DEFAULT_SYSTEM_PROMPT` to instruct the agent to use the `task_complete` tool.
+- examples/terminal-agent/tui.py:
+  - Implemented `CompletionScreen` to show the final task summary and session statistics.
+  - Updated `TerminalAgentApp` to handle `task_complete` tool results and display the completion screen.
+- examples/terminal-agent/tests/test_completion.py (NEW):
+  - Added unit tests for `TaskCompletionTool`.
+
+### Test Results:
+- All 104 tests passing.
+- Verified completion screen display logic.
+
+### Next Steps:
+Phase 4 and Milestone 3 are now complete. Moving to Phase 3 (MCP Integrations).
+
+## 2026-01-14: Task 3.1 - MCP client base
+
+Implemented the base MCP client for connecting to MCP servers and proxies MCP tools as agent tools.
+
+### Files Created/Modified:
+- examples/terminal-agent/mcp_client.py (NEW):
+  - Implemented `BaseMCPClient` for stdio-based MCP server connections.
+  - Implemented `MCPTool` to proxy MCP server tools to the agent's tool execution framework.
+- examples/terminal-agent/pyproject.toml:
+  - Added `mcp` dependency.
+- examples/terminal-agent/tests/test_mcp_client.py (NEW):
+  - Added unit tests for MCP client connection and tool execution.
+
+### Test Results:
+- All 106 tests passing (including 2 new MCP tests).
+
+### Next Steps:
+Task 3.2 (Slack MCP integration) to connect the agent to Slack.
+
+## 2026-01-14: Task 3.2 - Slack MCP integration
+
+Implemented Slack MCP integration using the MCP client base.
+
+### Files Created/Modified:
+- examples/terminal-agent/mcp_manager.py (NEW):
+  - Implemented `MCPManager` to handle multiple MCP server connections.
+  - Supports adding servers, discovering tools, and registering them in the tool registry.
+  - Handles cleanup of MCP sessions on disconnect.
+- examples/terminal-agent/main.py:
+  - Updated to be asynchronous to support MCP connection at startup.
+  - Implemented `discover_mcp_servers` to automatically connect to a Slack MCP server if `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN` are present.
+  - Uses `npx -y @modelcontextprotocol/server-slack` as the default Slack MCP server.
+  - Updated `DEFAULT_SYSTEM_PROMPT` with guidelines on using Slack tools.
+- examples/terminal-agent/tests/test_mcp_integration.py (NEW):
+  - Added unit tests for MCP server discovery and tool registration in the agent.
+
+### Test Results:
+- All 111 tests passing (including 5 new MCP integration tests).
+- Verified async initialization and cleanup logic.
+
+### Next Steps:
+Task 3.3 (Linear/Jira/Clickup MCP integration) or Task 3.4 (GitHub MCP integration).
+
+## 2026-01-14: Task 3.4 - GitHub MCP integration
+
+Implemented GitHub MCP integration to allow the agent to interact with repositories.
+
+### Files Created/Modified:
+- examples/terminal-agent/main.py:
+  - Updated `discover_mcp_servers` to support GitHub MCP server using `GITHUB_PERSONAL_ACCESS_TOKEN`.
+  - Updated `DEFAULT_SYSTEM_PROMPT` to include GitHub capabilities and guidelines.
+- examples/terminal-agent/tests/test_mcp_integration.py:
+  - Added unit test for GitHub MCP discovery (`test_discover_github_mcp`).
+
+### Test Results:
+- All 111 tests passing (including new GitHub integration test).
+- Verified MCP tool registration logic.
+
+### Next Steps:
+Task 3.3 (Linear/Jira/Clickup MCP integration) or Task 3.5 (Google Drive/Sharepoint MCP integration).

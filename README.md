@@ -17,12 +17,15 @@
 
 ---
 
+## Demo
+![Fluid.sh Demo](https://youtu.be/nAlqRMhZxP0)
+
 ## Problem
 
 AI agents are ready to do infrastructure work, but they can't touch prod:
 
 - Agents can install packages, configure services, write scripts—autonomously
-- But one mistake on production and you're getting called at 3 am to fix it
+- But one mistake on production and you're getting paged at 3 AM to fix it
 - So we limit agents to chatbots instead of letting them *do the work*
 
 ## Solution
@@ -59,34 +62,304 @@ AI agents are ready to do infrastructure work, but they can't touch prod:
 |  **Tmux Integration** | Watch agent work in real-time, intervene if needed |
 |  **Python SDK** | First-class SDK for building autonomous agents |
 
-## Demo
+## SDK Example
 
 ```python
 from virsh_sandbox import VirshSandbox
 
 client = VirshSandbox("http://localhost:8080")
+sandbox = None
 
-# Agent gets its own VM with full root access
-sandbox = client.sandbox.create_sandbox(
-    source_vm_name="ubuntu-base",
-    agent_id="nginx-setup-agent",
-    auto_start=True,
-    wait_for_ip=True
-).sandbox
+try:
+    # Agent gets its own VM with full root access
+    sandbox = client.sandbox.create_sandbox(
+        source_vm_name="ubuntu-base",
+        agent_id="nginx-setup-agent",
+        auto_start=True,
+        wait_for_ip=True
+    ).sandbox
+    
+    run_agent("Install nginx and configure TLS, create an Ansible playbook to recreate the task.", sandbox.id)
+    
+    # NOW the human reviews:
+    # - Diff between snapshots shows exactly what changed
+    # - Auto-generated Ansible playbook ready to apply
+    # - Human approves → playbook runs on production
+    # - Human rejects → nothing happens, agent tries again
 
-run_agent("Install nginx and configure TLS, create an Ansible playbook to recreate the task.")
-
-# NOW the human reviews:
-# - Diff between snapshots shows exactly what changed
-# - Auto-generated Ansible playbook ready to apply
-# - Human approves → playbook runs on production
-# - Human rejects → nothing happens, agent tries again
-
-# Clean up sandbox
-client.sandbox.destroy_sandbox(sandbox.id)
+finally:
+    if(sandbox):
+        # Clean up sandbox
+        client.sandbox.destroy_sandbox(sandbox.id)
 ```
 
 ## 🏄 Quick Start
+
+### Prerequisites
+
+`virsh-sandbox` is setup to be ran on a control plane on the same network as the VM hosts it needs to connect with. It will also need a postgres instance running on the control plan to keep tack of commands run, sandboxes, and other auditting.
+
+If you need another way of accessing VMs, open an issue and we will get back to you.
+
+### Installation
+
+The recommended deployment model is a **single control node** running the `virsh-sandbox` API and PostgreSQL, with SSH access to one or more libvirt/KVM hosts.
+
+---
+
+## Architecture Overview
+
+```
++--------------------+        SSH        +------------------+
+| Control Node       |----------------->| KVM / libvirt    |
+|                    |                  | Hosts            |
+| - virsh-sandbox    |                  |                  |
+| - PostgreSQL       |                  | - libvirtd       |
++--------------------+                  +------------------+
+```
+
+The control node:
+
+* Runs the `virsh-sandbox` API
+* Stores audit logs and metadata in PostgreSQL
+* Connects to hosts over SSH to execute libvirt operations
+
+The hypervisor hosts:
+
+* Run KVM + libvirt only
+* Do not run agents or additional services
+
+---
+
+## Requirements
+
+### Control Node
+
+* Linux (x86_64)
+* systemd
+* PostgreSQL 14+
+* SSH client
+
+### Hypervisor Hosts
+
+* Linux
+* KVM enabled
+* libvirt installed and running
+* SSH access from control node
+
+### Network
+
+* Private management network between control node and hosts
+* Public or tenant-facing network configured on hosts for VMs
+
+---
+
+## Production Installation (Recommended)
+
+This method installs a **static binary** and runs it as a systemd service. No container runtime is required.
+
+### 1. Download the Release Artifact
+
+Download the appropriate binary and checksum from the release page:
+
+```bash
+curl -LO https://github.com/aspectrr/fluid.sh/releases/download/v0.0.1-beta/virsh-sandbox_0.0.1-beta_linux_amd64.tar.gz
+curl -LO https://releases.example.com/virsh-sandbox/v0.0.1-beta/checksums.txt
+```
+
+### 2. Verify the Checksum
+
+```bash
+sha256sum -c virsh-sandbox-linux-amd64.sha256
+```
+
+### 3. Install the Binary
+
+```bash
+install -m 0755 virsh-sandbox-linux-amd64 /usr/local/bin/virsh-sandbox
+```
+
+---
+
+## System User and Directories
+
+Create a dedicated system user and required directories:
+
+```bash
+useradd --system --home /var/lib/virsh-sandbox --shell /usr/sbin/nologin virsh-sandbox
+
+mkdir -p /etc/virsh-sandbox \
+         /var/lib/virsh-sandbox \
+         /var/log/virsh-sandbox
+
+chown -R virsh-sandbox:virsh-sandbox \
+  /var/lib/virsh-sandbox \
+  /var/log/virsh-sandbox
+```
+
+Filesystem layout:
+
+```
+/usr/local/bin/virsh-sandbox
+/etc/virsh-sandbox/config.yaml
+/var/lib/virsh-sandbox/
+/var/log/virsh-sandbox/
+```
+
+---
+
+## PostgreSQL Setup
+
+PostgreSQL runs **locally on the control node** and is bound to localhost only.
+
+### Create Database and User
+
+```bash
+sudo -u postgres psql
+```
+
+```sql
+CREATE DATABASE virsh_sandbox;
+CREATE USER virsh_sandbox WITH PASSWORD 'strong-password';
+GRANT ALL PRIVILEGES ON DATABASE virsh_sandbox TO virsh_sandbox;
+```
+
+Ensure PostgreSQL is listening only on localhost:
+
+```conf
+listen_addresses = '127.0.0.1'
+```
+
+---
+
+## Configuration
+
+Create the main configuration file:
+
+```bash
+vim /etc/virsh-sandbox/config.yaml
+```
+
+Example:
+
+```yaml
+server:
+  listen: 127.0.0.1:8080
+
+database:
+  host: 127.0.0.1
+  port: 5432
+  name: virsh_sandbox
+  user: virsh_sandbox
+  password: strong-password
+
+hosts:
+  - name: kvm-01
+    address: 10.0.0.11
+  - name: kvm-02
+    address: 10.0.0.12
+```
+
+---
+
+## SSH Access to Hosts
+
+The control node requires SSH access to each libvirt host.
+
+Recommended approach:
+
+* Generate a dedicated SSH key for `virsh-sandbox`
+* Grant limited sudo or libvirt access on hosts
+
+```bash
+sudo -u virsh-sandbox ssh-keygen -t ed25519
+```
+
+On each host, allow execution of `virsh` via sudo or libvirt permissions.
+
+---
+
+## systemd Service
+
+Create the service unit:
+
+```bash
+vim /etc/systemd/system/virsh-sandbox.service
+```
+
+```ini
+[Unit]
+Description=virsh-sandbox control plane
+After=network.target postgresql.service
+
+[Service]
+User=virsh-sandbox
+Group=virsh-sandbox
+ExecStart=/usr/local/bin/virsh-sandbox \
+  --config /etc/virsh-sandbox/config.yaml
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+systemctl daemon-reload
+systemctl enable virsh-sandbox
+systemctl start virsh-sandbox
+```
+
+---
+
+## Verifying the Installation
+
+Check service status:
+
+```bash
+systemctl status virsh-sandbox
+```
+
+Basic health checks:
+
+```bash
+virsh-sandbox status
+virsh-sandbox hosts list
+```
+
+---
+
+## Upgrade Strategy
+
+* Download the new binary
+* Verify checksum
+* Replace `/usr/local/bin/virsh-sandbox`
+* Restart the systemd service
+
+PostgreSQL migrations are handled automatically on startup.
+
+---
+
+## Uninstallation
+
+```bash
+systemctl stop virsh-sandbox
+systemctl disable virsh-sandbox
+rm /usr/local/bin/virsh-sandbox
+rm /etc/systemd/system/virsh-sandbox.service
+```
+
+(Optional) Remove data and user:
+
+```bash
+userdel virsh-sandbox
+rm -rf /etc/virsh-sandbox /var/lib/virsh-sandbox /var/log/virsh-sandbox
+```
+
+## ⛵ Contributing Quickstart
 
 ### Prerequisites
 
@@ -429,6 +702,45 @@ virsh-sandbox/
 -  Output size limits
 -  Full audit trail
 -  Snapshot rollback
+
+### SSH Host Key Verification
+
+The control node connects to hypervisor hosts via SSH. You **must** configure proper host key verification to prevent man-in-the-middle attacks.
+
+**Required: Configure `~/.ssh/config` on the control node:**
+
+```ssh-config
+# /home/virsh-sandbox/.ssh/config (for the virsh-sandbox user)
+
+# Global defaults - strict verification
+Host *
+    StrictHostKeyChecking yes
+    UserKnownHostsFile ~/.ssh/known_hosts
+
+# Hypervisor hosts - explicitly trusted
+Host kvm-01
+    HostName 10.0.0.11
+    User root
+    IdentityFile ~/.ssh/id_ed25519
+
+Host kvm-02
+    HostName 10.0.0.12
+    User root
+    IdentityFile ~/.ssh/id_ed25519
+```
+
+**Pre-populate known_hosts before first use:**
+
+```bash
+# As the virsh-sandbox user, add each host's key
+sudo -u virsh-sandbox ssh-keyscan -H 10.0.0.11 >> /home/virsh-sandbox/.ssh/known_hosts
+sudo -u virsh-sandbox ssh-keyscan -H 10.0.0.12 >> /home/virsh-sandbox/.ssh/known_hosts
+
+# Verify the fingerprints match your hosts
+sudo -u virsh-sandbox ssh-keygen -lf /home/virsh-sandbox/.ssh/known_hosts
+```
+
+**Warning:** Never use `StrictHostKeyChecking=no` in production. This disables host verification and exposes you to MITM attacks.
 
 ##  Documentation
 

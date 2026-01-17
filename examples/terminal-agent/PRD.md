@@ -1,10 +1,10 @@
 ## What would be needed for a Fluid.sh Terminal Agent
 
 ## MCP Connections
-- Google Drive, Sharepoint for Docs
+- Google Drive, Sharepoint for Internal Docs
   - Some way to better sort through all the docs and find what they need for the task they are assigned, maybe RAG or supermemory API
 - Slack for communication
-- Clickup to be assigned tasks
+- Clickup/Jira/Linear to be assigned tasks
 - GitHub for Access Control and storing ansible playbooks
 
 ## Terminal Interface

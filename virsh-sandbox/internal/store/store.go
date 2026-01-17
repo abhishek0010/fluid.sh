@@ -94,6 +94,10 @@ type Sandbox struct {
 	State       SandboxState `json:"state" db:"state"`
 	TTLSeconds  *int         `json:"ttl_seconds,omitempty" db:"ttl_seconds"` // optional TTL for auto GC
 
+	// Multi-host support: identifies which libvirt host this sandbox runs on
+	HostName    *string `json:"host_name,omitempty" db:"host_name"`       // display name of the host (e.g., "kvm-01")
+	HostAddress *string `json:"host_address,omitempty" db:"host_address"` // IP or hostname of the libvirt host
+
 	// Metadata
 	CreatedAt time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`

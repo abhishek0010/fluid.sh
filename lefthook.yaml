@@ -51,3 +51,7 @@ pre-commit:
       glob: "*.ts"
       root: "web"
       run: bun lint
+    typecheck-web:
+      glob: "*.ts"
+      root: "web"
+      run: "bun typecheck"

@@ -3,3 +3,5 @@
 .ssh-ca
 mprocs.log
 .ansible/
+dist/
+.venv

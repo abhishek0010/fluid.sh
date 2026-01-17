@@ -1,0 +1,224 @@
+{
+  "project": "Terminal Agent",
+  "description": "Claude Code-esque terminal agent with limited toolset for infrastructure automation, uses python, uv, textual for TUI",
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Core Agent Framework",
+      "tasks": [
+        {
+          "id": "1.1",
+          "title": "Basic agent loop",
+          "description": "Create the main agent loop that processes user input, calls LLM, and executes tool calls",
+          "status": "complete",
+          "dependencies": []
+        },
+        {
+          "id": "1.2",
+          "title": "LLM abstraction layer",
+          "description": "Build a provider-agnostic LLM interface supporting OpenRouter and local models for privacy",
+          "status": "complete",
+          "dependencies": ["1.1"]
+        },
+        {
+          "id": "1.3",
+          "title": "Tool execution framework",
+          "description": "Create base tool class and tool registry for registering/executing tools",
+          "status": "complete",
+          "dependencies": ["1.1"]
+        },
+        {
+          "id": "1.4",
+          "title": "Conversation history management",
+          "description": "Handle message history, context windows, and summarization",
+          "status": "complete",
+          "dependencies": ["1.1"]
+        },
+        {
+          "id": "1.5",
+          "title": "Terminal UI",
+          "description": "Build rich terminal interface with input handling, output formatting, and spinners, use textual",
+          "status": "complete",
+          "dependencies": ["1.1"]
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Core Tools (Look at examples/agent-example/ for examples on how to call virsh-sandbox endpoints with the sdk)",
+      "tasks": [
+        {
+          "id": "2.1",
+          "title": "CreateSandboxFromVM tool",
+          "description": "Tool to clone a VM and create an isolated sandbox using virsh-sandbox SDK",
+          "status": "complete",
+          "dependencies": ["1.3"]
+        },
+        {
+          "id": "2.2",
+          "title": "RunCommand tool",
+          "description": "Execute single commands on sandbox via SSH - disallow chained commands (&& || etc)",
+          "status": "complete",
+          "dependencies": ["1.3", "2.1"]
+        },
+        {
+          "id": "2.3",
+          "title": "PlanMode tool",
+          "description": "Tool to create and display execution plans before running tasks",
+          "status": "complete",
+          "dependencies": ["1.3"]
+        },
+        {
+          "id": "2.4",
+          "title": "AnsibleCommands - InitPlaybook",
+          "description": "Initialize a new Ansible playbook for the current session",
+          "status": "complete",
+          "dependencies": ["1.3"]
+        },
+        {
+          "id": "2.5",
+          "title": "AnsibleCommands - AddTask",
+          "description": "Add a task/step to the Ansible playbook based on executed commands",
+          "status": "complete",
+          "dependencies": ["2.4"]
+        },
+        {
+          "id": "2.6",
+          "title": "AnsibleCommands - ViewPlaybook",
+          "description": "Display current playbook state to user",
+          "status": "complete",
+          "dependencies": ["2.4"]
+        },
+        {
+          "id": "2.7",
+          "title": "AnsibleCommands - ValidatePlaybook",
+          "description": "Lint and validate the generated Ansible playbook",
+          "status": "complete",
+          "dependencies": ["2.4"]
+        },
+        {
+          "id": "2.8",
+          "title": "Auto-playbook tracking",
+          "description": "Agent automatically checks if RunCommand results should be added to playbook",
+          "status": "complete",
+          "dependencies": ["2.2", "2.5"]
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "MCP Integrations",
+      "tasks": [
+        {
+          "id": "3.1",
+          "title": "MCP client base",
+          "description": "Create base MCP client for connecting to MCP servers",
+          "status": "complete",
+          "dependencies": ["1.3"]
+        },
+        {
+          "id": "3.2",
+          "title": "Slack MCP integration",
+          "description": "Connect to Slack for receiving tasks and sending updates",
+          "status": "complete",
+          "dependencies": ["3.1"]
+        },
+        {
+          "id": "3.3",
+          "title": "Linear/Jira/Clickup MCP integration",
+          "description": "Connect to task management systems to receive assigned tickets",
+          "status": "pending",
+          "dependencies": ["3.1"]
+        },
+        {
+          "id": "3.4",
+          "title": "GitHub MCP integration",
+          "description": "Access control and storing/retrieving Ansible playbooks from repos",
+          "status": "complete",
+          "dependencies": ["3.1"]
+        },
+        {
+          "id": "3.5",
+          "title": "Google Drive/Sharepoint MCP integration",
+          "description": "Access internal documentation for context",
+          "status": "pending",
+          "dependencies": ["3.1"]
+        },
+        {
+          "id": "3.6",
+          "title": "Document RAG/search",
+          "description": "Add RAG or supermemory API to search through docs for relevant context",
+          "status": "pending",
+          "dependencies": ["3.5"]
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "Workflow & Approval",
+      "tasks": [
+        {
+          "id": "4.1",
+          "title": "Session state management",
+          "description": "Track session state: sandbox created, commands run, playbook generated",
+          "status": "complete",
+          "dependencies": ["2.1", "2.2", "2.4"]
+        },
+        {
+          "id": "4.2",
+          "title": "Human review interface",
+          "description": "UI for human to review actions taken and generated playbook",
+          "status": "complete",
+          "dependencies": ["4.1", "1.5"]
+        },
+        {
+          "id": "4.3",
+          "title": "Playbook dry-run on prod",
+          "description": "Execute ansible-playbook --check on production VM",
+          "status": "complete",
+          "dependencies": ["4.2", "2.7"]
+        },
+        {
+          "id": "4.4",
+          "title": "Playbook execution on prod",
+          "description": "Run approved playbook on production VM with confirmation",
+          "status": "complete",
+          "dependencies": ["4.3"]
+        },
+        {
+          "id": "4.5",
+          "title": "Task completion feedback",
+          "description": "Mark tickets complete, send Slack updates on task status",
+          "status": "complete",
+          "dependencies": ["4.4", "3.2", "3.3"]
+        }
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "m1",
+      "name": "MVP - Basic Terminal Agent",
+      "tasks": ["1.1", "1.2", "1.3", "1.5", "2.1", "2.2", "2.3"],
+      "description": "Agent can create sandbox, run commands, and plan tasks via terminal"
+    },
+    {
+      "id": "m2",
+      "name": "Ansible Integration",
+      "tasks": ["2.4", "2.5", "2.6", "2.7", "2.8"],
+      "description": "Agent automatically generates Ansible playbooks from actions"
+    },
+    {
+      "id": "m3",
+      "name": "Full Workflow",
+      "tasks": ["4.1", "4.2", "4.3", "4.4"],
+      "description": "Complete workflow with human review and prod deployment"
+    },
+    {
+      "id": "m4",
+      "name": "MCP Integrations",
+      "tasks": ["3.1", "3.2", "3.3", "3.4", "3.5", "3.6"],
+      "description": "Agent can receive tasks from external systems"
+    }
+  ]
+}
