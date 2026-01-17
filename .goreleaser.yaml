@@ -52,7 +52,6 @@ signs:
       - "--yes"
       - "--armor"
       - "--local-user={{ .Env.GPG_FINGERPRINT }}"
-      - "--output={{ .ArtifactPath }}.asc"
       - "--detach-sign"
       - "{{ .ArtifactPath }}"
 
@@ -65,9 +64,7 @@ signs:
       - "--yes"
       - "--armor"
       - "--local-user={{ .Env.GPG_FINGERPRINT }}"
-      - "--output={{ .Path }}.asc"
       - "--detach-sign"
-      - "{{ .Path }}"
 
 # snapshot:
 #   name_template: "{{ .Tag }}-next"
