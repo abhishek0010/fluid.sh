@@ -43,17 +43,39 @@ checksum:
   algorithm: sha256
 
 signs:
-  - id: checksums-gpg
-    artifacts: checksum
+  # Sign binaries
+  - id: binary
     cmd: gpg
+    artifacts: binary
+    signature: "${artifact}.sig"
     args:
       - "--batch"
       - "--yes"
       - "--armor"
-      - "--detach-sign"
+      - "--pinentry-mode=loopback"
+      - "--passphrase={{ .Env.GPG_PASSPHRASE }}"
       - "--local-user={{ .Env.GPG_FINGERPRINT }}"
-      - "{{ .ArtifactPath }}"
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
 
+  # Sign checksums
+  - id: checksum
+    cmd: gpg
+    artifacts: checksum
+    signature: "${artifact}.sig"
+    args:
+      - "--batch"
+      - "--yes"
+      - "--armor"
+      - "--pinentry-mode=loopback"
+      - "--passphrase={{ .Env.GPG_PASSPHRASE }}"
+      - "--local-user={{ .Env.GPG_FINGERPRINT }}"
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
 # snapshot:
 #   name_template: "{{ .Tag }}-next"
 

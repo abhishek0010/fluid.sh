@@ -28,6 +28,36 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libvirt-dev
 
+      - name: Import GPG private key
+        run: |
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "=== Secret keys ==="
+          gpg --list-secret-keys --keyid-format LONG
+
+      - name: Configure GPG for CI
+        run: |
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent
+          gpgconf --launch gpg-agent
+
+      - name: Debug GPG Setup
+        run: |
+          echo "=== Listing secret keys ==="
+          gpg --list-secret-keys --keyid-format LONG
+          echo ""
+          echo "=== GPG_FINGERPRINT value ==="
+          echo "${{ secrets.GPG_FINGERPRINT }}"
+          echo ""
+          echo "=== Testing signature with fingerprint ==="
+          echo "test" | gpg --batch --yes --armor --pinentry-mode loopback \
+            --passphrase="${{ secrets.GPG_PASSPHRASE }}" \
+            --local-user="${{ secrets.GPG_FINGERPRINT }}" \
+            --detach-sign || echo "FAILED"
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:

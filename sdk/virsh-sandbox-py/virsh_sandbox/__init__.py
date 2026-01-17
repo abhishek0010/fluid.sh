@@ -18,7 +18,6 @@ __version__ = "0.0.21-beta"
 
 # Define package exports
 __all__ = [
-    "VirshSandbox",
     "AccessApi",
     "AnsibleApi",
     "AnsiblePlaybooksApi",
@@ -168,9 +167,6 @@ from virsh_sandbox.api_client import ApiClient as ApiClient
 
 # import ApiClient
 from virsh_sandbox.api_response import ApiResponse as ApiResponse
-
-# import unified client
-from virsh_sandbox.client import VirshSandbox as VirshSandbox
 from virsh_sandbox.configuration import Configuration as Configuration
 from virsh_sandbox.exceptions import ApiAttributeError as ApiAttributeError
 from virsh_sandbox.exceptions import ApiException as ApiException

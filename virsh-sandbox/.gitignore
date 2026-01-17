@@ -32,6 +32,7 @@ bin/
 .ansible/
 config.yaml
 config.yml
+api
 
 # Editor/IDE
 # .idea/
