@@ -13,35 +13,35 @@ from typing_extensions import Annotated
 from virsh_sandbox.api_client import ApiClient, RequestSerialized
 from virsh_sandbox.api_response import ApiResponse
 from virsh_sandbox.exceptions import ApiException
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_request import (
-    VirshSandboxInternalAnsibleAddTaskRequest,
+from virsh_sandbox.models.internal_ansible_add_task_request import (
+    InternalAnsibleAddTaskRequest,
 )
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_add_task_response import (
-    VirshSandboxInternalAnsibleAddTaskResponse,
+from virsh_sandbox.models.internal_ansible_add_task_response import (
+    InternalAnsibleAddTaskResponse,
 )
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_request import (
-    VirshSandboxInternalAnsibleCreatePlaybookRequest,
+from virsh_sandbox.models.internal_ansible_create_playbook_request import (
+    InternalAnsibleCreatePlaybookRequest,
 )
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_create_playbook_response import (
-    VirshSandboxInternalAnsibleCreatePlaybookResponse,
+from virsh_sandbox.models.internal_ansible_create_playbook_response import (
+    InternalAnsibleCreatePlaybookResponse,
 )
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_export_playbook_response import (
-    VirshSandboxInternalAnsibleExportPlaybookResponse,
+from virsh_sandbox.models.internal_ansible_export_playbook_response import (
+    InternalAnsibleExportPlaybookResponse,
 )
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_get_playbook_response import (
-    VirshSandboxInternalAnsibleGetPlaybookResponse,
+from virsh_sandbox.models.internal_ansible_get_playbook_response import (
+    InternalAnsibleGetPlaybookResponse,
 )
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_list_playbooks_response import (
-    VirshSandboxInternalAnsibleListPlaybooksResponse,
+from virsh_sandbox.models.internal_ansible_list_playbooks_response import (
+    InternalAnsibleListPlaybooksResponse,
 )
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_reorder_tasks_request import (
-    VirshSandboxInternalAnsibleReorderTasksRequest,
+from virsh_sandbox.models.internal_ansible_reorder_tasks_request import (
+    InternalAnsibleReorderTasksRequest,
 )
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_request import (
-    VirshSandboxInternalAnsibleUpdateTaskRequest,
+from virsh_sandbox.models.internal_ansible_update_task_request import (
+    InternalAnsibleUpdateTaskRequest,
 )
-from virsh_sandbox.models.virsh_sandbox_internal_ansible_update_task_response import (
-    VirshSandboxInternalAnsibleUpdateTaskResponse,
+from virsh_sandbox.models.internal_ansible_update_task_response import (
+    InternalAnsibleUpdateTaskResponse,
 )
 
 
@@ -56,13 +56,13 @@ class AnsiblePlaybooksApi:
     def add_playbook_task(
         self,
         playbook_name: str,
-        request: VirshSandboxInternalAnsibleAddTaskRequest,
+        request: InternalAnsibleAddTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalAnsibleAddTaskResponse:
+    ) -> InternalAnsibleAddTaskResponse:
         """Add task to playbook
 
         Adds a new task to an existing playbook
@@ -70,7 +70,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: Task parameters (required)
-        :type request: VirshSandboxInternalAnsibleAddTaskRequest
+        :type request: InternalAnsibleAddTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -97,7 +97,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "VirshSandboxInternalAnsibleAddTaskResponse",
+            "201": "InternalAnsibleAddTaskResponse",
             "400": "VirshSandboxInternalErrorErrorResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
@@ -113,13 +113,13 @@ class AnsiblePlaybooksApi:
     def add_playbook_task_with_http_info(
         self,
         playbook_name: str,
-        request: VirshSandboxInternalAnsibleAddTaskRequest,
+        request: InternalAnsibleAddTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalAnsibleAddTaskResponse]:
+    ) -> ApiResponse[InternalAnsibleAddTaskResponse]:
         """Add task to playbook
 
         Adds a new task to an existing playbook
@@ -127,7 +127,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: Task parameters (required)
-        :type request: VirshSandboxInternalAnsibleAddTaskRequest
+        :type request: InternalAnsibleAddTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -154,7 +154,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "VirshSandboxInternalAnsibleAddTaskResponse",
+            "201": "InternalAnsibleAddTaskResponse",
             "400": "VirshSandboxInternalErrorErrorResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
@@ -170,7 +170,7 @@ class AnsiblePlaybooksApi:
     def add_playbook_task_without_preload_content(
         self,
         playbook_name: str,
-        request: VirshSandboxInternalAnsibleAddTaskRequest,
+        request: InternalAnsibleAddTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -184,7 +184,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: Task parameters (required)
-        :type request: VirshSandboxInternalAnsibleAddTaskRequest
+        :type request: InternalAnsibleAddTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -211,7 +211,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "VirshSandboxInternalAnsibleAddTaskResponse",
+            "201": "InternalAnsibleAddTaskResponse",
             "400": "VirshSandboxInternalErrorErrorResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
@@ -223,7 +223,7 @@ class AnsiblePlaybooksApi:
     def _add_playbook_task_serialize(
         self,
         playbook_name: str,
-        request: VirshSandboxInternalAnsibleAddTaskRequest,
+        request: InternalAnsibleAddTaskRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -288,19 +288,19 @@ class AnsiblePlaybooksApi:
 
     def create_playbook(
         self,
-        request: VirshSandboxInternalAnsibleCreatePlaybookRequest,
+        request: InternalAnsibleCreatePlaybookRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalAnsibleCreatePlaybookResponse:
+    ) -> InternalAnsibleCreatePlaybookResponse:
         """Create playbook
 
         Creates a new Ansible playbook
 
         :param request: Playbook creation parameters (required)
-        :type request: VirshSandboxInternalAnsibleCreatePlaybookRequest
+        :type request: InternalAnsibleCreatePlaybookRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -326,7 +326,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "VirshSandboxInternalAnsibleCreatePlaybookResponse",
+            "201": "InternalAnsibleCreatePlaybookResponse",
             "400": "VirshSandboxInternalErrorErrorResponse",
             "409": "VirshSandboxInternalErrorErrorResponse",
         }
@@ -341,19 +341,19 @@ class AnsiblePlaybooksApi:
 
     def create_playbook_with_http_info(
         self,
-        request: VirshSandboxInternalAnsibleCreatePlaybookRequest,
+        request: InternalAnsibleCreatePlaybookRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalAnsibleCreatePlaybookResponse]:
+    ) -> ApiResponse[InternalAnsibleCreatePlaybookResponse]:
         """Create playbook
 
         Creates a new Ansible playbook
 
         :param request: Playbook creation parameters (required)
-        :type request: VirshSandboxInternalAnsibleCreatePlaybookRequest
+        :type request: InternalAnsibleCreatePlaybookRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -379,7 +379,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "VirshSandboxInternalAnsibleCreatePlaybookResponse",
+            "201": "InternalAnsibleCreatePlaybookResponse",
             "400": "VirshSandboxInternalErrorErrorResponse",
             "409": "VirshSandboxInternalErrorErrorResponse",
         }
@@ -394,7 +394,7 @@ class AnsiblePlaybooksApi:
 
     def create_playbook_without_preload_content(
         self,
-        request: VirshSandboxInternalAnsibleCreatePlaybookRequest,
+        request: InternalAnsibleCreatePlaybookRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -406,7 +406,7 @@ class AnsiblePlaybooksApi:
         Creates a new Ansible playbook
 
         :param request: Playbook creation parameters (required)
-        :type request: VirshSandboxInternalAnsibleCreatePlaybookRequest
+        :type request: InternalAnsibleCreatePlaybookRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -432,7 +432,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "VirshSandboxInternalAnsibleCreatePlaybookResponse",
+            "201": "InternalAnsibleCreatePlaybookResponse",
             "400": "VirshSandboxInternalErrorErrorResponse",
             "409": "VirshSandboxInternalErrorErrorResponse",
         }
@@ -443,7 +443,7 @@ class AnsiblePlaybooksApi:
 
     def _create_playbook_serialize(
         self,
-        request: VirshSandboxInternalAnsibleCreatePlaybookRequest,
+        request: InternalAnsibleCreatePlaybookRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -941,7 +941,7 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalAnsibleExportPlaybookResponse:
+    ) -> InternalAnsibleExportPlaybookResponse:
         """Export playbook
 
         Exports a playbook as raw YAML
@@ -973,7 +973,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleExportPlaybookResponse",
+            "200": "InternalAnsibleExportPlaybookResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
@@ -993,7 +993,7 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalAnsibleExportPlaybookResponse]:
+    ) -> ApiResponse[InternalAnsibleExportPlaybookResponse]:
         """Export playbook
 
         Exports a playbook as raw YAML
@@ -1025,7 +1025,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleExportPlaybookResponse",
+            "200": "InternalAnsibleExportPlaybookResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
@@ -1077,7 +1077,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleExportPlaybookResponse",
+            "200": "InternalAnsibleExportPlaybookResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
@@ -1148,7 +1148,7 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalAnsibleGetPlaybookResponse:
+    ) -> InternalAnsibleGetPlaybookResponse:
         """Get playbook
 
         Gets a playbook and its tasks by name
@@ -1180,7 +1180,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleGetPlaybookResponse",
+            "200": "InternalAnsibleGetPlaybookResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
@@ -1200,7 +1200,7 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalAnsibleGetPlaybookResponse]:
+    ) -> ApiResponse[InternalAnsibleGetPlaybookResponse]:
         """Get playbook
 
         Gets a playbook and its tasks by name
@@ -1232,7 +1232,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleGetPlaybookResponse",
+            "200": "InternalAnsibleGetPlaybookResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
@@ -1284,7 +1284,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleGetPlaybookResponse",
+            "200": "InternalAnsibleGetPlaybookResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
@@ -1354,7 +1354,7 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalAnsibleListPlaybooksResponse:
+    ) -> InternalAnsibleListPlaybooksResponse:
         """List playbooks
 
         Lists all Ansible playbooks
@@ -1383,7 +1383,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleListPlaybooksResponse",
+            "200": "InternalAnsibleListPlaybooksResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1401,7 +1401,7 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalAnsibleListPlaybooksResponse]:
+    ) -> ApiResponse[InternalAnsibleListPlaybooksResponse]:
         """List playbooks
 
         Lists all Ansible playbooks
@@ -1430,7 +1430,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleListPlaybooksResponse",
+            "200": "InternalAnsibleListPlaybooksResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1477,7 +1477,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleListPlaybooksResponse",
+            "200": "InternalAnsibleListPlaybooksResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1539,7 +1539,7 @@ class AnsiblePlaybooksApi:
     def reorder_playbook_tasks(
         self,
         playbook_name: str,
-        request: VirshSandboxInternalAnsibleReorderTasksRequest,
+        request: InternalAnsibleReorderTasksRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1553,7 +1553,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: New task order (required)
-        :type request: VirshSandboxInternalAnsibleReorderTasksRequest
+        :type request: InternalAnsibleReorderTasksRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1596,7 +1596,7 @@ class AnsiblePlaybooksApi:
     def reorder_playbook_tasks_with_http_info(
         self,
         playbook_name: str,
-        request: VirshSandboxInternalAnsibleReorderTasksRequest,
+        request: InternalAnsibleReorderTasksRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1610,7 +1610,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: New task order (required)
-        :type request: VirshSandboxInternalAnsibleReorderTasksRequest
+        :type request: InternalAnsibleReorderTasksRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1653,7 +1653,7 @@ class AnsiblePlaybooksApi:
     def reorder_playbook_tasks_without_preload_content(
         self,
         playbook_name: str,
-        request: VirshSandboxInternalAnsibleReorderTasksRequest,
+        request: InternalAnsibleReorderTasksRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1667,7 +1667,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: New task order (required)
-        :type request: VirshSandboxInternalAnsibleReorderTasksRequest
+        :type request: InternalAnsibleReorderTasksRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1706,7 +1706,7 @@ class AnsiblePlaybooksApi:
     def _reorder_playbook_tasks_serialize(
         self,
         playbook_name: str,
-        request: VirshSandboxInternalAnsibleReorderTasksRequest,
+        request: InternalAnsibleReorderTasksRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -1773,13 +1773,13 @@ class AnsiblePlaybooksApi:
         self,
         playbook_name: str,
         task_id: str,
-        request: VirshSandboxInternalAnsibleUpdateTaskRequest,
+        request: InternalAnsibleUpdateTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> VirshSandboxInternalAnsibleUpdateTaskResponse:
+    ) -> InternalAnsibleUpdateTaskResponse:
         """Update task
 
         Updates an existing task in a playbook
@@ -1789,7 +1789,7 @@ class AnsiblePlaybooksApi:
         :param task_id: Task ID (required)
         :type task_id: str
         :param request: Task update parameters (required)
-        :type request: VirshSandboxInternalAnsibleUpdateTaskRequest
+        :type request: InternalAnsibleUpdateTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1817,7 +1817,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleUpdateTaskResponse",
+            "200": "InternalAnsibleUpdateTaskResponse",
             "400": "VirshSandboxInternalErrorErrorResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
@@ -1834,13 +1834,13 @@ class AnsiblePlaybooksApi:
         self,
         playbook_name: str,
         task_id: str,
-        request: VirshSandboxInternalAnsibleUpdateTaskRequest,
+        request: InternalAnsibleUpdateTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[VirshSandboxInternalAnsibleUpdateTaskResponse]:
+    ) -> ApiResponse[InternalAnsibleUpdateTaskResponse]:
         """Update task
 
         Updates an existing task in a playbook
@@ -1850,7 +1850,7 @@ class AnsiblePlaybooksApi:
         :param task_id: Task ID (required)
         :type task_id: str
         :param request: Task update parameters (required)
-        :type request: VirshSandboxInternalAnsibleUpdateTaskRequest
+        :type request: InternalAnsibleUpdateTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1878,7 +1878,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleUpdateTaskResponse",
+            "200": "InternalAnsibleUpdateTaskResponse",
             "400": "VirshSandboxInternalErrorErrorResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
@@ -1895,7 +1895,7 @@ class AnsiblePlaybooksApi:
         self,
         playbook_name: str,
         task_id: str,
-        request: VirshSandboxInternalAnsibleUpdateTaskRequest,
+        request: InternalAnsibleUpdateTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1911,7 +1911,7 @@ class AnsiblePlaybooksApi:
         :param task_id: Task ID (required)
         :type task_id: str
         :param request: Task update parameters (required)
-        :type request: VirshSandboxInternalAnsibleUpdateTaskRequest
+        :type request: InternalAnsibleUpdateTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1939,7 +1939,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "VirshSandboxInternalAnsibleUpdateTaskResponse",
+            "200": "InternalAnsibleUpdateTaskResponse",
             "400": "VirshSandboxInternalErrorErrorResponse",
             "404": "VirshSandboxInternalErrorErrorResponse",
         }
@@ -1952,7 +1952,7 @@ class AnsiblePlaybooksApi:
         self,
         playbook_name: str,
         task_id: str,
-        request: VirshSandboxInternalAnsibleUpdateTaskRequest,
+        request: InternalAnsibleUpdateTaskRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
