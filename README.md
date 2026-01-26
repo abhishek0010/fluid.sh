@@ -191,8 +191,7 @@ sha256sum -c checksums.txt --ignore-missing
 ```bash
 tar -xzf virsh-sandbox_${VERSION}_linux_amd64.tar.gz
 sudo install -m 755 virsh-sandbox /usr/local/bin/
-
----
+```
 
 ## System User and Directories
 

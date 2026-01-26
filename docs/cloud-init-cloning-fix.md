@@ -267,82 +267,540 @@ For optimal cloning behavior, base VMs should:
 
 ---
 
----
-  Debugging Steps
-
-  # 1. Check DHCP leases
-  cat /var/lib/libvirt/dnsmasq/default.leases
-
-  # 2. Check network config
-  virsh net-dumpxml default | grep -A5 dhcp
-
-  # 3. List all VM MACs
-  for vm in $(virsh list --name); do
-    echo "=== $vm ==="
-    virsh domifaddr "$vm" --source lease
-  done
-
-  # 4. Check for duplicate MACs
-  virsh list --name | xargs -I{} virsh domiflist {} 2>/dev/null | grep -E "^[a-z]" | awk '{print $5}' | sort | uniq -d
-
-  ---
-
 ## Troubleshooting Guide
+
+This section provides comprehensive debugging steps for diagnosing VM networking issues.
+
+---
+
+### Quick Diagnostic Commands
+
+Run these first to get an overview of the system state:
+
+```bash
+# 1. Check DHCP leases
+cat /var/lib/libvirt/dnsmasq/default.leases
+
+# 2. Check network config
+virsh net-dumpxml default | grep -A5 dhcp
+
+# 3. List all VM MACs and IPs
+for vm in $(virsh list --name); do
+  echo "=== $vm ==="
+  virsh domifaddr "$vm" --source lease
+done
+
+# 4. Check for duplicate MACs (causes IP conflicts)
+virsh list --name | xargs -I{} virsh domiflist {} 2>/dev/null | grep -E "^[a-z]" | awk '{print $5}' | sort | uniq -d
+```
+
+---
+
+### Pre-Flight Validation (fluid CLI)
+
+Before creating sandboxes, use the built-in validation:
+
+```bash
+# Validate source VM and host resources
+fluid validate <source-vm-name>
+
+# Example output showing warnings
+{
+  "source_vm": "test-vm-1",
+  "valid": true,
+  "vm_state": "running",
+  "has_network": true,
+  "mac_address": "52:54:00:12:34:56",
+  "warnings": [
+    "Source VM is running but has no IP address assigned",
+    "This may indicate cloud-init or DHCP issues - cloned sandboxes may also fail to get IPs"
+  ]
+}
+```
+
+---
+
+### Source VM Has No IP Address
+
+If `virsh domifaddr <source-vm> --source lease` returns empty results, investigate:
+
+#### 1. Check if libvirt network is running
+
+```bash
+# List networks
+virsh net-list --all
+
+# Expected output:
+#  Name      State    Autostart   Persistent
+# --------------------------------------------
+#  default   active   yes         yes
+
+# If not active, start it:
+virsh net-start default
+virsh net-autostart default
+```
+
+#### 2. Verify DHCP is enabled on the network
+
+```bash
+virsh net-dumpxml default | grep -A10 '<dhcp>'
+
+# Expected output should include:
+# <dhcp>
+#   <range start='192.168.122.2' end='192.168.122.254'/>
+# </dhcp>
+```
+
+If DHCP is missing, edit the network:
+```bash
+virsh net-edit default
+# Add inside <ip> block:
+# <dhcp>
+#   <range start='192.168.122.2' end='192.168.122.254'/>
+# </dhcp>
+
+# Restart network
+virsh net-destroy default
+virsh net-start default
+```
+
+#### 3. Check VM has a network interface
+
+```bash
+virsh domiflist <vm-name>
+
+# Expected output:
+#  Interface   Type     Source    Model    MAC
+# -------------------------------------------------------------
+#  vnet0       network  default   virtio   52:54:00:xx:xx:xx
+```
+
+If empty, the VM XML is missing network configuration.
+
+#### 4. Check dnsmasq is running (provides DHCP)
+
+```bash
+# Check process
+ps aux | grep dnsmasq
+
+# Check dnsmasq logs
+journalctl -u libvirtd | grep dnsmasq
+
+# Or check syslog
+grep dnsmasq /var/log/syslog | tail -20
+```
+
+#### 5. Verify cloud-init is installed in the VM
+
+Access VM console and check:
+```bash
+virsh console <vm-name>
+
+# Inside VM:
+cloud-init --version
+systemctl status cloud-init
+
+# Check cloud-init data directory exists
+ls -la /var/lib/cloud/
+```
+
+#### 6. Check cloud-init status inside VM
+
+```bash
+# Inside VM:
+cloud-init status
+# Should show: status: done
+
+# If status shows error, check logs:
+cat /var/log/cloud-init.log | grep -i error
+cat /var/log/cloud-init-output.log
+```
+
+#### 7. Check network configuration inside VM
+
+```bash
+# Inside VM:
+ip addr show
+ip route show
+
+# Check if interface is up but has no IP
+# This indicates DHCP client issue
+
+# Check DHCP client logs
+journalctl -u systemd-networkd | tail -50
+# or
+journalctl -u NetworkManager | tail -50
+```
+
+---
 
 ### Sandbox Has No IP After Expected Boot Time
 
-1. **Check VM is running:**
-   ```bash
-   virsh list --all | grep <sandbox-name>
-   ```
+#### 1. Check VM is running
 
-2. **Check network interface statistics:**
-   ```bash
-   virsh domifstat <sandbox-name> <vnet-interface>
-   ```
-   - If `tx_packets` is 0, VM isn't sending any traffic
-   - Likely cloud-init issue or VM not fully booted
+```bash
+virsh list --all | grep <sandbox-name>
 
-3. **Check cloud-init ISO is attached:**
-   ```bash
-   virsh dumpxml <sandbox-name> | grep -A5 cdrom
-   ```
-   - Should show path to sandbox-specific ISO
-   - Path should be `/var/lib/libvirt/images/jobs/<sandbox-name>/cloud-init.iso`
+# State should be "running"
+```
 
-4. **Verify cloud-init seed content:**
-   ```bash
-   cat /var/lib/libvirt/images/jobs/<sandbox-name>/meta-data
-   cat /var/lib/libvirt/images/jobs/<sandbox-name>/user-data
-   ```
-   - `instance-id` should match sandbox name
-   - `user-data` should contain network configuration
+#### 2. Check network interface statistics
 
-5. **Check DHCP server (dnsmasq) is running:**
-   ```bash
-   virsh net-dhcp-leases default
-   ```
+```bash
+# Get interface name first
+virsh domiflist <sandbox-name>
 
-6. **Access VM console for debugging:**
-   ```bash
-   # Try serial console
-   virsh console <sandbox-name>
-   
-   # Or get VNC display
-   virsh vncdisplay <sandbox-name>
-   ```
+# Then check stats
+virsh domifstat <sandbox-name> <vnet-interface>
+
+# Example output:
+# vnet15 rx_bytes 180
+# vnet15 rx_packets 2
+# vnet15 tx_bytes 0        # Zero = no outgoing traffic!
+# vnet15 tx_packets 0
+```
+
+**Interpretation:**
+- `tx_packets = 0`: VM isn't sending any traffic (cloud-init issue or VM not booted)
+- `rx_packets > 0, tx_packets = 0`: VM receives broadcasts but doesn't respond
+- Both non-zero: Network is working, check DHCP server
+
+#### 3. Check cloud-init ISO is attached
+
+```bash
+virsh dumpxml <sandbox-name> | grep -A5 cdrom
+
+# Should show:
+# <disk type='file' device='cdrom'>
+#   <source file='/var/lib/libvirt/images/sandboxes/<sandbox-name>/cloud-init.iso'/>
+#   ...
+# </disk>
+```
+
+#### 4. Verify cloud-init seed content
+
+```bash
+# Check meta-data (instance-id must be unique per sandbox)
+cat /var/lib/libvirt/images/sandboxes/<sandbox-name>/meta-data
+
+# Should show:
+# instance-id: <sandbox-name>
+# local-hostname: <sandbox-name>
+
+# Check user-data (should have network config)
+cat /var/lib/libvirt/images/sandboxes/<sandbox-name>/user-data
+
+# Should contain:
+# network:
+#   version: 2
+#   ethernets:
+#     id0:
+#       match:
+#         driver: virtio*
+#       dhcp4: true
+```
+
+#### 5. Check DHCP server has leases available
+
+```bash
+virsh net-dhcp-leases default
+
+# Check lease file directly
+cat /var/lib/libvirt/dnsmasq/default.leases
+```
+
+#### 6. Check for MAC address collision
+
+```bash
+# Get sandbox MAC
+virsh domiflist <sandbox-name>
+
+# Compare with source VM MAC
+virsh domiflist <source-vm-name>
+
+# They MUST be different! If same, the clone process failed to generate new MAC.
+```
+
+#### 7. Access VM console for debugging
+
+```bash
+# Serial console (if configured)
+virsh console <sandbox-name>
+# Press Enter, login with cloud-init credentials
+
+# VNC display
+virsh vncdisplay <sandbox-name>
+# Connect with VNC viewer to localhost:<port>
+
+# If neither works, check VM has console configured:
+virsh dumpxml <sandbox-name> | grep -A3 '<console'
+```
+
+---
 
 ### Cloud-Init ISO Not Being Created
 
-Check service logs for errors:
+#### 1. Check for ISO creation tools
+
 ```bash
-docker compose logs virsh-sandbox | grep -i cloud-init
+# At least one of these must be available:
+which cloud-localds
+which genisoimage
+which mkisofs
 ```
 
-Common issues:
-- Missing `genisoimage` or `cloud-localds` tools in container
-- Permission issues writing to job directory
-- Source VM doesn't have cloud-init CDROM (check `virsh domblklist`)
+Install if missing:
+```bash
+# Ubuntu/Debian
+apt-get install cloud-image-utils  # provides cloud-localds
+apt-get install genisoimage        # alternative
+
+# RHEL/CentOS
+yum install cloud-utils            # provides cloud-localds
+yum install genisoimage            # alternative
+```
+
+#### 2. Check service logs
+
+```bash
+# For fluid CLI
+# Check terminal output for warnings about cloud-init
+
+# For docker deployment
+docker compose logs virsh-sandbox | grep -i cloud-init
+
+# For systemd service
+journalctl -u fluid | grep -i cloud-init
+```
+
+#### 3. Check permissions on work directory
+
+```bash
+ls -la /var/lib/libvirt/images/sandboxes/
+
+# Directory should be writable by the service user
+# If permission denied, fix with:
+chown -R libvirt-qemu:libvirt /var/lib/libvirt/images/sandboxes/
+# or
+chmod 775 /var/lib/libvirt/images/sandboxes/
+```
+
+#### 4. Check source VM has cloud-init CDROM
+
+```bash
+virsh domblklist <source-vm-name> --details
+
+# Look for cdrom device - if missing, source VM doesn't use cloud-init
+```
+
+---
+
+### Cloud-Init Runs But Network Fails
+
+If cloud-init runs but network still fails, check inside the VM:
+
+#### 1. Check cloud-init network config was applied
+
+```bash
+# Inside VM:
+cat /etc/netplan/*.yaml
+# or
+cat /etc/network/interfaces
+# or
+nmcli device status
+```
+
+#### 2. Check for conflicting network configs
+
+```bash
+# Inside VM:
+ls -la /etc/netplan/
+
+# Multiple files can conflict - cloud-init creates 50-cloud-init.yaml
+# Other files (00-installer-config.yaml) may override it
+```
+
+#### 3. Force cloud-init to re-run (for debugging)
+
+```bash
+# Inside VM:
+sudo cloud-init clean --logs
+sudo cloud-init init --local
+sudo cloud-init init
+sudo cloud-init modules --mode=config
+sudo cloud-init modules --mode=final
+
+# Check status
+cloud-init status --long
+```
+
+#### 4. Check instance-id matches expectation
+
+```bash
+# Inside VM:
+cat /var/lib/cloud/data/instance-id
+
+# This should match the sandbox name
+# If it matches the source VM name, cloud-init didn't re-run
+```
+
+---
+
+### MAC Address Issues
+
+#### 1. Check MAC was generated correctly
+
+```bash
+# Sandbox MAC should start with 52:54:00 (QEMU prefix)
+virsh domiflist <sandbox-name>
+
+# Verify it's different from source VM
+virsh domiflist <source-vm-name>
+```
+
+#### 2. Check for MAC collision across all VMs
+
+```bash
+# List all MACs
+for vm in $(virsh list --all --name); do
+  echo -n "$vm: "
+  virsh domiflist "$vm" 2>/dev/null | grep -oE '([0-9a-f]{2}:){5}[0-9a-f]{2}' | head -1
+done | sort -t: -k2
+
+# Check for duplicates
+virsh list --all --name | xargs -I{} virsh domiflist {} 2>/dev/null | \
+  grep -oE '([0-9a-f]{2}:){5}[0-9a-f]{2}' | sort | uniq -d
+```
+
+#### 3. Manually fix MAC if needed
+
+```bash
+# Stop VM
+virsh destroy <sandbox-name>
+
+# Edit XML
+virsh edit <sandbox-name>
+# Find <mac address='...'> and change to unique value
+
+# Start VM
+virsh start <sandbox-name>
+```
+
+---
+
+### Host Resource Issues
+
+#### 1. Check available memory
+
+```bash
+# System memory
+free -h
+
+# Libvirt view
+virsh nodememstats
+
+# Memory used by VMs
+virsh list --all --name | xargs -I{} virsh dominfo {} 2>/dev/null | grep -E "^(Name|Max memory|Used memory)"
+```
+
+#### 2. Check disk space
+
+```bash
+df -h /var/lib/libvirt/images/
+
+# Check individual sandbox sizes
+du -sh /var/lib/libvirt/images/sandboxes/*
+```
+
+#### 3. Check for resource exhaustion
+
+```bash
+# Too many VMs?
+virsh list --all | wc -l
+
+# CPU overcommit?
+virsh nodeinfo | grep "CPU(s)"
+virsh list --all --name | xargs -I{} virsh vcpucount {} 2>/dev/null | grep current | awk '{sum+=$2} END {print "Total vCPUs: " sum}'
+```
+
+---
+
+### Performance Issues (Slow Boot)
+
+#### 1. Check if using KVM acceleration
+
+```bash
+# Inside VM or from host:
+virsh dumpxml <vm-name> | grep -i kvm
+
+# Check host supports KVM
+ls -la /dev/kvm
+# If missing, VMs run in slow TCG emulation mode
+```
+
+#### 2. Check VM architecture matches host
+
+```bash
+# Host architecture
+uname -m
+
+# VM architecture
+virsh dumpxml <vm-name> | grep -i arch
+
+# ARM64 VMs on x86 hosts use TCG emulation (very slow)
+```
+
+#### 3. Increase IP discovery timeout for slow VMs
+
+```bash
+# Set environment variable
+export IP_DISCOVERY_TIMEOUT=5m
+
+# Or in config file
+# vm:
+#   ip_discovery_timeout: 5m
+```
+
+---
+
+### Debugging Checklist
+
+Use this checklist when sandboxes fail to get IPs:
+
+- [ ] Source VM exists and is defined in libvirt
+- [ ] Source VM has network interface with MAC address
+- [ ] Source VM (if running) has IP address
+- [ ] Libvirt network is active (`virsh net-list`)
+- [ ] DHCP is enabled on network (`virsh net-dumpxml default`)
+- [ ] dnsmasq process is running
+- [ ] Sandbox was created successfully
+- [ ] Sandbox has unique MAC (different from source)
+- [ ] Cloud-init ISO was created in sandbox directory
+- [ ] Cloud-init ISO has unique instance-id
+- [ ] Sandbox is in "running" state
+- [ ] Sandbox network interface shows TX packets > 0
+- [ ] No duplicate MACs across VMs
+- [ ] Sufficient host memory available
+- [ ] Sufficient disk space in work directory
+
+---
+
+### Getting Help
+
+If issues persist after following this guide:
+
+1. Collect diagnostic info:
+   ```bash
+   fluid validate <source-vm> > validation.json
+   virsh dumpxml <sandbox-name> > sandbox.xml
+   virsh net-dumpxml default > network.xml
+   cat /var/lib/libvirt/images/sandboxes/<sandbox>/meta-data > meta-data.txt
+   cat /var/lib/libvirt/images/sandboxes/<sandbox>/user-data > user-data.txt
+   ```
+
+2. Check cloud-init logs from inside VM if accessible
+
+3. File an issue with the collected diagnostic files
 
 ---
 

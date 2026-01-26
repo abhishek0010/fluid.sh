@@ -1,0 +1,12 @@
+# Control Node
+# root@46.62.252.44
+# Host 1
+root@37.27.255.228
+# Host 2
+root@46.62.252.44
+# Host 3
+root@46.62.225.179
+
+
+
+# Hey can create a sandbox from test-vm-3 and install an httpd server, make sure it runs and serve a simple HTML page from it and create an Ansible playbook to reproduce it.

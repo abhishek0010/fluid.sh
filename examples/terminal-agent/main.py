@@ -13,6 +13,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+import config
 from agent import AgentLoop
 from llm import create_provider
 from middleware import create_default_middleware_chain
@@ -144,8 +145,8 @@ def print_response(response: Any) -> None:
 
 
 def get_sandbox_api_base() -> str:
-    """Get the sandbox API base URL from environment."""
-    return os.getenv("SANDBOX_API_BASE", "http://localhost:8080")
+    """Get the sandbox API base URL from config or environment."""
+    return config.get_sandbox_api_base()
 
 
 def get_provider_config() -> tuple[str, str, str, str | None, str | None]:
@@ -155,7 +156,7 @@ def get_provider_config() -> tuple[str, str, str, str | None, str | None]:
     Environment variables:
         LLM_PROVIDER: Provider type (openai, openrouter, local). Default: openai
         LLM_API_KEY: API key (falls back to OPENAI_API_KEY or OPENROUTER_API_KEY)
-        LLM_MODEL: Model identifier. Default: gpt-4o
+        LLM_MODEL: Model identifier. Default: gpt-5.2
         LLM_BASE_URL: Base URL override (required for local provider)
         OPENROUTER_SITE_URL: Site URL for OpenRouter attribution
 
@@ -176,11 +177,11 @@ def get_provider_config() -> tuple[str, str, str, str | None, str | None]:
 
     # Get model based on provider defaults
     default_models = {
-        "openai": "gpt-4o",
-        "openrouter": "anthropic/claude-sonnet-4",
+        "openai": "gpt-5.2",
+        "openrouter": "anthropic/claude-sonnet-4.5",
         "local": "llama3.2",
     }
-    model = os.getenv("LLM_MODEL", default_models.get(provider_type, "gpt-4o"))
+    model = os.getenv("LLM_MODEL", default_models.get(provider_type, "gpt-5.2"))
 
     base_url = os.getenv("LLM_BASE_URL")
     site_url = os.getenv("OPENROUTER_SITE_URL")
@@ -254,6 +255,7 @@ async def run_basic_repl(agent: AgentLoop, provider_type: str, model: str) -> No
     """Run the agent in basic REPL mode without TUI."""
     print(f"Terminal Agent ({provider_type}: {model})")
     print("Type 'exit' or 'quit' to exit, 'reset' to clear history")
+    print("Type '/settings' to change configuration")
     print("-" * 40)
 
     while True:
@@ -275,6 +277,15 @@ async def run_basic_repl(agent: AgentLoop, provider_type: str, model: str) -> No
         if user_input.lower() == "reset":
             agent.reset()
             print("Conversation reset.")
+            continue
+
+        if user_input.lower() == "/settings":
+            current_host = config.get_sandbox_api_base()
+            print(f"\nCurrent Sandbox Host: {current_host}")
+            new_host = input("New Host (leave empty to keep): ").strip()
+            if new_host:
+                config.set_sandbox_api_base(new_host)
+                print("Settings saved. Please restart the agent to apply changes.")
             continue
 
         responses = await agent.run(user_input)
@@ -317,6 +328,25 @@ async def run_interactive(use_tui: bool = True) -> None:
         await mcp_manager.disconnect_all()
 
 
+async def run_setup_wizard() -> None:
+    """Run interactive setup wizard."""
+    print("\n" + "=" * 40)
+    print("Terminal Agent Setup")
+    print("=" * 40)
+    print("It looks like this is your first time running the agent.")
+    print("Please configure the Virsh Sandbox host.")
+
+    default_host = "http://localhost:8080"
+    host = input(f"\nSandbox Host [{default_host}]: ").strip()
+
+    if not host:
+        host = default_host
+
+    config.set_sandbox_api_base(host)
+    print(f"\nConfiguration saved to {config.CONFIG_FILE}")
+    print("=" * 40 + "\n")
+
+
 async def main_async() -> None:
     """Async main entry point."""
     parser = argparse.ArgumentParser(
@@ -328,6 +358,10 @@ async def main_async() -> None:
         help="Use basic REPL mode instead of TUI",
     )
     args = parser.parse_args()
+
+    # Check for config
+    if not config.ensure_config_exists():
+        await run_setup_wizard()
 
     await run_interactive(use_tui=not args.basic)
 

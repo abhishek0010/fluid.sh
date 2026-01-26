@@ -29,9 +29,9 @@ class TestLLMConfig:
 
     def test_basic_config(self) -> None:
         """Test basic configuration."""
-        config = LLMConfig(api_key="test-key", model="gpt-4o")
+        config = LLMConfig(api_key="test-key", model="gpt-5.2")
         assert config.api_key == "test-key"
-        assert config.model == "gpt-4o"
+        assert config.model == "gpt-5.2"
         assert config.base_url is None
         assert config.extra_headers is None
 
@@ -39,12 +39,12 @@ class TestLLMConfig:
         """Test configuration with all fields."""
         config = LLMConfig(
             api_key="test-key",
-            model="gpt-4o",
+            model="gpt-5.2",
             base_url="https://custom.api.com",
             extra_headers={"X-Custom": "value"},
         )
         assert config.api_key == "test-key"
-        assert config.model == "gpt-4o"
+        assert config.model == "gpt-5.2"
         assert config.base_url == "https://custom.api.com"
         assert config.extra_headers == {"X-Custom": "value"}
 
@@ -55,11 +55,11 @@ class TestOpenAIProvider:
     @patch("llm.OpenAI")
     def test_initialization(self, mock_openai: MagicMock) -> None:
         """Test provider initialization."""
-        config = LLMConfig(api_key="test-key", model="gpt-4o")
+        config = LLMConfig(api_key="test-key", model="gpt-5.2")
         provider = OpenAIProvider(config)
 
         assert provider.name == "openai"
-        assert provider.model == "gpt-4o"
+        assert provider.model == "gpt-5.2"
         mock_openai.assert_called_once_with(api_key="test-key", base_url=None)
 
     @patch("llm.OpenAI")
@@ -67,7 +67,7 @@ class TestOpenAIProvider:
         """Test provider initialization with custom base URL."""
         config = LLMConfig(
             api_key="test-key",
-            model="gpt-4o",
+            model="gpt5.2",
             base_url="https://custom.api.com",
         )
         provider = OpenAIProvider(config)
@@ -84,7 +84,7 @@ class TestOpenAIProvider:
         mock_openai.return_value = mock_client
         mock_client.chat.completions.create.return_value = MockChatCompletion()
 
-        config = LLMConfig(api_key="test-key", model="gpt-4o")
+        config = LLMConfig(api_key="test-key", model="gpt-5.2")
         provider = OpenAIProvider(config)
 
         messages = [{"role": "user", "content": "Hello"}]
@@ -93,7 +93,7 @@ class TestOpenAIProvider:
         result = provider.chat_completion(messages, tools, "auto")
 
         mock_client.chat.completions.create.assert_called_once_with(
-            model="gpt-4o",
+            model="gpt-5.2",
             messages=messages,
             tools=tools,
             tool_choice="auto",
@@ -106,14 +106,14 @@ class TestOpenAIProvider:
         mock_openai.return_value = mock_client
         mock_client.chat.completions.create.return_value = MockChatCompletion()
 
-        config = LLMConfig(api_key="test-key", model="gpt-4o")
+        config = LLMConfig(api_key="test-key", model="gpt-5.2")
         provider = OpenAIProvider(config)
 
         messages = [{"role": "user", "content": "Hello"}]
         result = provider.chat_completion(messages)
 
         mock_client.chat.completions.create.assert_called_once_with(
-            model="gpt-4o",
+            model="gpt-5.2",
             messages=messages,
             tools=None,
             tool_choice=None,
@@ -257,12 +257,12 @@ class TestCreateProvider:
         provider = create_provider(
             provider_type="openai",
             api_key="test-key",
-            model="gpt-4o",
+            model="gpt-5.2",
         )
 
         assert isinstance(provider, OpenAIProvider)
         assert provider.name == "openai"
-        assert provider.model == "gpt-4o"
+        assert provider.model == "gpt-5.2"
 
     @patch("llm.OpenAI")
     def test_create_openrouter_provider(self, mock_openai: MagicMock) -> None:
@@ -321,7 +321,7 @@ class TestCreateProvider:
         provider = create_provider(
             provider_type="openai",
             api_key="test-key",
-            model="gpt-4o",
+            model="gpt-5.2",
             base_url="https://custom.api.com",
         )
 
@@ -334,7 +334,7 @@ class TestLLMProviderInterface:
     @patch("llm.OpenAI")
     def test_provider_has_required_properties(self, mock_openai: MagicMock) -> None:
         """Test that providers implement required interface."""
-        config = LLMConfig(api_key="test-key", model="gpt-4o")
+        config = LLMConfig(api_key="test-key", model="gpt-5.2")
         provider = OpenAIProvider(config)
 
         # Should have name property

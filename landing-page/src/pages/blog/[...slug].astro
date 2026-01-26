@@ -1,0 +1,107 @@
+---
+import { type CollectionEntry, getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export async function getStaticPaths() {
+    const posts = await getCollection("blog");
+    return posts.map((post) => ({
+        params: { slug: post.slug },
+        props: post,
+    }));
+}
+type Props = CollectionEntry<"blog">;
+
+const post = Astro.props;
+const { Content } = await post.render();
+---
+
+<BaseLayout title={post.data.title} description={post.data.description}>
+    <main class="px-6 py-24">
+        <article class="mx-auto max-w-2xl">
+            <header class="mb-12">
+                <a href="/" class="text-sm font-mono text-neutral-500 hover:text-blue-400 transition-colors">
+                    <span class="text-blue-400">$</span> cd ..
+                </a>
+                
+                <div class="mt-8 flex gap-3 items-center">
+                    <h1 class="text-2xl tracking-tight md:text-3xl font-logo">
+                        <span class="text-blue-400">#</span> {post.data.title}
+                    </h1>
+                </div>
+
+                <div class="mt-2 text-sm font-mono text-neutral-500">
+                    {
+                        post.data.pubDate.toLocaleDateString("en-us", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                        })
+                    }
+                </div>
+            </header>
+
+            <div class="prose prose-invert prose-blue max-w-none">
+                <Content />
+            </div>
+        </article>
+    </main>
+</BaseLayout>
+
+<style is:global>
+    /* Manual prose-like styles since we don't have @tailwindcss/typography */
+    .prose h2 {
+        font-size: 1.25rem;
+        color: #e5e5e5; /* neutral-200 */
+        margin-top: 2.5rem;
+        margin-bottom: 1rem;
+        font-weight: normal;
+    }
+
+    .prose h3 {
+        font-size: 1.1rem;
+        color: #e5e5e5;
+        margin-top: 2rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .prose p {
+        margin-bottom: 1.25rem;
+        color: #a3a3a3; /* neutral-400 */
+        line-height: 1.6;
+    }
+
+    .prose ul {
+        list-style-type: disc;
+        padding-left: 1.5rem;
+        margin-bottom: 1.25rem;
+        color: #a3a3a3;
+    }
+
+    .prose li {
+        margin-bottom: 0.5rem;
+    }
+
+    .prose blockquote {
+        border-left: 2px solid #3b82f6; /* blue-500 */
+        padding-left: 1rem;
+        margin-left: 0;
+        margin-right: 0;
+        font-style: italic;
+        color: #d4d4d4; /* neutral-300 */
+    }
+
+    .prose strong {
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    .prose a {
+        color: #60a5fa;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+    }
+
+    .prose a:hover {
+        color: #93c5fd;
+    }
+</style>

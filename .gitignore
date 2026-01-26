@@ -7,3 +7,6 @@ dist/
 .venv
 act.env
 .claude
+
+# macOS-specific files
+.DS_Store

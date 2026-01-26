@@ -121,9 +121,9 @@ class TestStatusBar:
     """Tests for StatusBar widget."""
 
     def test_status_bar_init(self) -> None:
-        bar = StatusBar(provider="openai", model="gpt-4o")
+        bar = StatusBar(provider="openai", model="gpt-5.2")
         assert bar.provider == "openai"
-        assert bar.model == "gpt-4o"
+        assert bar.model == "gpt-5.2"
 
 
 class TestTerminalAgentApp:
@@ -134,11 +134,11 @@ class TestTerminalAgentApp:
         app = TerminalAgentApp(
             agent=agent,
             provider_type="openai",
-            model="gpt-4o",
+            model="gpt-5.2",
         )
         assert app.agent is agent
         assert app.provider_type == "openai"
-        assert app.model == "gpt-4o"
+        assert app.model == "gpt-5.2"
         assert app._thinking_indicator is None
 
     def test_app_bindings(self) -> None:

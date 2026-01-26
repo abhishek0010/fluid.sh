@@ -14,6 +14,7 @@ tmux-client/      # Go API - Terminal, files, commands
 web/              # React - UI for monitoring/approval
 sdk/              # Python SDK - Build agents
 examples/         # Working agent examples
+landing-page/     # Astro - Marketing site (fluid.sh)
 ```
 
 ## Testing Required
@@ -36,3 +37,4 @@ cd sdk/virsh-sandbox-py && pytest      # Test SDK
 - @sdk/AGENTS.md
 - @web/AGENTS.md
 - @examples/agent-example/AGENTS.md
+- @landing-page/AGENTS.md

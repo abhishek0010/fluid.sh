@@ -1,23 +1,42 @@
 pre-commit:
   parallel: true
   commands:
-    # Go - virsh-sandbox API
-    fmt-virsh-sandbox:
+    # Go - fluid CLI
+    fmt-fluid:
       glob: "*.go"
-      root: "virsh-sandbox"
+      root: "fluid"
       run: make fmt
       stage_fixed: true
-    vet-virsh-sandbox:
+    vet-fluid:
       glob: "*.go"
-      root: "virsh-sandbox"
+      root: "fluid"
       run: make vet
-    test-virsh-sandbox:
+    test-fluid:
       glob: "*.go"
-      root: "virsh-sandbox"
+      root: "fluid"
       run: make test
-    lint-virsh-sandbox:
+    lint-fluid:
       glob: "*.go"
-      root: "virsh-sandbox"
+      root: "fluid"
+      run: make lint
+
+    # Go - fluid CLI
+    fmt-fluid-remote:
+      glob: "*.go"
+      root: "fluid-remote"
+      run: make fmt
+      stage_fixed: true
+    vet-fluid-remote:
+      glob: "*.go"
+      root: "fluid-remote"
+      run: make vet
+    test-fluid-remote:
+      glob: "*.go"
+      root: "fluid-remote"
+      run: make test
+    lint-fluid-remote:
+      glob: "*.go"
+      root: "fluid-remote"
       run: make lint
 
     # Python SDK
@@ -52,6 +71,21 @@ pre-commit:
       root: "web"
       run: bun lint
     typecheck-web:
+      glob: "*.ts"
+      root: "web"
+      run: "bun typecheck"
+
+    # Landing Page
+    fmt-landing-page:
+      glob: "*.{ts,tsx,js,jsx,json,css,md}"
+      root: "web"
+      run: bun format
+      stage_fixed: true
+    lint-landing-page:
+      glob: "*.ts"
+      root: "web"
+      run: bun lint
+    typecheck-landing-page:
       glob: "*.ts"
       root: "web"
       run: "bun typecheck"

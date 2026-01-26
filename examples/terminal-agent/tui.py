@@ -16,6 +16,8 @@ from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, Input, Label, Markdown, Static, Button
 from textual.worker import Worker
 
+import config
+
 if TYPE_CHECKING:
     from agent import AgentLoop, AgentResponse, ToolResult
     from tools import ToolRegistry
@@ -320,6 +322,70 @@ class CompletionScreen(ModalScreen[None]):
         self.dismiss()
 
 
+class SettingsScreen(ModalScreen[bool]):
+    """Screen for changing settings."""
+
+    DEFAULT_CSS = """
+    SettingsScreen {
+        align: center middle;
+    }
+
+    #settings-container {
+        width: 60%;
+        height: auto;
+        border: thick $primary;
+        background: $surface;
+        padding: 1 2;
+    }
+
+    #settings-title {
+        text-align: center;
+        width: 100%;
+        background: $primary;
+        color: $text;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    .settings-label {
+        margin-top: 1;
+    }
+
+    #settings-buttons {
+        margin-top: 2;
+        align: center middle;
+    }
+
+    Button {
+        margin: 0 2;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        current_host = config.get_sandbox_api_base()
+        with VerticalScroll(id="settings-container"):
+            yield Label("Settings", id="settings-title")
+            
+            yield Label("Sandbox Host:", classes="settings-label")
+            yield Input(value=current_host, id="host-input")
+
+            with Horizontal(id="settings-buttons"):
+                yield Button("Save", variant="success", id="save")
+                yield Button("Cancel", variant="error", id="cancel")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "save":
+            host_input = self.query_one("#host-input", Input)
+            new_host = host_input.value.strip()
+            if new_host:
+                config.set_sandbox_api_base(new_host)
+                self.dismiss(True)
+            else:
+                self.dismiss(False)
+        else:
+            self.dismiss(False)
+
+
 class TerminalAgentApp(App):
     """Main TUI application for the terminal agent."""
 
@@ -332,6 +398,8 @@ class TerminalAgentApp(App):
         dock: bottom;
         height: auto;
         padding: 1;
+        background: $surface;
+        padding: 1 2;
         background: $surface;
     }
 
@@ -384,6 +452,18 @@ class TerminalAgentApp(App):
         # Clear input
         input_widget = self.query_one("#user-input", Input)
         input_widget.value = ""
+
+        if user_input.lower() == "/settings":
+            def check_settings(saved: bool) -> None:
+                if saved:
+                    self.query_one("#conversation", ConversationView).add_message(
+                        "Settings saved. Please restart the agent to apply changes.", 
+                        role="assistant"
+                    )
+                self.query_one("#user-input", Input).focus()
+            
+            self.push_screen(SettingsScreen(), check_settings)
+            return
 
         conv = self.query_one("#conversation", ConversationView)
 

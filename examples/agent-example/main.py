@@ -296,7 +296,7 @@ def main():
     sandbox = None
     agent_id = str(uuid4())
     try:
-        sandbox = run_blocking_with_loader(client.sandbox.create_sandbox, source_vm_name="test-vm", agent_id=agent_id, auto_start=True, wait_for_ip=True, request_timeout=180.0, title="Creating sandbox...").sandbox
+        sandbox = run_blocking_with_loader(client.sandbox.create_sandbox, source_vm_name="test-vm-1", agent_id=agent_id, auto_start=True, wait_for_ip=True, request_timeout=180.0, title="Creating sandbox...").sandbox
 
         if(sandbox and sandbox.id):
             run_agent(prompt, sandbox.id)
