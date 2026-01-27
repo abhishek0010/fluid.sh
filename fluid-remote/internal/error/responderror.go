@@ -3,7 +3,7 @@ package error
 import (
 	"net/http"
 
-	serverJSON "virsh-sandbox/internal/json"
+	serverJSON "github.com/aspectrr/fluid.sh/fluid-remote/internal/json"
 )
 
 type ErrorResponse struct {

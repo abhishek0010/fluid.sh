@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 
-	"virsh-sandbox/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/store"
 )
 
 // PlaybookService manages Ansible playbook creation and rendering.

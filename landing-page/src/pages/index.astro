@@ -115,15 +115,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                     </div>
 
                     <!-- Workflow Steps -->
-                    <div class="relative">
+                    <!-- <div class="relative">
                         <h3 class="text-neutral-400 text-sm font-mono mb-4 uppercase tracking-wider">How it works</h3>
 
-                        <!-- Horizontal line connecting steps -->
-                        <div class="hidden md:block absolute top-[4.5rem] left-0 right-0 h-px bg-neutral-800"></div>
-                        <div id="workflow-progress" class="hidden md:block absolute top-[4.5rem] left-0 h-px bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-1000 ease-out" style="width: 0%;"></div>
+
+                        <div class="hidden md:block absolute top-18 left-0 right-0 h-px bg-neutral-800"></div>
+                        <div id="workflow-progress" class="hidden md:block absolute top-18 left-0 h-px bg-linear-to-r from-blue-500 to-blue-400 transition-all duration-1000 ease-out" style="width: 0%;"></div>
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <!-- Step 1 -->
                             <div class="workflow-step opacity-0 translate-y-4 transition-all duration-500" data-step="1">
                                 <div class="relative flex flex-col items-center text-center">
                                     <div class="w-10 h-10 rounded-full bg-neutral-900 border-2 border-neutral-700 flex items-center justify-center mb-3 transition-all duration-300 workflow-dot">
@@ -134,7 +133,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                                 </div>
                             </div>
 
-                            <!-- Step 2 -->
+
                             <div class="workflow-step opacity-0 translate-y-4 transition-all duration-500" data-step="2">
                                 <div class="relative flex flex-col items-center text-center">
                                     <div class="w-10 h-10 rounded-full bg-neutral-900 border-2 border-neutral-700 flex items-center justify-center mb-3 transition-all duration-300 workflow-dot">
@@ -145,7 +144,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                                 </div>
                             </div>
 
-                            <!-- Step 3 -->
                             <div class="workflow-step opacity-0 translate-y-4 transition-all duration-500" data-step="3">
                                 <div class="relative flex flex-col items-center text-center">
                                     <div class="w-10 h-10 rounded-full bg-neutral-900 border-2 border-neutral-700 flex items-center justify-center mb-3 transition-all duration-300 workflow-dot">
@@ -156,7 +154,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                                 </div>
                             </div>
 
-                            <!-- Step 4 -->
                             <div class="workflow-step opacity-0 translate-y-4 transition-all duration-500" data-step="4">
                                 <div class="relative flex flex-col items-center text-center">
                                     <div class="w-10 h-10 rounded-full bg-neutral-900 border-2 border-neutral-700 flex items-center justify-center mb-3 transition-all duration-300 workflow-dot">
@@ -167,13 +164,15 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
 
                     <script>
                         // Workflow animation
                         function initWorkflowAnimation() {
-                            const steps = document.querySelectorAll('.workflow-step');
+                            const steps = document.querySelectorAll<HTMLElement>('.workflow-step');
                             const progress = document.getElementById('workflow-progress');
+                            const workflowStep = document.querySelector('.workflow-step');
+                            if (!workflowStep) return;
 
                             const observer = new IntersectionObserver((entries) => {
                                 entries.forEach(entry => {
@@ -187,10 +186,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                                                 // Light up the dot
                                                 const dot = step.querySelector('.workflow-dot');
                                                 const num = step.querySelector('.workflow-dot span');
-                                                dot.classList.remove('border-neutral-700');
-                                                dot.classList.add('border-blue-500', 'shadow-[0_0_10px_2px_rgba(59,130,246,0.3)]');
-                                                num.classList.remove('text-neutral-500');
-                                                num.classList.add('text-blue-400');
+                                                dot?.classList.remove('border-neutral-700');
+                                                dot?.classList.add('border-blue-500', 'shadow-[0_0_10px_2px_rgba(59,130,246,0.3)]');
+                                                num?.classList.remove('text-neutral-500');
+                                                num?.classList.add('text-blue-400');
 
                                                 // Update progress bar
                                                 if (progress) {
@@ -204,7 +203,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                                 });
                             }, { threshold: 0.5 });
 
-                            observer.observe(document.querySelector('.workflow-step'));
+                            observer.observe(workflowStep);
                         }
 
                         if (document.readyState === 'loading') {
@@ -220,7 +219,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                     <!-- Timeline container -->
                     <div id="usage-timeline" class="relative pl-6">
                         <!-- Vertical timeline line - grows as items appear -->
-                        <div id="timeline-line" class="absolute left-3 top-0 w-px bg-gradient-to-b from-blue-400 via-neutral-500 to-neutral-600 transition-all duration-500 ease-out" style="height: 0;"></div>
+                        <div id="timeline-line" class="absolute left-3 top-0 w-px bg-linear-to-b from-blue-400 via-neutral-500 to-neutral-600 transition-all duration-500 ease-out" style="height: 0;"></div>
 
                         <!-- User Prompt - Blue accent -->
                         <div class="timeline-item relative mb-3 opacity-0" data-color="blue">
@@ -444,7 +443,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                         ...Array.from("tpd server on host-1, can you figure out what OS is on that host and setup a httpd server hosting a test html file?").flatMap(c => [['type', c]]),
                     ];
 
-                    const dotColors = {
+                    interface DotColor {
+                        dot: string;
+                        glow: string;
+                        border: string;
+                    }
+
+                    const dotColors: Record<string, DotColor> = {
                         blue: { dot: 'bg-blue-400', glow: 'shadow-[0_0_8px_2px_rgba(96,165,250,0.6)]', border: 'border-blue-400' },
                         neutral: { dot: 'bg-neutral-400', glow: 'shadow-[0_0_6px_1px_rgba(163,163,163,0.4)]', border: 'border-neutral-600' },
                         amber: { dot: 'bg-amber-400', glow: 'shadow-[0_0_8px_2px_rgba(251,191,36,0.5)]', border: 'border-amber-400/50' },
@@ -452,7 +457,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                     };
 
                     // Loading duration varies by command type
-                    const loadingDurations = {
+                    const loadingDurations: Record<string, number> = {
                         'create_sandbox': 5000,
                         'run_command': 1000,
                         'create_playbook': 500,
@@ -467,7 +472,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                     function typeNext() {
                         if (sequenceIndex >= typingSequence.length) {
                             // Done typing, hide cursor and start timeline
-                            document.getElementById('cursor').style.display = 'none';
+                            const cursor = document.getElementById('cursor');
+                            if (cursor) cursor.style.display = 'none';
                             setTimeout(startTimeline, 400);
                             return;
                         }
@@ -477,19 +483,22 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
                         if (action === 'type') {
                             currentText += char;
-                            document.getElementById('typed-prompt').textContent = currentText;
+                            const typedPrompt = document.getElementById('typed-prompt');
+                            if (typedPrompt) typedPrompt.textContent = currentText;
                             setTimeout(typeNext, 30 + Math.random() * 40);
                         } else if (action === 'delete') {
                             currentText = currentText.slice(0, -1);
-                            document.getElementById('typed-prompt').textContent = currentText;
+                            const typedPrompt = document.getElementById('typed-prompt');
+                            if (typedPrompt) typedPrompt.textContent = currentText;
                             setTimeout(typeNext, 50);
-                        } else if (action === 'pause') {
+                        } else if (action === 'pause' && typeof char === 'number') {
                             setTimeout(typeNext, char);
                         }
                     }
 
-                    function updateTimelineHeight(items, upToIndex) {
+                    function updateTimelineHeight(items: HTMLElement[], upToIndex: number) {
                         const timeline = document.getElementById('timeline-line');
+                        if (!timeline) return;
                         let height = 0;
                         for (let i = 0; i <= upToIndex; i++) {
                             if (items[i]) {
@@ -499,16 +508,17 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                         timeline.style.height = `${height}px`;
                     }
 
-                    function showItem(item, index, items) {
+                    function showItem(item: HTMLElement, index: number, items: HTMLElement[]) {
                         // Show item
                         item.classList.remove('opacity-0');
                         item.classList.add('opacity-100');
 
                         // Light up dot with pulsing during loading
                         const dot = item.querySelector('.timeline-dot');
-                        const color = item.dataset.color;
+                        if (!dot) return;
+                        const color = item.dataset.color || 'neutral';
                         const colors = dotColors[color];
-                        const tool = item.dataset.tool;
+                        const tool = item.dataset.tool || '';
 
                         dot.classList.remove('bg-neutral-700');
                         dot.classList.add(colors.dot, colors.glow);
@@ -560,14 +570,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                         if (timelineStarted) return;
                         timelineStarted = true;
 
-                        const items = Array.from(document.querySelectorAll('.timeline-item'));
+                        const items = Array.from(document.querySelectorAll<HTMLElement>('.timeline-item'));
 
                         // Skip the first item (prompt) as it's already shown
                         const toolItems = items.slice(1);
 
                         let delay = 0;
                         toolItems.forEach((item, index) => {
-                            const tool = item.dataset.tool;
+                            const tool = item.dataset.tool || '';
                             const loadingDuration = loadingDurations[tool] || 500;
 
                             setTimeout(() => {
@@ -582,11 +592,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                     // Start animation when section is in view
                     function initAnimation() {
                         const timeline = document.getElementById('usage-timeline');
+                        if (!timeline) return;
                         const observer = new IntersectionObserver((entries) => {
                             entries.forEach(entry => {
                                 if (entry.isIntersecting) {
-                                    const items = Array.from(document.querySelectorAll('.timeline-item'));
+                                    const items = Array.from(document.querySelectorAll<HTMLElement>('.timeline-item'));
                                     const firstItem = items[0];
+                                    if (!firstItem) return;
 
                                     // Show first item (prompt box) immediately
                                     firstItem.classList.remove('opacity-0');
@@ -594,13 +606,17 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
                                     // Light up the prompt dot
                                     const dot = firstItem.querySelector('.timeline-dot');
-                                    dot.classList.remove('bg-neutral-700');
-                                    dot.classList.add('bg-blue-400', 'shadow-[0_0_8px_2px_rgba(96,165,250,0.6)]');
+                                    if (dot) {
+                                        dot.classList.remove('bg-neutral-700');
+                                        dot.classList.add('bg-blue-400', 'shadow-[0_0_8px_2px_rgba(96,165,250,0.6)]');
+                                    }
 
                                     // Update border
                                     const content = firstItem.querySelector('.px-4');
-                                    content.classList.remove('border-neutral-700');
-                                    content.classList.add('border-blue-400');
+                                    if (content) {
+                                        content.classList.remove('border-neutral-700');
+                                        content.classList.add('border-blue-400');
+                                    }
 
                                     // Set initial timeline height to just the first item
                                     updateTimelineHeight(items, 0);

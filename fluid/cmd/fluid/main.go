@@ -16,23 +16,25 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"fluid/internal/config"
-	"fluid/internal/libvirt"
-	"fluid/internal/sshca"
-	"fluid/internal/sshkeys"
-	"fluid/internal/store"
-	"fluid/internal/store/sqlite"
-	"fluid/internal/tui"
-	"fluid/internal/vm"
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid/internal/sshca"
+	"github.com/aspectrr/fluid.sh/fluid/internal/sshkeys"
+	"github.com/aspectrr/fluid.sh/fluid/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid/internal/store/sqlite"
+	"github.com/aspectrr/fluid.sh/fluid/internal/telemetry"
+	"github.com/aspectrr/fluid.sh/fluid/internal/tui"
+	"github.com/aspectrr/fluid.sh/fluid/internal/vm"
 )
 
 var (
-	cfgFile    string
-	outputJSON bool
-	cfg        *config.Config
-	dataStore  store.Store
-	vmService  *vm.Service
-	libvirtMgr libvirt.Manager
+	cfgFile          string
+	outputJSON       bool
+	cfg              *config.Config
+	dataStore        store.Store
+	vmService        *vm.Service
+	libvirtMgr       libvirt.Manager
+	telemetryService telemetry.Service
 )
 
 func main() {
@@ -55,6 +57,9 @@ Local SQLite for state, direct libvirt access via local socket or SSH.`,
 		return initServices()
 	},
 	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+		if telemetryService != nil {
+			telemetryService.Close()
+		}
 		if dataStore != nil {
 			return dataStore.Close()
 		}
@@ -86,6 +91,7 @@ func init() {
 	rootCmd.AddCommand(hostsCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(playbooksCmd)
 	rootCmd.AddCommand(tuiCmd)
 }
 
@@ -173,6 +179,13 @@ func initServices() error {
 		SSHCAPubKey:        sshCAPubKey,
 	}, slog.Default())
 
+	// Initialize telemetry
+	telemetryService, err = telemetry.NewService(cfg.Telemetry)
+	if err != nil {
+		// Fallback to no-op if telemetry fails
+		telemetryService = telemetry.NewNoopService()
+	}
+
 	// Create VM service with key manager
 	vmService = vm.NewService(libvirtMgr, dataStore, vm.Config{
 		Network:            cfg.Libvirt.Network,
@@ -181,7 +194,7 @@ func initServices() error {
 		CommandTimeout:     cfg.VM.CommandTimeout,
 		IPDiscoveryTimeout: cfg.VM.IPDiscoveryTimeout,
 		SSHProxyJump:       cfg.SSH.ProxyJump,
-	}, vm.WithKeyManager(keyMgr))
+	}, vm.WithKeyManager(keyMgr), vm.WithTelemetry(telemetryService))
 
 	return nil
 }
@@ -300,13 +313,11 @@ var createCmd = &cobra.Command{
 	Long:  `Create a new sandbox VM by cloning from a source VM`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sourceVM, _ := cmd.Flags().GetString("source-vm")
-		name, _ := cmd.Flags().GetString("name")
 		agentID, _ := cmd.Flags().GetString("agent-id")
 		cpu, _ := cmd.Flags().GetInt("cpu")
 		memory, _ := cmd.Flags().GetInt("memory")
 		autoStart, _ := cmd.Flags().GetBool("auto-start")
 		waitIP, _ := cmd.Flags().GetBool("wait-ip")
-		skipValidation, _ := cmd.Flags().GetBool("skip-validation")
 
 		if sourceVM == "" {
 			return fmt.Errorf("--source-vm is required")
@@ -317,45 +328,7 @@ var createCmd = &cobra.Command{
 
 		ctx := context.Background()
 
-		// Pre-flight validation checks (unless skipped)
-		var validationWarnings []string
-		if !skipValidation {
-			// Validate source VM
-			vmValidation, err := libvirtMgr.ValidateSourceVM(ctx, sourceVM)
-			if err != nil {
-				// Log warning but continue - validation is best-effort
-				validationWarnings = append(validationWarnings,
-					fmt.Sprintf("Could not validate source VM: %v", err))
-			} else {
-				if !vmValidation.Valid {
-					// Return all errors
-					for _, e := range vmValidation.Errors {
-						return fmt.Errorf("source VM validation failed: %s", e)
-					}
-				}
-				validationWarnings = append(validationWarnings, vmValidation.Warnings...)
-			}
-
-			// Check host resources
-			memoryToCheck := memory
-			if memoryToCheck <= 0 {
-				memoryToCheck = cfg.VM.DefaultMemoryMB
-			}
-			resourceCheck, err := libvirtMgr.CheckHostResources(ctx, memoryToCheck)
-			if err != nil {
-				validationWarnings = append(validationWarnings,
-					fmt.Sprintf("Could not check host resources: %v", err))
-			} else {
-				if !resourceCheck.Valid {
-					for _, e := range resourceCheck.Errors {
-						return fmt.Errorf("resource check failed: %s", e)
-					}
-				}
-				validationWarnings = append(validationWarnings, resourceCheck.Warnings...)
-			}
-		}
-
-		sb, ip, err := vmService.CreateSandbox(ctx, sourceVM, agentID, name, cpu, memory, nil, autoStart, waitIP)
+		sb, ip, err := vmService.CreateSandbox(ctx, sourceVM, agentID, "", cpu, memory, nil, autoStart, waitIP)
 		if err != nil {
 			return err
 		}
@@ -368,9 +341,6 @@ var createCmd = &cobra.Command{
 		if ip != "" {
 			result["ip"] = ip
 		}
-		if len(validationWarnings) > 0 {
-			result["warnings"] = validationWarnings
-		}
 
 		output(result)
 		return nil
@@ -379,7 +349,6 @@ var createCmd = &cobra.Command{
 
 func init() {
 	createCmd.Flags().String("source-vm", "", "Source VM to clone from (required)")
-	createCmd.Flags().String("name", "", "Sandbox name (auto-generated if empty)")
 	createCmd.Flags().String("agent-id", "", "Agent ID (default: cli-agent)")
 	createCmd.Flags().Int("cpu", 0, "Number of vCPUs (default from config)")
 	createCmd.Flags().Int("memory", 0, "Memory in MB (default from config)")
@@ -926,14 +895,18 @@ This command checks:
 		if memoryToCheck <= 0 {
 			memoryToCheck = cfg.VM.DefaultMemoryMB
 		}
-		resourceCheck, err := libvirtMgr.CheckHostResources(ctx, memoryToCheck)
+		// Use default CPU count if not specified (for validation purposes)
+		cpuToCheck := cfg.VM.DefaultVCPUs
+		resourceCheck, err := libvirtMgr.CheckHostResources(ctx, cpuToCheck, memoryToCheck)
 		if err != nil {
 			allWarnings = append(allWarnings, fmt.Sprintf("Failed to check host resources: %v", err))
 		} else {
 			result["host_memory_total_mb"] = resourceCheck.TotalMemoryMB
 			result["host_memory_available_mb"] = resourceCheck.AvailableMemoryMB
+			result["host_cpus_available"] = resourceCheck.AvailableCPUs
 			result["host_disk_available_mb"] = resourceCheck.AvailableDiskMB
 			result["required_memory_mb"] = resourceCheck.RequiredMemoryMB
+			result["required_cpus"] = resourceCheck.RequiredCPUs
 			if !resourceCheck.Valid {
 				result["valid"] = false
 			}
@@ -1018,6 +991,73 @@ var versionCmd = &cobra.Command{
 	},
 }
 
+// --- Playbooks Command ---
+
+var playbooksCmd = &cobra.Command{
+	Use:   "playbooks",
+	Short: "List generated Ansible playbooks",
+	Long:  `List all generated Ansible playbooks and provide links to open them.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := context.Background()
+		playbooks, err := dataStore.ListPlaybooks(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		if outputJSON {
+			type playbookOutput struct {
+				ID        string `json:"id"`
+				Name      string `json:"name"`
+				Path      string `json:"path"`
+				CreatedAt string `json:"created_at"`
+			}
+
+			results := make([]playbookOutput, 0, len(playbooks))
+			for _, pb := range playbooks {
+				path := ""
+				if pb.FilePath != nil && *pb.FilePath != "" {
+					path = *pb.FilePath
+				} else {
+					path = filepath.Join(cfg.Ansible.PlaybooksDir, pb.Name+".yml")
+				}
+				results = append(results, playbookOutput{
+					ID:        pb.ID,
+					Name:      pb.Name,
+					Path:      path,
+					CreatedAt: pb.CreatedAt.Format(time.RFC3339),
+				})
+			}
+			output(map[string]any{
+				"playbooks": results,
+				"count":     len(results),
+			})
+			return nil
+		}
+
+		if len(playbooks) == 0 {
+			fmt.Println("No playbooks found.")
+			return nil
+		}
+
+		fmt.Printf("Found %d playbook(s):\n\n", len(playbooks))
+		for _, pb := range playbooks {
+			path := ""
+			if pb.FilePath != nil && *pb.FilePath != "" {
+				path = *pb.FilePath
+			} else {
+				path = filepath.Join(cfg.Ansible.PlaybooksDir, pb.Name+".yml")
+			}
+
+			absPath, _ := filepath.Abs(path)
+			// OSC 8 hyperlink
+			link := fmt.Sprintf("\033]8;;file://%s\033\\%s\033]8;;\033\\", absPath, path)
+
+			fmt.Printf("- %s: %s\n", pb.Name, link)
+		}
+		return nil
+	},
+}
+
 // --- TUI Command ---
 
 var tuiCmd = &cobra.Command{
@@ -1071,7 +1111,22 @@ func runTUI() error {
 		return fmt.Errorf("init services: %w", err)
 	}
 
-	agent := tui.NewFluidAgent(cfg, dataStore, vmService, libvirtMgr)
+	agent := tui.NewFluidAgent(cfg, dataStore, vmService, libvirtMgr, telemetryService)
+
+	// Ensure cleanup runs when the TUI exits (user quits or Ctrl+C)
+	defer func() {
+		if agent.CreatedSandboxCount() > 0 {
+			fmt.Printf("\nCleaning up %d session sandbox(es)...\n", agent.CreatedSandboxCount())
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := agent.Cleanup(ctx); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: cleanup failed: %v\n", err)
+			} else {
+				fmt.Println("Cleanup complete.")
+			}
+		}
+	}()
+
 	model := tui.NewModel("fluid", "local", "vm-agent", agent, cfg, configPath)
 	return tui.Run(model)
 }
@@ -1147,6 +1202,13 @@ func initServicesWithConfigAndLogger(loadedCfg *config.Config, logger *slog.Logg
 	// Create libvirt manager
 	libvirtMgr = libvirt.NewVirshManager(virshCfg, logger)
 
+	// Initialize telemetry
+	telemetryService, err = telemetry.NewService(cfg.Telemetry)
+	if err != nil {
+		// Fallback to no-op if telemetry fails
+		telemetryService = telemetry.NewNoopService()
+	}
+
 	// Create VM service with virsh config for remote host support
 	vmService = vm.NewService(libvirtMgr, dataStore, vm.Config{
 		Network:            cfg.Libvirt.Network,
@@ -1155,7 +1217,7 @@ func initServicesWithConfigAndLogger(loadedCfg *config.Config, logger *slog.Logg
 		CommandTimeout:     cfg.VM.CommandTimeout,
 		IPDiscoveryTimeout: cfg.VM.IPDiscoveryTimeout,
 		SSHProxyJump:       cfg.SSH.ProxyJump,
-	}, vm.WithVirshConfig(virshCfg), vm.WithLogger(logger), vm.WithKeyManager(keyMgr))
+	}, vm.WithVirshConfig(virshCfg), vm.WithLogger(logger), vm.WithKeyManager(keyMgr), vm.WithTelemetry(telemetryService))
 
 	return nil
 }

@@ -75,8 +75,8 @@ type Config struct {
 // DefaultConfig returns a configuration with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		CAKeyPath:             "/etc/virsh-sandbox/ssh_ca",
-		CAPubKeyPath:          "/etc/virsh-sandbox/ssh_ca.pub",
+		CAKeyPath:             "/etc/fluid-remote/ssh_ca",
+		CAPubKeyPath:          "/etc/fluid-remote/ssh_ca.pub",
 		WorkDir:               "/tmp/sshca",
 		DefaultTTL:            5 * time.Minute,
 		MaxTTL:                10 * time.Minute,

@@ -3,7 +3,7 @@ package error
 import (
 	"net/http"
 
-	serverJSON "fluid/internal/json"
+	serverJSON "github.com/aspectrr/fluid.sh/fluid/internal/json"
 )
 
 type ErrorResponse struct {

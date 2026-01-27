@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"virsh-sandbox/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/config"
 )
 
 // RemoteVirshManager implements Manager for remote libvirt hosts via SSH.
@@ -407,6 +407,185 @@ func (m *RemoteVirshManager) GetVMState(ctx context.Context, vmName string) (VMS
 		return VMStateUnknown, fmt.Errorf("get vm state: %w", err)
 	}
 	return parseVMStateHelper(out), nil
+}
+
+// ValidateSourceVM performs pre-flight checks on a source VM on the remote host.
+func (m *RemoteVirshManager) ValidateSourceVM(ctx context.Context, vmName string) (*VMValidationResult, error) {
+	if vmName == "" {
+		return nil, fmt.Errorf("vmName is required")
+	}
+
+	escapedName, err := shellEscape(vmName)
+	if err != nil {
+		return nil, fmt.Errorf("invalid VM name: %w", err)
+	}
+
+	result := &VMValidationResult{
+		Valid:    true,
+		Warnings: []string{},
+		Errors:   []string{},
+	}
+
+	// Check VM state
+	state, err := m.GetVMState(ctx, vmName)
+	if err != nil {
+		result.Valid = false
+		result.Errors = append(result.Errors, fmt.Sprintf("Failed to get VM state: %v", err))
+		return result, nil
+	}
+	result.State = state
+
+	// Check MAC address using domiflist
+	out, err := m.runSSH(ctx, fmt.Sprintf("virsh domiflist %s", escapedName))
+	if err != nil {
+		result.Warnings = append(result.Warnings,
+			fmt.Sprintf("Could not get network interfaces: %v", err))
+	} else {
+		lines := strings.Split(out, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "Interface") || strings.HasPrefix(line, "-") {
+				continue
+			}
+			fields := strings.Fields(line)
+			if len(fields) >= 5 {
+				mac := fields[4]
+				if strings.Count(mac, ":") == 5 {
+					result.MACAddress = mac
+					result.HasNetwork = true
+					break
+				}
+			}
+		}
+		if result.MACAddress == "" {
+			result.Warnings = append(result.Warnings,
+				"Could not find MAC address - source VM may not have a network interface")
+		}
+	}
+
+	// Check IP address if running
+	switch state {
+	case VMStateRunning:
+		out, err = m.runSSH(ctx, fmt.Sprintf("virsh domifaddr %s --source lease", escapedName))
+		if err == nil {
+			ip, mac := parseDomIfAddrIPv4WithMACHelper(out)
+			if ip != "" {
+				result.IPAddress = ip
+				if mac != "" && result.MACAddress == "" {
+					result.MACAddress = mac
+					result.HasNetwork = true
+				}
+			} else {
+				result.Warnings = append(result.Warnings,
+					"Source VM is running but has no IP address assigned")
+				result.Warnings = append(result.Warnings,
+					"This may indicate cloud-init or DHCP issues - cloned sandboxes may also fail to get IPs")
+			}
+		}
+	case VMStateShutOff:
+		result.Warnings = append(result.Warnings,
+			"Source VM is shut off - cannot verify network configuration (IP/DHCP)")
+	}
+
+	return result, nil
+}
+
+// CheckHostResources validates that the remote host has sufficient resources.
+func (m *RemoteVirshManager) CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*ResourceCheckResult, error) {
+	result := &ResourceCheckResult{
+		Valid:            true,
+		RequiredCPUs:     requiredCPUs,
+		RequiredMemoryMB: requiredMemoryMB,
+		Warnings:         []string{},
+		Errors:           []string{},
+	}
+
+	// Check CPUs using virsh nodeinfo
+	out, err := m.runSSH(ctx, "virsh nodeinfo")
+	if err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			if strings.HasPrefix(line, "CPU(s):") {
+				fields := strings.Fields(line)
+				if len(fields) >= 2 {
+					_, _ = fmt.Sscanf(fields[1], "%d", &result.AvailableCPUs)
+				}
+			}
+		}
+		if requiredCPUs > result.AvailableCPUs {
+			result.Valid = false
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Insufficient CPUs on %s: need %d but only %d available",
+					m.host.Name, requiredCPUs, result.AvailableCPUs))
+		}
+	} else {
+		result.Warnings = append(result.Warnings,
+			fmt.Sprintf("Could not check CPUs on %s: %v", m.host.Name, err))
+	}
+
+	// Check memory using virsh nodememstats
+	out, err = m.runSSH(ctx, "virsh nodememstats")
+	if err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				var val int64
+				_, _ = fmt.Sscanf(fields[len(fields)-2], "%d", &val)
+				switch {
+				case strings.Contains(fields[0], "total"):
+					result.TotalMemoryMB = val / 1024
+				case strings.Contains(fields[0], "free"):
+					result.AvailableMemoryMB = val / 1024
+				}
+			}
+		}
+
+		if result.TotalMemoryMB > 0 {
+			if int64(requiredMemoryMB) > result.AvailableMemoryMB {
+				result.Valid = false
+				result.Errors = append(result.Errors,
+					fmt.Sprintf("Insufficient memory on %s: need %d MB but only %d MB available",
+						m.host.Name, requiredMemoryMB, result.AvailableMemoryMB))
+			} else if float64(requiredMemoryMB) > float64(result.AvailableMemoryMB)*0.8 {
+				result.Warnings = append(result.Warnings,
+					fmt.Sprintf("Low memory warning on %s: requesting %d MB of %d MB available",
+						m.host.Name, requiredMemoryMB, result.AvailableMemoryMB))
+			}
+		}
+	} else {
+		result.Warnings = append(result.Warnings,
+			fmt.Sprintf("Could not check memory on %s: %v", m.host.Name, err))
+	}
+
+	// Check disk space
+	workDir := m.cfg.WorkDir
+	if workDir == "" {
+		workDir = "/var/lib/libvirt/images/sandboxes"
+	}
+	escapedWorkDir, err := shellEscape(workDir)
+	if err == nil {
+		out, err = m.runSSH(ctx, fmt.Sprintf("df -m %s | tail -1 | awk '{print $4}'", escapedWorkDir))
+		if err == nil {
+			var available int64
+			_, _ = fmt.Sscanf(strings.TrimSpace(out), "%d", &available)
+			result.AvailableDiskMB = available
+
+			if available < 1024 {
+				result.Valid = false
+				result.Errors = append(result.Errors,
+					fmt.Sprintf("Insufficient disk space on %s: only %d MB available in %s",
+						m.host.Name, available, workDir))
+			} else if available < 10*1024 {
+				result.Warnings = append(result.Warnings,
+					fmt.Sprintf("Low disk space warning on %s: only %d MB available in %s",
+						m.host.Name, available, workDir))
+			}
+		} else {
+			result.Warnings = append(result.Warnings,
+				fmt.Sprintf("Could not check disk space on %s: %v", m.host.Name, err))
+		}
+	}
+
+	return result, nil
 }
 
 // runSSH executes a command on the remote host via SSH.

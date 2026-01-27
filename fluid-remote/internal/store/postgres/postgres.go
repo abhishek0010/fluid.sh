@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"virsh-sandbox/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/store"
 )
 
 // Ensure interface compliance.
@@ -267,6 +267,44 @@ func (s *postgresStore) DeleteSandbox(ctx context.Context, id string) error {
 		return store.ErrNotFound
 	}
 	return nil
+}
+
+// ListExpiredSandboxes returns sandboxes that have exceeded their TTL.
+// A sandbox is considered expired if:
+// - TTLSeconds is set AND created_at + ttl_seconds < now
+// - OR defaultTTL > 0, TTLSeconds is NULL, AND created_at + defaultTTL < now
+func (s *postgresStore) ListExpiredSandboxes(ctx context.Context, defaultTTL time.Duration) ([]*store.Sandbox, error) {
+	now := time.Now().UTC()
+	defaultTTLSeconds := int(defaultTTL.Seconds())
+
+	// Build query for expired sandboxes in RUNNING or STARTING state
+	tx := s.db.WithContext(ctx).Model(&SandboxModel{}).
+		Where("deleted_at IS NULL").
+		Where("state IN ?", []string{string(store.SandboxStateRunning), string(store.SandboxStateStarting)})
+
+	// Condition: either sandbox has its own TTL that's expired, or default TTL is set and sandbox has no TTL
+	if defaultTTLSeconds > 0 {
+		// With default TTL: (has TTL AND expired) OR (no TTL AND default expired)
+		tx = tx.Where(
+			"(ttl_seconds IS NOT NULL AND created_at + (ttl_seconds || ' seconds')::interval < ?) "+
+				"OR (ttl_seconds IS NULL AND created_at + (? || ' seconds')::interval < ?)",
+			now, defaultTTLSeconds, now,
+		)
+	} else {
+		// No default TTL: only check sandboxes with explicit TTL
+		tx = tx.Where("ttl_seconds IS NOT NULL AND created_at + (ttl_seconds || ' seconds')::interval < ?", now)
+	}
+
+	var models []SandboxModel
+	if err := tx.Find(&models).Error; err != nil {
+		return nil, mapDBError(err)
+	}
+
+	out := make([]*store.Sandbox, 0, len(models))
+	for i := range models {
+		out = append(out, sandboxFromModel(&models[i]))
+	}
+	return out, nil
 }
 
 // --- Snapshot ---

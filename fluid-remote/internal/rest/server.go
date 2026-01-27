@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/MarceloPetrucio/go-scalar-api-reference"
@@ -12,12 +13,13 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/websocket"
 
-	"virsh-sandbox/internal/ansible"
-	serverError "virsh-sandbox/internal/error"
-	serverJSON "virsh-sandbox/internal/json"
-	"virsh-sandbox/internal/libvirt"
-	"virsh-sandbox/internal/store"
-	"virsh-sandbox/internal/vm"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/ansible"
+	serverError "github.com/aspectrr/fluid.sh/fluid-remote/internal/error"
+	serverJSON "github.com/aspectrr/fluid.sh/fluid-remote/internal/json"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/telemetry"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/vm"
 )
 
 // Server wires the HTTP layer to application services.
@@ -28,25 +30,48 @@ type Server struct {
 	multiHostMgr    *libvirt.MultiHostDomainManager
 	ansibleHandler  *ansible.Handler
 	playbookHandler *ansible.PlaybookHandler
+	telemetry       telemetry.Service
 }
 
 // NewServer constructs a REST server with routes registered.
-func NewServer(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, ansibleRunner *ansible.Runner) *Server {
-	return NewServerWithPlaybooks(vmSvc, domainMgr, ansibleRunner, nil)
+func NewServer(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, ansibleRunner *ansible.Runner, tele telemetry.Service) *Server {
+	return NewServerWithPlaybooks(vmSvc, domainMgr, ansibleRunner, nil, tele)
 }
 
 // NewServerWithPlaybooks constructs a REST server with playbook management support.
-func NewServerWithPlaybooks(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, ansibleRunner *ansible.Runner, playbookSvc *ansible.PlaybookService) *Server {
-	return NewServerWithMultiHost(vmSvc, domainMgr, nil, ansibleRunner, playbookSvc)
+func NewServerWithPlaybooks(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, ansibleRunner *ansible.Runner, playbookSvc *ansible.PlaybookService, tele telemetry.Service) *Server {
+	return NewServerWithMultiHost(vmSvc, domainMgr, nil, ansibleRunner, playbookSvc, tele)
 }
 
 // NewServerWithMultiHost constructs a REST server with multi-host VM listing support.
-func NewServerWithMultiHost(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, multiHostMgr *libvirt.MultiHostDomainManager, ansibleRunner *ansible.Runner, playbookSvc *ansible.PlaybookService) *Server {
+func NewServerWithMultiHost(vmSvc *vm.Service, domainMgr *libvirt.DomainManager, multiHostMgr *libvirt.MultiHostDomainManager, ansibleRunner *ansible.Runner, playbookSvc *ansible.PlaybookService, tele telemetry.Service) *Server {
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
+
+	// Telemetry middleware
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if tele != nil {
+				start := time.Now()
+				ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+
+				next.ServeHTTP(ww, r)
+
+				tele.Track("api_request", map[string]interface{}{
+					"method":      r.Method,
+					"path":        r.URL.Path,
+					"status":      ww.Status(),
+					"duration_ms": time.Since(start).Milliseconds(),
+					"user_agent":  r.UserAgent(),
+				})
+			} else {
+				next.ServeHTTP(w, r)
+			}
+		})
+	})
 
 	var ansibleHandler *ansible.Handler
 	if ansibleRunner != nil {
@@ -65,6 +90,7 @@ func NewServerWithMultiHost(vmSvc *vm.Service, domainMgr *libvirt.DomainManager,
 		multiHostMgr:    multiHostMgr,
 		ansibleHandler:  ansibleHandler,
 		playbookHandler: playbookHandler,
+		telemetry:       tele,
 	}
 	s.routes()
 	return s
@@ -155,7 +181,6 @@ func (s *Server) routes() {
 type createSandboxRequest struct {
 	SourceVMName string `json:"source_vm_name"`        // required; name of existing VM in libvirt to clone from
 	AgentID      string `json:"agent_id"`              // required
-	VMName       string `json:"vm_name,omitempty"`     // optional; generated if empty
 	CPU          int    `json:"cpu,omitempty"`         // optional; default from service config if <=0
 	MemoryMB     int    `json:"memory_mb,omitempty"`   // optional; default from service config if <=0
 	TTLSeconds   *int   `json:"ttl_seconds,omitempty"` // optional; TTL for auto garbage collection
@@ -323,7 +348,7 @@ func (s *Server) handleCreateSandbox(w http.ResponseWriter, r *http.Request) {
 		host, err := s.multiHostMgr.FindHostForVM(r.Context(), req.SourceVMName)
 		if err == nil && host != nil {
 			// Source VM found on a remote host - create sandbox there
-			sb, ip, createErr := s.vmSvc.CreateSandboxOnHost(r.Context(), host, req.SourceVMName, req.AgentID, req.VMName, req.CPU, req.MemoryMB, req.TTLSeconds, req.AutoStart, req.WaitForIP)
+			sb, ip, createErr := s.vmSvc.CreateSandboxOnHost(r.Context(), host, req.SourceVMName, req.AgentID, req.CPU, req.MemoryMB, req.TTLSeconds, req.AutoStart, req.WaitForIP)
 			if createErr != nil {
 				serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("create sandbox on host %s: %w", host.Name, createErr))
 				return
@@ -335,7 +360,7 @@ func (s *Server) handleCreateSandbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create sandbox locally (single-host mode or source VM not on remote hosts)
-	sb, ip, err := s.vmSvc.CreateSandbox(r.Context(), req.SourceVMName, req.AgentID, req.VMName, req.CPU, req.MemoryMB, req.TTLSeconds, req.AutoStart, req.WaitForIP)
+	sb, ip, err := s.vmSvc.CreateSandbox(r.Context(), req.SourceVMName, req.AgentID, req.CPU, req.MemoryMB, req.TTLSeconds, req.AutoStart, req.WaitForIP)
 	if err != nil {
 		serverError.RespondError(w, http.StatusInternalServerError, fmt.Errorf("create sandbox: %w", err))
 		return
@@ -597,8 +622,8 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summary List all VMs
-// @Description Returns a list of all virtual machines from libvirt. When multi-host is configured, aggregates VMs from all hosts.
+// @Summary List all host VMs
+// @Description Returns a list of host virtual machines from libvirt (excludes sandboxes). When multi-host is configured, aggregates VMs from all hosts.
 // @Tags VMs
 // @Accept json
 // @Produce json
@@ -617,6 +642,10 @@ func (s *Server) handleListVMs(w http.ResponseWriter, r *http.Request) {
 
 		vms := make([]vmInfo, 0, len(result.Domains))
 		for _, d := range result.Domains {
+			// Skip sandboxes (names starting with "sbx-")
+			if strings.HasPrefix(d.Name, "sbx-") {
+				continue
+			}
 			vms = append(vms, vmInfo{
 				Name:        d.Name,
 				UUID:        d.UUID,
@@ -650,6 +679,10 @@ func (s *Server) handleListVMs(w http.ResponseWriter, r *http.Request) {
 
 	vms := make([]vmInfo, 0, len(domains))
 	for _, d := range domains {
+		// Skip sandboxes (names starting with "sbx-")
+		if strings.HasPrefix(d.Name, "sbx-") {
+			continue
+		}
 		vms = append(vms, vmInfo{
 			Name:       d.Name,
 			UUID:       d.UUID,

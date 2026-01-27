@@ -3,7 +3,7 @@ package telemetry
 import (
 	"testing"
 
-	"virsh-sandbox/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/config"
 )
 
 func TestNewNoopService(t *testing.T) {

@@ -1,17 +1,38 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
 
-project_name: virsh-sandbox
+project_name: fluid
 
 before:
   hooks:
-    - sh -c "cd virsh-sandbox && go mod tidy"
+    - sh -c "cd fluid-remote && go mod tidy"
+    - sh -c "cd fluid && go mod tidy"
 
 builds:
-  - id: virsh-sandbox
-    dir: virsh-sandbox
+  - id: fluid-remote
+    dir: fluid-remote
     main: ./cmd/api/main.go
-    binary: virsh-sandbox
+    binary: fluid-remote
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -trimpath
+    tags:
+      - libvirt
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+
+  - id: fluid
+    dir: fluid
+    main: ./cmd/fluid
+    binary: fluid
     env:
       - CGO_ENABLED=1
     goos:
@@ -29,14 +50,23 @@ builds:
       - -X main.date={{ .Date }}
 
 archives:
-  - id: default
-    # format: tar.gz
+  - id: fluid-remote
+    builds:
+      - fluid-remote
     name_template: >-
-      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+      fluid-remote_{{ .Version }}_{{ .Os }}_{{ .Arch }}
     files:
       - README.md
       - LICENSE
-      # - systemd/virsh-sandbox.service
+
+  - id: fluid
+    builds:
+      - fluid
+    name_template: >-
+      fluid_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - README.md
+      - LICENSE
 
 checksum:
   name_template: checksums.txt
@@ -76,8 +106,6 @@ signs:
       - "${signature}"
       - "--detach-sign"
       - "${artifact}"
-# snapshot:
-#   name_template: "{{ .Tag }}-next"
 
 changelog:
   sort: asc
@@ -87,32 +115,36 @@ changelog:
       - "^test:"
 
 nfpms:
-  - id: packages
-    package_name: virsh-sandbox
+  - id: fluid-remote
+    package_name: fluid-remote
     vendor: "Fluid.sh"
-    homepage: "https://github.com/fluid-sh/virsh-sandbox"
+    homepage: "https://github.com/aspectrr/fluid.sh"
     maintainer: "Collin Pfeifer <cpfeifer@madcactus.org>"
     description: "Control-plane API for managing libvirt-based VM sandboxes"
     license: "MIT"
     formats:
       - deb
       - rpm
-
-    # IMPORTANT: control node does NOT require hypervisor packages
     dependencies:
       - openssh-client
       - postgresql-client
-
     contents:
-      - src: virsh-sandbox
-        dst: /usr/local/bin/virsh-sandbox
+      - src: fluid-remote
+        dst: /usr/local/bin/fluid-remote
 
-      # - src: systemd/virsh-sandbox.service
-      #   dst: /lib/systemd/system/virsh-sandbox.service
-
-    # scripts:
-    #   postinstall: scripts/postinstall.sh
-    #   preremove: scripts/preremove.sh
+  - id: fluid
+    package_name: fluid
+    vendor: "Fluid.sh"
+    homepage: "https://github.com/aspectrr/fluid.sh"
+    maintainer: "Collin Pfeifer <cpfeifer@madcactus.org>"
+    description: "CLI for managing fluid sandboxes"
+    license: "MIT"
+    formats:
+      - deb
+      - rpm
+    contents:
+      - src: fluid
+        dst: /usr/local/bin/fluid
 
 release:
   github:

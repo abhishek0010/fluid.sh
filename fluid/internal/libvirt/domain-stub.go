@@ -1,5 +1,4 @@
 //go:build !libvirt
-// +build !libvirt
 
 package libvirt
 

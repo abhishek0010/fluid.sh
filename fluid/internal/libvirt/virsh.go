@@ -1,5 +1,4 @@
 //go:build libvirt
-// +build libvirt
 
 package libvirt
 
@@ -74,7 +73,7 @@ type Manager interface {
 
 	// CheckHostResources validates that the host has sufficient resources for a new sandbox.
 	// Returns a ResourceCheckResult with available resources and any warnings.
-	CheckHostResources(ctx context.Context, requiredMemoryMB int) (*ResourceCheckResult, error)
+	CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*ResourceCheckResult, error)
 }
 
 // VMValidationResult contains the results of validating a source VM.
@@ -91,13 +90,15 @@ type VMValidationResult struct {
 
 // ResourceCheckResult contains the results of checking host resources.
 type ResourceCheckResult struct {
-	Valid              bool     `json:"valid"`
-	AvailableMemoryMB  int64    `json:"available_memory_mb"`
-	TotalMemoryMB      int64    `json:"total_memory_mb"`
-	AvailableDiskMB    int64    `json:"available_disk_mb"`
-	RequiredMemoryMB   int      `json:"required_memory_mb"`
-	Warnings           []string `json:"warnings,omitempty"`
-	Errors             []string `json:"errors,omitempty"`
+	Valid             bool     `json:"valid"`
+	AvailableMemoryMB int64    `json:"available_memory_mb"`
+	TotalMemoryMB     int64    `json:"total_memory_mb"`
+	AvailableCPUs     int      `json:"available_cpus"`
+	AvailableDiskMB   int64    `json:"available_disk_mb"`
+	RequiredMemoryMB  int      `json:"required_memory_mb"`
+	RequiredCPUs      int      `json:"required_cpus"`
+	Warnings          []string `json:"warnings,omitempty"`
+	Errors            []string `json:"errors,omitempty"`
 }
 
 // VMState represents possible VM states from virsh domstate.
@@ -386,7 +387,7 @@ func (m *VirshManager) CloneFromVM(ctx context.Context, sourceVMName, newVMName 
 		return DomainRef{}, fmt.Errorf("dumpxml source vm: %w", err)
 	}
 
-	newXML, err := modifyClonedXML(sourceXML, newVMName, overlayPath, cloudInitISO)
+	newXML, err := modifyClonedXMLHelper(sourceXML, newVMName, overlayPath, cloudInitISO, cpu, memoryMB, network)
 	if err != nil {
 		return DomainRef{}, fmt.Errorf("modify cloned xml: %w", err)
 	}
@@ -1263,11 +1264,6 @@ func defaultGuestUser(vmName string) string {
 	return "cloud-user"
 }
 
-func parseDomIfAddrIPv4(s string) string {
-	ip, _ := parseDomIfAddrIPv4WithMAC(s)
-	return ip
-}
-
 // parseDomIfAddrIPv4WithMAC parses virsh domifaddr output and returns both IP and MAC address.
 // This allows callers to verify the IP belongs to the expected VM by checking the MAC.
 func parseDomIfAddrIPv4WithMAC(s string) (ip string, mac string) {
@@ -1432,77 +1428,6 @@ func normalizeMAC(mac string) string {
 		}
 	}
 	return strings.Join(parts, ":")
-}
-
-// vmArchInfo holds architecture details extracted from a VM's XML.
-type vmArchInfo struct {
-	Arch       string // e.g., "x86_64" or "aarch64"
-	Machine    string // e.g., "pc-q35-6.2" or "virt"
-	DomainType string // e.g., "kvm" or "qemu"
-}
-
-// getVMArchitecture extracts the architecture and machine type from a VM's domain XML.
-func (m *VirshManager) getVMArchitecture(ctx context.Context, vmName string) (vmArchInfo, error) {
-	virsh := m.binPath("virsh", m.cfg.VirshPath)
-	out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "dumpxml", vmName)
-	if err != nil {
-		return vmArchInfo{}, fmt.Errorf("dumpxml %s: %w", vmName, err)
-	}
-
-	log.Printf("getVMArchitecture: dumpxml output for %s:\n%s", vmName, out)
-
-	// Parse arch from: <type arch='aarch64' machine='virt-8.2'>hvm</type>
-	// Parse domain type from: <domain type='qemu' id='1'>
-	// Note: libvirt uses single quotes in XML output
-	// Simple string parsing to avoid XML dependency
-	info := vmArchInfo{}
-
-	// Find domain type (e.g., "qemu" or "kvm")
-	if idx := strings.Index(out, `<domain type='`); idx >= 0 {
-		start := idx + len(`<domain type='`)
-		end := strings.Index(out[start:], `'`)
-		if end > 0 {
-			info.DomainType = out[start : start+end]
-		}
-	} else if idx := strings.Index(out, `<domain type="`); idx >= 0 {
-		start := idx + len(`<domain type="`)
-		end := strings.Index(out[start:], `"`)
-		if end > 0 {
-			info.DomainType = out[start : start+end]
-		}
-	}
-
-	// Find arch attribute (try single quotes first, then double quotes)
-	if idx := strings.Index(out, `arch='`); idx >= 0 {
-		start := idx + len(`arch='`)
-		end := strings.Index(out[start:], `'`)
-		if end > 0 {
-			info.Arch = out[start : start+end]
-		}
-	} else if idx := strings.Index(out, `arch="`); idx >= 0 {
-		start := idx + len(`arch="`)
-		end := strings.Index(out[start:], `"`)
-		if end > 0 {
-			info.Arch = out[start : start+end]
-		}
-	}
-
-	// Find machine attribute (try single quotes first, then double quotes)
-	if idx := strings.Index(out, `machine='`); idx >= 0 {
-		start := idx + len(`machine='`)
-		end := strings.Index(out[start:], `'`)
-		if end > 0 {
-			info.Machine = out[start : start+end]
-		}
-	} else if idx := strings.Index(out, `machine="`); idx >= 0 {
-		start := idx + len(`machine="`)
-		end := strings.Index(out[start:], `"`)
-		if end > 0 {
-			info.Machine = out[start : start+end]
-		}
-	}
-
-	return info, nil
 }
 
 // --- Domain XML rendering ---
@@ -1880,7 +1805,8 @@ func (m *VirshManager) ValidateSourceVM(ctx context.Context, vmName string) (*VM
 	}
 
 	// Check if VM has an IP address (only if running)
-	if state == VMStateRunning {
+	switch state {
+	case VMStateRunning:
 		virsh := m.binPath("virsh", m.cfg.VirshPath)
 		out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "domifaddr", vmName, "--source", "lease")
 		if err == nil {
@@ -1912,13 +1838,13 @@ func (m *VirshManager) ValidateSourceVM(ctx context.Context, vmName string) (*VM
 				}
 			}
 		}
-	} else if state == VMStateShutOff {
+	case VMStateShutOff:
 		// VM is shut off - this is fine for cloning, but warn that we can't verify network
 		result.Warnings = append(result.Warnings,
 			"Source VM is shut off - cannot verify network configuration (IP/DHCP)")
 		result.Warnings = append(result.Warnings,
 			"Consider starting the source VM to verify it can obtain an IP before cloning")
-	} else {
+	default:
 		// VM is in an unexpected state
 		result.Warnings = append(result.Warnings,
 			fmt.Sprintf("Source VM is in state '%s' - expected 'running' or 'shut off'", state))
@@ -1985,7 +1911,7 @@ func (m *VirshManager) getVMNetworkStats(ctx context.Context, vmName string) (*v
 		fields := strings.Fields(line)
 		if len(fields) >= 2 {
 			var val int64
-			fmt.Sscanf(fields[1], "%d", &val)
+			_, _ = fmt.Sscanf(fields[1], "%d", &val)
 			switch {
 			case strings.Contains(fields[0], "rx_bytes"):
 				stats.rxBytes = val
@@ -2025,35 +1951,45 @@ func (m *VirshManager) vmHasCloudInitCDROM(ctx context.Context, vmName string) b
 }
 
 // CheckHostResources validates that the host has sufficient resources for a new sandbox.
-func (m *VirshManager) CheckHostResources(ctx context.Context, requiredMemoryMB int) (*ResourceCheckResult, error) {
+func (m *VirshManager) CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*ResourceCheckResult, error) {
 	result := &ResourceCheckResult{
 		Valid:            true,
+		RequiredCPUs:     requiredCPUs,
 		RequiredMemoryMB: requiredMemoryMB,
 		Warnings:         []string{},
 		Errors:           []string{},
 	}
 
-	// Check available memory using virsh nodeinfo or free command
-	memInfo, err := m.getHostMemoryInfo(ctx)
+	// Check available resources using virsh nodeinfo
+	info, err := m.getHostInfo(ctx)
 	if err != nil {
 		result.Warnings = append(result.Warnings,
-			fmt.Sprintf("Could not check host memory: %v", err))
+			fmt.Sprintf("Could not check host resources: %v", err))
 	} else {
-		result.TotalMemoryMB = memInfo.totalMB
-		result.AvailableMemoryMB = memInfo.availableMB
+		result.TotalMemoryMB = info.totalMB
+		result.AvailableMemoryMB = info.availableMB
+		result.AvailableCPUs = info.cpus
 
 		// Check if we have enough memory
-		if int64(requiredMemoryMB) > memInfo.availableMB {
+		if int64(requiredMemoryMB) > info.availableMB {
 			result.Valid = false
 			result.Errors = append(result.Errors,
 				fmt.Sprintf("Insufficient memory: need %d MB but only %d MB available",
-					requiredMemoryMB, memInfo.availableMB))
-		} else if float64(requiredMemoryMB) > float64(memInfo.availableMB)*0.8 {
+					requiredMemoryMB, info.availableMB))
+		} else if float64(requiredMemoryMB) > float64(info.availableMB)*0.8 {
 			// Warn if using more than 80% of available memory
 			result.Warnings = append(result.Warnings,
 				fmt.Sprintf("Low memory warning: requesting %d MB of %d MB available (%.1f%%)",
-					requiredMemoryMB, memInfo.availableMB,
-					float64(requiredMemoryMB)/float64(memInfo.availableMB)*100))
+					requiredMemoryMB, info.availableMB,
+					float64(requiredMemoryMB)/float64(info.availableMB)*100))
+		}
+
+		// Check if we have enough CPUs
+		if requiredCPUs > info.cpus {
+			result.Valid = false
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Insufficient CPUs: need %d but only %d available",
+					requiredCPUs, info.cpus))
 		}
 	}
 
@@ -2084,56 +2020,57 @@ func (m *VirshManager) CheckHostResources(ctx context.Context, requiredMemoryMB 
 	return result, nil
 }
 
-// hostMemoryInfo holds memory information
-type hostMemoryInfo struct {
+// hostInfo holds host resource information
+type hostInfo struct {
+	cpus        int
 	totalMB     int64
 	availableMB int64
 }
 
-// getHostMemoryInfo returns available and total memory on the host
-func (m *VirshManager) getHostMemoryInfo(ctx context.Context) (*hostMemoryInfo, error) {
+// getHostInfo returns available and total resources on the host
+func (m *VirshManager) getHostInfo(ctx context.Context) (*hostInfo, error) {
 	virsh := m.binPath("virsh", m.cfg.VirshPath)
+	info := &hostInfo{}
 
-	// Try virsh nodememstats first (more accurate for VM hosting)
-	out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "nodememstats")
+	// Get CPU info from nodeinfo
+	out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "nodeinfo")
 	if err == nil {
-		info := &hostMemoryInfo{}
 		for _, line := range strings.Split(out, "\n") {
-			fields := strings.Fields(line)
-			if len(fields) >= 2 {
-				var val int64
-				fmt.Sscanf(fields[len(fields)-2], "%d", &val)
-				// Values are in KiB
-				switch {
-				case strings.Contains(fields[0], "total"):
-					info.totalMB = val / 1024
-				case strings.Contains(fields[0], "free"):
-					info.availableMB = val / 1024
+			if strings.HasPrefix(line, "CPU(s):") {
+				fields := strings.Fields(line)
+				if len(fields) >= 2 {
+					_, _ = fmt.Sscanf(fields[1], "%d", &info.cpus)
 				}
 			}
-		}
-		if info.totalMB > 0 {
-			return info, nil
-		}
-	}
-
-	// Fallback: try virsh nodeinfo
-	out, err = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "nodeinfo")
-	if err == nil {
-		for _, line := range strings.Split(out, "\n") {
 			if strings.HasPrefix(line, "Memory size:") {
 				fields := strings.Fields(line)
 				if len(fields) >= 3 {
 					var val int64
-					fmt.Sscanf(fields[2], "%d", &val)
-					// Value is in KiB
-					return &hostMemoryInfo{
-						totalMB:     val / 1024,
-						availableMB: val / 1024 / 2, // Estimate 50% available if we can't get actual
-					}, nil
+					_, _ = fmt.Sscanf(fields[2], "%d", &val)
+					info.totalMB = val / 1024
+					info.availableMB = info.totalMB / 2 // Fallback estimate
 				}
 			}
 		}
+	}
+
+	// Try virsh nodememstats for more accurate available memory
+	out, err = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "nodememstats")
+	if err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				var val int64
+				_, _ = fmt.Sscanf(fields[len(fields)-2], "%d", &val)
+				if strings.Contains(fields[0], "free") {
+					info.availableMB = val / 1024
+				}
+			}
+		}
+	}
+
+	if info.totalMB > 0 {
+		return info, nil
 	}
 
 	// Fallback: use free command (Linux)
@@ -2146,12 +2083,11 @@ func (m *VirshManager) getHostMemoryInfo(ctx context.Context) (*hostMemoryInfo, 
 				fields := strings.Fields(line)
 				if len(fields) >= 7 {
 					var total, available int64
-					fmt.Sscanf(fields[1], "%d", &total)
-					fmt.Sscanf(fields[6], "%d", &available)
-					return &hostMemoryInfo{
-						totalMB:     total,
-						availableMB: available,
-					}, nil
+					_, _ = fmt.Sscanf(fields[1], "%d", &total)
+					_, _ = fmt.Sscanf(fields[6], "%d", &available)
+					info.totalMB = total
+					info.availableMB = available
+					return info, nil
 				}
 			}
 		}
@@ -2186,7 +2122,7 @@ func (m *VirshManager) getWorkDirDiskSpace(ctx context.Context) (*diskSpaceInfo,
 		fields := strings.Fields(lines[1])
 		if len(fields) >= 4 {
 			var available int64
-			fmt.Sscanf(fields[3], "%d", &available)
+			_, _ = fmt.Sscanf(fields[3], "%d", &available)
 			return &diskSpaceInfo{
 				availableMB: available,
 			}, nil

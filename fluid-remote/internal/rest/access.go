@@ -8,9 +8,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	serverError "virsh-sandbox/internal/error"
-	serverJSON "virsh-sandbox/internal/json"
-	"virsh-sandbox/internal/sshca"
+	serverError "github.com/aspectrr/fluid.sh/fluid-remote/internal/error"
+	serverJSON "github.com/aspectrr/fluid.sh/fluid-remote/internal/json"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/sshca"
 )
 
 // AccessHandler handles SSH access API requests.

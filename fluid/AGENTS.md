@@ -285,3 +285,5 @@ State is stored in SQLite at `~/.fluid/state.db`:
 - Diffs
 
 The database is auto-migrated on first run.
+
+If you remove a parameter from a function, don't just pass in nil/null/empty string in a different layer, make sure to remove the extra parameter from every place.

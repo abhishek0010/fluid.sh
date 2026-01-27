@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"virsh-sandbox/internal/sshca"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/sshca"
 )
 
 // KeyProvider provides SSH credentials for sandboxes.

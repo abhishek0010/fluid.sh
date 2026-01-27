@@ -8,8 +8,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 
-	serverError "fluid/internal/error"
-	serverJSON "fluid/internal/json"
+	serverError "github.com/aspectrr/fluid.sh/fluid/internal/error"
+	serverJSON "github.com/aspectrr/fluid.sh/fluid/internal/json"
 )
 
 // Handler provides HTTP handlers for Ansible operations.

@@ -1,5 +1,4 @@
 //go:build libvirt
-// +build libvirt
 
 package libvirt
 
@@ -130,7 +129,7 @@ func (m *DomainManager) Connect() error {
 			return nil
 		}
 		// Connection dead, close and reconnect
-		m.conn.Close()
+		_, _ = m.conn.Close()
 		m.conn = nil
 	}
 
@@ -180,7 +179,7 @@ func (m *DomainManager) LookupDomain(ctx context.Context, name string) (*DomainI
 		}
 		return nil, fmt.Errorf("failed to lookup domain %q: %w", name, err)
 	}
-	defer dom.Free()
+	defer func() { _ = dom.Free() }()
 
 	// Check if domain is persistent (not transient)
 	persistent, err := dom.IsPersistent()
@@ -236,7 +235,7 @@ func (m *DomainManager) GetDomainState(ctx context.Context, name string) (Domain
 	if err != nil {
 		return DomainStateUnknown, fmt.Errorf("failed to lookup domain %q: %w", name, err)
 	}
-	defer dom.Free()
+	defer func() { _ = dom.Free() }()
 
 	state, _, err := dom.GetState()
 	if err != nil {
@@ -261,7 +260,7 @@ func (m *DomainManager) CreateDiskOnlySnapshot(ctx context.Context, domainName, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup domain %q: %w", domainName, err)
 	}
-	defer dom.Free()
+	defer func() { _ = dom.Free() }()
 
 	// Get current disk path from domain XML
 	xmlDesc, err := dom.GetXMLDesc(0)
@@ -325,7 +324,7 @@ func (m *DomainManager) BlockCommit(ctx context.Context, domainName, diskTarget 
 	if err != nil {
 		return fmt.Errorf("failed to lookup domain %q: %w", domainName, err)
 	}
-	defer dom.Free()
+	defer func() { _ = dom.Free() }()
 
 	// Start block commit - merge active layer into backing file
 	flags := libvirtgo.DomainBlockCommitFlags(libvirtgo.DOMAIN_BLOCK_COMMIT_ACTIVE) | libvirtgo.DomainBlockCommitFlags(libvirtgo.DOMAIN_BLOCK_COMMIT_DELETE)
@@ -366,16 +365,8 @@ func (m *DomainManager) BlockCommit(ctx context.Context, domainName, diskTarget 
 
 	// Pivot to the base image if needed
 	m.mu.Lock()
-	err = dom.BlockJobAbort(diskTarget, libvirtgo.DomainBlockJobAbortFlags(libvirtgo.DOMAIN_BLOCK_JOB_ABORT_PIVOT))
+	_ = dom.BlockJobAbort(diskTarget, libvirtgo.DomainBlockJobAbortFlags(libvirtgo.DOMAIN_BLOCK_JOB_ABORT_PIVOT))
 	m.mu.Unlock()
-
-	// Ignore error if no job to abort
-	if err != nil {
-		var libvirtErr libvirtgo.Error
-		if !errors.As(err, &libvirtErr) || libvirtErr.Code != libvirtgo.ERR_BLOCK_COPY_ACTIVE {
-			// Only log, don't fail - the commit may have already completed
-		}
-	}
 
 	return nil
 }
@@ -400,19 +391,19 @@ func (m *DomainManager) ListDomains(ctx context.Context) ([]*DomainInfo, error) 
 	for _, dom := range domains {
 		name, err := dom.GetName()
 		if err != nil {
-			dom.Free()
+			_ = dom.Free()
 			continue
 		}
 
 		uuid, err := dom.GetUUIDString()
 		if err != nil {
-			dom.Free()
+			_ = dom.Free()
 			continue
 		}
 
 		state, _, err := dom.GetState()
 		if err != nil {
-			dom.Free()
+			_ = dom.Free()
 			continue
 		}
 
@@ -433,7 +424,7 @@ func (m *DomainManager) ListDomains(ctx context.Context) ([]*DomainInfo, error) 
 			DiskPath:   diskPath,
 		})
 
-		dom.Free()
+		_ = dom.Free()
 	}
 
 	return result, nil
@@ -452,7 +443,7 @@ func (m *DomainManager) GetDiskPath(ctx context.Context, domainName string) (str
 	if err != nil {
 		return "", fmt.Errorf("failed to lookup domain %q: %w", domainName, err)
 	}
-	defer dom.Free()
+	defer func() { _ = dom.Free() }()
 
 	xmlDesc, err := dom.GetXMLDesc(0)
 	if err != nil {

@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"fluid/internal/sshca"
+	"github.com/aspectrr/fluid.sh/fluid/internal/sshca"
 )
 
 // KeyProvider provides SSH credentials for sandboxes.

@@ -14,11 +14,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"virsh-sandbox/internal/config"
-	"virsh-sandbox/internal/libvirt"
-	"virsh-sandbox/internal/sshkeys"
-	"virsh-sandbox/internal/store"
-	"virsh-sandbox/internal/telemetry"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/sshkeys"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/telemetry"
 )
 
 // Service orchestrates libvirt operations and data persistence.
@@ -170,7 +170,27 @@ func (s *Service) validateIPUniqueness(ctx context.Context, currentSandboxID, ip
 	return nil
 }
 
-func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID, sandboxName string, cpu, memoryMB int, ttlSeconds *int, autoStart, waitForIP bool) (*store.Sandbox, string, error) {
+func (s *Service) validateResources(ctx context.Context, mgr libvirt.Manager, sourceVMName string, cpu, memoryMB int) error {
+	// 1. Validate source VM
+	vmValidation, err := mgr.ValidateSourceVM(ctx, sourceVMName)
+	if err != nil {
+		s.logger.Warn("source VM validation failed", "source_vm", sourceVMName, "error", err)
+	} else if !vmValidation.Valid {
+		return fmt.Errorf("source VM %s validation failed: %s", sourceVMName, strings.Join(vmValidation.Errors, "; "))
+	}
+
+	// 2. Check host resources
+	resourceCheck, err := mgr.CheckHostResources(ctx, cpu, memoryMB)
+	if err != nil {
+		s.logger.Warn("host resource check failed", "error", err)
+	} else if !resourceCheck.Valid {
+		return fmt.Errorf("host resource check failed: %s", strings.Join(resourceCheck.Errors, "; "))
+	}
+
+	return nil
+}
+
+func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID string, cpu, memoryMB int, ttlSeconds *int, autoStart, waitForIP bool) (*store.Sandbox, string, error) {
 	if strings.TrimSpace(sourceSandboxName) == "" {
 		return nil, "", fmt.Errorf("sourceSandboxName is required")
 	}
@@ -183,9 +203,14 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID,
 	if memoryMB <= 0 {
 		memoryMB = s.cfg.DefaultMemoryMB
 	}
-	if sandboxName == "" {
-		sandboxName = fmt.Sprintf("sbx-%s", shortID())
+
+	// Validate resources before cloning
+	if err := s.validateResources(ctx, s.mgr, sourceSandboxName, cpu, memoryMB); err != nil {
+		return nil, "", err
 	}
+
+	// Always auto-generate sandbox name with sbx- prefix
+	sandboxName := fmt.Sprintf("sbx-%s", shortID())
 
 	s.logger.Info("creating sandbox",
 		"source_vm_name", sourceSandboxName,
@@ -324,7 +349,7 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID,
 
 // CreateSandboxOnHost creates a sandbox on a specific remote host.
 // This is used when multi-host support is enabled and the source VM is on a remote host.
-func (s *Service) CreateSandboxOnHost(ctx context.Context, host *config.HostConfig, sourceSandboxName, agentID, sandboxName string, cpu, memoryMB int, ttlSeconds *int, autoStart, waitForIP bool) (*store.Sandbox, string, error) {
+func (s *Service) CreateSandboxOnHost(ctx context.Context, host *config.HostConfig, sourceSandboxName, agentID string, cpu, memoryMB int, ttlSeconds *int, autoStart, waitForIP bool) (*store.Sandbox, string, error) {
 	if host == nil {
 		return nil, "", fmt.Errorf("host is required for remote sandbox creation")
 	}
@@ -340,9 +365,8 @@ func (s *Service) CreateSandboxOnHost(ctx context.Context, host *config.HostConf
 	if memoryMB <= 0 {
 		memoryMB = s.cfg.DefaultMemoryMB
 	}
-	if sandboxName == "" {
-		sandboxName = fmt.Sprintf("sbx-%s", shortID())
-	}
+	// Always auto-generate sandbox name with sbx- prefix
+	sandboxName := fmt.Sprintf("sbx-%s", shortID())
 
 	s.logger.Info("creating sandbox on remote host",
 		"host_name", host.Name,
@@ -358,6 +382,11 @@ func (s *Service) CreateSandboxOnHost(ctx context.Context, host *config.HostConf
 
 	// Create a remote manager for this host
 	remoteMgr := libvirt.NewRemoteVirshManager(*host, s.virshCfg, s.logger)
+
+	// Validate resources before cloning on remote host
+	if err := s.validateResources(ctx, remoteMgr, sourceSandboxName, cpu, memoryMB); err != nil {
+		return nil, "", err
+	}
 
 	jobID := fmt.Sprintf("JOB-%s", shortID())
 

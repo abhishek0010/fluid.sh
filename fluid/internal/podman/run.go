@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"fluid/internal/workflow"
+	"github.com/aspectrr/fluid.sh/fluid/internal/workflow"
 )
 
 // ContainerRunner handles Podman container creation and execution.

@@ -1,6 +1,6 @@
-# virsh-sandbox API - Development Guide
+# fluid-remote API - Development Guide
 
-This is the main virsh-sandbox Go API service that orchestrates KVM/libvirt virtual machines.
+This is the main fluid-remote Go API service that orchestrates KVM/libvirt virtual machines.
 
 ## Important Development Notes
 
@@ -28,7 +28,7 @@ docker-compose down && docker-compose up --build -d
 
 ```bash
 # Use limactl to access the test VM
-limactl shell virsh-sandbox-dev
+limactl shell fluid-remote-dev
 ```
 
 ### ARM Mac (Apple Silicon) Limitations
@@ -66,7 +66,7 @@ make run
 ```bash
 # Build the API binary
 make build
-# Output: bin/virsh-sandbox-api
+# Output: bin/fluid-remote-api
 
 # Clean build artifacts
 make clean
@@ -169,7 +169,7 @@ make run
 ### Run with Docker Compose (from repo root)
 
 ```bash
-docker-compose up virsh-sandbox --build
+docker-compose up fluid-remote --build
 ```
 
 ## All Makefile Targets

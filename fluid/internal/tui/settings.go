@@ -12,7 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 )
 
 // StaticSettingsField represents the fixed configuration fields
@@ -81,7 +81,7 @@ type SettingsModel struct {
 	saved      bool
 	err        error
 	scrollY    int
-	
+
 	// Helper to track how many hosts we currently have inputs for
 	hostCount int
 }
@@ -99,11 +99,6 @@ func NewSettingsModel(cfg *config.Config, configPath string) SettingsModel {
 
 	// 1. Initialize Host Inputs
 	m.hostCount = len(cfg.Hosts)
-	// Ensure at least one host placeholder if empty, though typically we might start with 0 if user wants.
-	// But let's stick to config.
-	if m.hostCount == 0 {
-		// optional: add one empty host? Let's respect config.
-	}
 
 	for i, h := range cfg.Hosts {
 		m.addHostInput(i+1, h.Name, h.Address)
@@ -150,7 +145,7 @@ func NewSettingsModel(cfg *config.Config, configPath string) SettingsModel {
 		t := textinput.New()
 		t.Prompt = ""
 		t.CharLimit = 512
-		
+
 		// Set value based on config
 		val := m.getStaticConfigValue(StaticSettingsField(i))
 		t.SetValue(val)
@@ -188,43 +183,74 @@ func (m *SettingsModel) addHostInput(num int, name, addr string) {
 // Helper to get static config value by enum
 func (m SettingsModel) getStaticConfigValue(field StaticSettingsField) string {
 	switch field {
-	case FieldTelemetryEnabled: return strconv.FormatBool(m.cfg.Telemetry.EnableAnonymousUsage)
+	case FieldTelemetryEnabled:
+		return strconv.FormatBool(m.cfg.Telemetry.EnableAnonymousUsage)
 
-	case FieldLibvirtURI: return m.cfg.Libvirt.URI
-	case FieldLibvirtNetwork: return m.cfg.Libvirt.Network
-	case FieldLibvirtBaseImageDir: return m.cfg.Libvirt.BaseImageDir
-	case FieldLibvirtWorkDir: return m.cfg.Libvirt.WorkDir
-	case FieldLibvirtSSHKeyInjectMethod: return m.cfg.Libvirt.SSHKeyInjectMethod
-	case FieldLibvirtSocketVMNetWrapper: return m.cfg.Libvirt.SocketVMNetWrapper
+	case FieldLibvirtURI:
+		return m.cfg.Libvirt.URI
+	case FieldLibvirtNetwork:
+		return m.cfg.Libvirt.Network
+	case FieldLibvirtBaseImageDir:
+		return m.cfg.Libvirt.BaseImageDir
+	case FieldLibvirtWorkDir:
+		return m.cfg.Libvirt.WorkDir
+	case FieldLibvirtSSHKeyInjectMethod:
+		return m.cfg.Libvirt.SSHKeyInjectMethod
+	case FieldLibvirtSocketVMNetWrapper:
+		return m.cfg.Libvirt.SocketVMNetWrapper
 
-	case FieldVMDefaultVCPUs: return strconv.Itoa(m.cfg.VM.DefaultVCPUs)
-	case FieldVMDefaultMemoryMB: return strconv.Itoa(m.cfg.VM.DefaultMemoryMB)
-	case FieldVMCommandTimeout: return m.cfg.VM.CommandTimeout.String()
-	case FieldVMIPDiscoveryTimeout: return m.cfg.VM.IPDiscoveryTimeout.String()
+	case FieldVMDefaultVCPUs:
+		return strconv.Itoa(m.cfg.VM.DefaultVCPUs)
+	case FieldVMDefaultMemoryMB:
+		return strconv.Itoa(m.cfg.VM.DefaultMemoryMB)
+	case FieldVMCommandTimeout:
+		return m.cfg.VM.CommandTimeout.String()
+	case FieldVMIPDiscoveryTimeout:
+		return m.cfg.VM.IPDiscoveryTimeout.String()
 
-	case FieldSSHProxyJump: return m.cfg.SSH.ProxyJump
-	case FieldSSHCAKeyPath: return m.cfg.SSH.CAKeyPath
-	case FieldSSHCAPubPath: return m.cfg.SSH.CAPubPath
-	case FieldSSHKeyDir: return m.cfg.SSH.KeyDir
-	case FieldSSHCertTTL: return m.cfg.SSH.CertTTL.String()
-	case FieldSSHMaxTTL: return m.cfg.SSH.MaxTTL.String()
-	case FieldSSHWorkDir: return m.cfg.SSH.WorkDir
-	case FieldSSHDefaultUser: return m.cfg.SSH.DefaultUser
+	case FieldSSHProxyJump:
+		return m.cfg.SSH.ProxyJump
+	case FieldSSHCAKeyPath:
+		return m.cfg.SSH.CAKeyPath
+	case FieldSSHCAPubPath:
+		return m.cfg.SSH.CAPubPath
+	case FieldSSHKeyDir:
+		return m.cfg.SSH.KeyDir
+	case FieldSSHCertTTL:
+		return m.cfg.SSH.CertTTL.String()
+	case FieldSSHMaxTTL:
+		return m.cfg.SSH.MaxTTL.String()
+	case FieldSSHWorkDir:
+		return m.cfg.SSH.WorkDir
+	case FieldSSHDefaultUser:
+		return m.cfg.SSH.DefaultUser
 
-	case FieldAnsibleInventoryPath: return m.cfg.Ansible.InventoryPath
-	case FieldAnsiblePlaybooksDir: return m.cfg.Ansible.PlaybooksDir
-	case FieldAnsibleImage: return m.cfg.Ansible.Image
+	case FieldAnsibleInventoryPath:
+		return m.cfg.Ansible.InventoryPath
+	case FieldAnsiblePlaybooksDir:
+		return m.cfg.Ansible.PlaybooksDir
+	case FieldAnsibleImage:
+		return m.cfg.Ansible.Image
 
-	case FieldLoggingLevel: return m.cfg.Logging.Level
-	case FieldLoggingFormat: return m.cfg.Logging.Format
+	case FieldLoggingLevel:
+		return m.cfg.Logging.Level
+	case FieldLoggingFormat:
+		return m.cfg.Logging.Format
 
-	case FieldAIAgentProvider: return m.cfg.AIAgent.Provider
-	case FieldAIAgentAPIKey: return m.cfg.AIAgent.APIKey
-	case FieldAIAgentModel: return m.cfg.AIAgent.Model
-	case FieldAIAgentEndpoint: return m.cfg.AIAgent.Endpoint
-	case FieldAIAgentSiteURL: return m.cfg.AIAgent.SiteURL
-	case FieldAIAgentSiteName: return m.cfg.AIAgent.SiteName
-	case FieldAIAgentDefaultSystem: return m.cfg.AIAgent.DefaultSystem
+	case FieldAIAgentProvider:
+		return m.cfg.AIAgent.Provider
+	case FieldAIAgentAPIKey:
+		return m.cfg.AIAgent.APIKey
+	case FieldAIAgentModel:
+		return m.cfg.AIAgent.Model
+	case FieldAIAgentEndpoint:
+		return m.cfg.AIAgent.Endpoint
+	case FieldAIAgentSiteURL:
+		return m.cfg.AIAgent.SiteURL
+	case FieldAIAgentSiteName:
+		return m.cfg.AIAgent.SiteName
+	case FieldAIAgentDefaultSystem:
+		return m.cfg.AIAgent.DefaultSystem
 	}
 	return ""
 }
@@ -233,7 +259,7 @@ func (m SettingsModel) getStaticConfigValue(field StaticSettingsField) string {
 func (m *SettingsModel) addNewHost() {
 	m.hostCount++
 	num := m.hostCount
-	
+
 	tName := textinput.New()
 	tName.Prompt = ""
 	tName.CharLimit = 512
@@ -257,7 +283,7 @@ func (m *SettingsModel) addNewHost() {
 	m.inputs = insertInput(m.inputs, insertIdx, tName, tAddr)
 	m.labels = insertString(m.labels, insertIdx, fmt.Sprintf("Host %d Name:", num), fmt.Sprintf("Host %d Address:", num))
 	m.sections = insertString(m.sections, insertIdx, "Hosts", "Hosts")
-	
+
 	// If focus was after insertion point, shift it
 	if m.focused >= insertIdx {
 		m.focused += 2
@@ -493,7 +519,7 @@ func (m *SettingsModel) saveConfig() error {
 	// 1. Save Hosts
 	m.cfg.Hosts = make([]config.HostConfig, 0, m.hostCount)
 	hostInputCount := m.hostCount * 2
-	
+
 	for i := 0; i < hostInputCount; i += 2 {
 		name := m.inputs[i].Value()
 		addr := m.inputs[i+1].Value()

@@ -1,11 +1,11 @@
 //go:build !libvirt
-// +build !libvirt
 
 package libvirt
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"time"
@@ -60,7 +60,7 @@ type Manager interface {
 
 	// CheckHostResources validates that the host has sufficient resources for a new sandbox.
 	// Returns a ResourceCheckResult with available resources and any warnings.
-	CheckHostResources(ctx context.Context, requiredMemoryMB int) (*ResourceCheckResult, error)
+	CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*ResourceCheckResult, error)
 }
 
 // VMValidationResult contains the results of validating a source VM.
@@ -77,13 +77,15 @@ type VMValidationResult struct {
 
 // ResourceCheckResult contains the results of checking host resources.
 type ResourceCheckResult struct {
-	Valid              bool     `json:"valid"`
-	AvailableMemoryMB  int64    `json:"available_memory_mb"`
-	TotalMemoryMB      int64    `json:"total_memory_mb"`
-	AvailableDiskMB    int64    `json:"available_disk_mb"`
-	RequiredMemoryMB   int      `json:"required_memory_mb"`
-	Warnings           []string `json:"warnings,omitempty"`
-	Errors             []string `json:"errors,omitempty"`
+	Valid             bool     `json:"valid"`
+	AvailableMemoryMB int64    `json:"available_memory_mb"`
+	TotalMemoryMB     int64    `json:"total_memory_mb"`
+	AvailableCPUs     int      `json:"available_cpus"`
+	AvailableDiskMB   int64    `json:"available_disk_mb"`
+	RequiredMemoryMB  int      `json:"required_memory_mb"`
+	RequiredCPUs      int      `json:"required_cpus"`
+	Warnings          []string `json:"warnings,omitempty"`
+	Errors            []string `json:"errors,omitempty"`
 }
 
 // VMState represents possible VM states from virsh domstate.
@@ -259,7 +261,8 @@ func (m *VirshManager) ValidateSourceVM(ctx context.Context, vmName string) (*VM
 	return nil, ErrLibvirtNotAvailable
 }
 
-// CheckHostResources is a stub that returns an error when libvirt is not available.
-func (m *VirshManager) CheckHostResources(ctx context.Context, requiredMemoryMB int) (*ResourceCheckResult, error) {
-	return nil, ErrLibvirtNotAvailable
+// CheckHostResources validates that the host has sufficient resources for a new sandbox.
+// Returns a ResourceCheckResult with available resources and any warnings.
+func (m *VirshManager) CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*ResourceCheckResult, error) {
+	return nil, fmt.Errorf("CheckHostResources not implemented in stub")
 }

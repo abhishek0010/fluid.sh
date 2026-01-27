@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"virsh-sandbox/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/store"
 )
 
 // SandboxStore defines the minimal interface needed to look up sandbox information.

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"fluid/internal/workflow"
+	"github.com/aspectrr/fluid.sh/fluid/internal/workflow"
 )
 
 // ImageBuilder handles Podman image building operations.

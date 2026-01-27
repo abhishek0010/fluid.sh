@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"fluid/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 )
 
 // SandboxStore defines the minimal interface needed to look up sandbox information.

@@ -5,11 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"virsh-sandbox/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/store"
 )
 
 // mockStore implements store.DataStore for testing playbook operations.
@@ -177,6 +178,10 @@ func (m *mockStore) UpdateSandboxState(ctx context.Context, id string, newState 
 	return nil
 }
 func (m *mockStore) DeleteSandbox(ctx context.Context, id string) error { return nil }
+func (m *mockStore) ListExpiredSandboxes(ctx context.Context, defaultTTL time.Duration) ([]*store.Sandbox, error) {
+	return nil, nil
+}
+
 func (m *mockStore) CreateSnapshot(ctx context.Context, sn *store.Snapshot) error {
 	return nil
 }

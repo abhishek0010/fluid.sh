@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 )
 
 // RemoteVirshManager implements Manager for remote libvirt hosts via SSH.
@@ -465,7 +465,8 @@ func (m *RemoteVirshManager) ValidateSourceVM(ctx context.Context, vmName string
 	}
 
 	// Check IP address if running
-	if state == VMStateRunning {
+	switch state {
+	case VMStateRunning:
 		out, err = m.runSSH(ctx, fmt.Sprintf("virsh domifaddr %s --source lease", escapedName))
 		if err == nil {
 			ip, mac := parseDomIfAddrIPv4WithMACHelper(out)
@@ -482,7 +483,7 @@ func (m *RemoteVirshManager) ValidateSourceVM(ctx context.Context, vmName string
 					"This may indicate cloud-init or DHCP issues - cloned sandboxes may also fail to get IPs")
 			}
 		}
-	} else if state == VMStateShutOff {
+	case VMStateShutOff:
 		result.Warnings = append(result.Warnings,
 			"Source VM is shut off - cannot verify network configuration (IP/DHCP)")
 	}
@@ -491,22 +492,45 @@ func (m *RemoteVirshManager) ValidateSourceVM(ctx context.Context, vmName string
 }
 
 // CheckHostResources validates that the remote host has sufficient resources.
-func (m *RemoteVirshManager) CheckHostResources(ctx context.Context, requiredMemoryMB int) (*ResourceCheckResult, error) {
+func (m *RemoteVirshManager) CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*ResourceCheckResult, error) {
 	result := &ResourceCheckResult{
 		Valid:            true,
+		RequiredCPUs:     requiredCPUs,
 		RequiredMemoryMB: requiredMemoryMB,
 		Warnings:         []string{},
 		Errors:           []string{},
 	}
 
+	// Check CPUs using virsh nodeinfo
+	out, err := m.runSSH(ctx, "virsh nodeinfo")
+	if err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			if strings.HasPrefix(line, "CPU(s):") {
+				fields := strings.Fields(line)
+				if len(fields) >= 2 {
+					_, _ = fmt.Sscanf(fields[1], "%d", &result.AvailableCPUs)
+				}
+			}
+		}
+		if requiredCPUs > result.AvailableCPUs {
+			result.Valid = false
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Insufficient CPUs on %s: need %d but only %d available",
+					m.host.Name, requiredCPUs, result.AvailableCPUs))
+		}
+	} else {
+		result.Warnings = append(result.Warnings,
+			fmt.Sprintf("Could not check CPUs on %s: %v", m.host.Name, err))
+	}
+
 	// Check memory using virsh nodememstats
-	out, err := m.runSSH(ctx, "virsh nodememstats")
+	out, err = m.runSSH(ctx, "virsh nodememstats")
 	if err == nil {
 		for _, line := range strings.Split(out, "\n") {
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
 				var val int64
-				fmt.Sscanf(fields[len(fields)-2], "%d", &val)
+				_, _ = fmt.Sscanf(fields[len(fields)-2], "%d", &val)
 				switch {
 				case strings.Contains(fields[0], "total"):
 					result.TotalMemoryMB = val / 1024
@@ -543,7 +567,7 @@ func (m *RemoteVirshManager) CheckHostResources(ctx context.Context, requiredMem
 		out, err = m.runSSH(ctx, fmt.Sprintf("df -m %s | tail -1 | awk '{print $4}'", escapedWorkDir))
 		if err == nil {
 			var available int64
-			fmt.Sscanf(strings.TrimSpace(out), "%d", &available)
+			_, _ = fmt.Sscanf(strings.TrimSpace(out), "%d", &available)
 			result.AvailableDiskMB = available
 
 			if available < 1024 {

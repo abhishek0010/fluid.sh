@@ -68,7 +68,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Create common directories (can be mounted from host in docker-compose)
-RUN mkdir -p /var/lib/libvirt/images/base /var/lib/libvirt/images/jobs /var/lib/virsh-sandbox /root/.ssh
+RUN mkdir -p /var/lib/libvirt/images/base /var/lib/libvirt/images/jobs /var/lib/fluid-remote /root/.ssh
 
 # Copy compiled binary
 COPY --from=builder /out/api /usr/local/bin/api
@@ -87,7 +87,7 @@ ENV API_HTTP_ADDR=:8080 \
     LIBVIRT_NETWORK=default \
     BASE_IMAGE_DIR=/var/lib/libvirt/images/base \
     SANDBOX_WORKDIR=/var/lib/libvirt/images/jobs \
-    DATABASE_URL=file:/var/lib/virsh-sandbox.db?_busy_timeout=10000&_fk=1 \
+    DATABASE_URL=file:/var/lib/fluid-remote.db?_busy_timeout=10000&_fk=1 \
     DEFAULT_VCPUS=2 \
     DEFAULT_MEMORY_MB=2048 \
     COMMAND_TIMEOUT_SEC=600 \

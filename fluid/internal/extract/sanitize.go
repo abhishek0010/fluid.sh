@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"fluid/internal/workflow"
+	"github.com/aspectrr/fluid.sh/fluid/internal/workflow"
 )
 
 // Sanitizer handles filesystem sanitization for container usage.

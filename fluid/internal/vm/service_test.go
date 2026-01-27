@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"fluid/internal/libvirt"
-	"fluid/internal/store"
-	"fluid/internal/telemetry"
+	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid/internal/telemetry"
 )
 
 // mockStore implements store.Store for testing
@@ -464,13 +464,15 @@ func (m *mockManager) ValidateSourceVM(ctx context.Context, vmName string) (*lib
 	}, nil
 }
 
-func (m *mockManager) CheckHostResources(ctx context.Context, requiredMemoryMB int) (*libvirt.ResourceCheckResult, error) {
+func (m *mockManager) CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*libvirt.ResourceCheckResult, error) {
 	return &libvirt.ResourceCheckResult{
 		Valid:             true,
 		AvailableMemoryMB: 8192,
 		TotalMemoryMB:     16384,
+		AvailableCPUs:     8,
 		AvailableDiskMB:   102400,
 		RequiredMemoryMB:  requiredMemoryMB,
+		RequiredCPUs:      requiredCPUs,
 		Warnings:          []string{},
 		Errors:            []string{},
 	}, nil

@@ -8,10 +8,8 @@ var (
 	secondaryColor = lipgloss.Color("#06B6D4") // Cyan
 	successColor   = lipgloss.Color("#10B981") // Green
 	errorColor     = lipgloss.Color("#EF4444") // Red
-	warningColor   = lipgloss.Color("#F59E0B") // Amber
 	mutedColor     = lipgloss.Color("#6B7280") // Gray
 	textColor      = lipgloss.Color("#F9FAFB") // Light gray
-	surfaceColor   = lipgloss.Color("#1F2937") // Dark gray
 	borderColor    = lipgloss.Color("#374151") // Medium gray
 )
 

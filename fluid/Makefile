@@ -14,8 +14,14 @@ GOMOD=$(GOCMD) mod
 CLI_BINARY=fluid
 CLI_PATH=./cmd/fluid
 
+# PostHog key (empty by default for dev builds)
+POSTHOG_KEY ?=
+
 # Build flags
 LDFLAGS=-s -w
+ifneq ($(POSTHOG_KEY),)
+  LDFLAGS += -X github.com/aspectrr/fluid.sh/fluid/internal/telemetry.posthogAPIKey=$(POSTHOG_KEY)
+endif
 TAGS=libvirt
 BUILD_FLAGS=-ldflags "$(LDFLAGS)" -tags "$(TAGS)"
 
@@ -41,33 +47,42 @@ clean: ## Clean build artifacts
 	rm -f coverage.out coverage.html
 	$(GOCMD) clean
 
-## Code quality targets
+# Code quality targets
 
-fmt: ## Format code with gofmt
+fmt: ## Format code with gofumpt
 	@echo "Formatting code..."
-	gofmt -w .
+	gofumpt -w .
+
+lint: ## Run golangci-lint
+	@echo "Running golangci-lint..."
+	golangci-lint run --build-tags=$(TAGS) ./...
 
 vet: ## Run go vet
 	@echo "Running go vet..."
-	$(GOVET) ./...
+	$(GOVET) -tags=$(TAGS) ./...
 
 test: ## Run tests
 	@echo "Running tests..."
-	$(GOTEST) -v ./...
+	$(GOTEST) -v -tags=$(TAGS) ./...
 
 test-coverage: ## Run tests with coverage
 	@echo "Running tests with coverage..."
-	$(GOTEST) -v -coverprofile=coverage.out ./...
+	$(GOTEST) -v -tags=$(TAGS) -coverprofile=coverage.out ./...
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
-check: fmt vet ## Run all code quality checks (fmt, vet)
+check: fmt vet lint ## Run all code quality checks (fmt, vet, lint)
 
 ## Dependency management
 
 deps: ## Download dependencies
 	@echo "Downloading dependencies..."
 	$(GOMOD) download
+
+install-tools: ## Install development tools (gofumpt, golangci-lint, swag)
+	go install mvdan.cc/gofumpt@latest
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/swaggo/swag/cmd/swag@latest
 
 tidy: ## Tidy and verify dependencies
 	@echo "Tidying dependencies..."

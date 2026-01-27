@@ -654,44 +654,44 @@ func TestModifyClonedXML_UpdatesCloudInitISO(t *testing.T) {
   </devices>
 </domain>`
 
-	newXML, err := modifyClonedXML(sourceXML, "sbx-clone123", "/var/lib/libvirt/images/jobs/sbx-clone123/disk-overlay.qcow2", "/var/lib/libvirt/images/jobs/sbx-clone123/cloud-init.iso")
+	newXML, err := modifyClonedXMLHelper(sourceXML, "sbx-clone123", "/var/lib/libvirt/images/jobs/sbx-clone123/disk-overlay.qcow2", "/var/lib/libvirt/images/jobs/sbx-clone123/cloud-init.iso", 0, 0, "")
 	if err != nil {
-		t.Fatalf("modifyClonedXML() error = %v", err)
+		t.Fatalf("modifyClonedXMLHelper() error = %v", err)
 	}
 
 	// Should have updated name
 	if !strings.Contains(newXML, "<name>sbx-clone123</name>") {
-		t.Error("modifyClonedXML() did not update VM name")
+		t.Error("modifyClonedXMLHelper() did not update VM name")
 	}
 
 	// Should have updated disk path
 	if !strings.Contains(newXML, "/var/lib/libvirt/images/jobs/sbx-clone123/disk-overlay.qcow2") {
-		t.Error("modifyClonedXML() did not update disk path")
+		t.Error("modifyClonedXMLHelper() did not update disk path")
 	}
 
 	// CRITICAL: Should have updated cloud-init ISO path (not the old /tmp/test-vm-seed.img)
 	if !strings.Contains(newXML, "/var/lib/libvirt/images/jobs/sbx-clone123/cloud-init.iso") {
-		t.Errorf("modifyClonedXML() did not update cloud-init ISO path in XML:\n%s", newXML)
+		t.Errorf("modifyClonedXMLHelper() did not update cloud-init ISO path in XML:\n%s", newXML)
 	}
 
 	// Should NOT contain the old cloud-init ISO path
 	if strings.Contains(newXML, "/tmp/test-vm-seed.img") {
-		t.Errorf("modifyClonedXML() still contains old cloud-init ISO path in XML:\n%s", newXML)
+		t.Errorf("modifyClonedXMLHelper() still contains old cloud-init ISO path in XML:\n%s", newXML)
 	}
 
 	// UUID should be removed
 	if strings.Contains(newXML, "12345678-1234-1234-1234-123456789012") {
-		t.Error("modifyClonedXML() did not remove UUID")
+		t.Error("modifyClonedXMLHelper() did not remove UUID")
 	}
 
 	// MAC address should be different from source
 	if strings.Contains(newXML, "52:54:00:11:22:33") {
-		t.Error("modifyClonedXML() did not generate new MAC address")
+		t.Error("modifyClonedXMLHelper() did not generate new MAC address")
 	}
 }
 
 func TestModifyClonedXML_AddsCloudInitCDROM(t *testing.T) {
-	// Test that modifyClonedXML adds CDROM device when source VM has none
+	// Test that modifyClonedXMLHelper adds CDROM device when source VM has none
 	sourceXML := `<domain type='kvm'>
   <name>test-vm-no-cdrom</name>
   <uuid>12345678-1234-1234-1234-123456789012</uuid>
@@ -714,28 +714,28 @@ func TestModifyClonedXML_AddsCloudInitCDROM(t *testing.T) {
   </devices>
 </domain>`
 
-	newXML, err := modifyClonedXML(sourceXML, "sbx-new", "/var/lib/libvirt/images/jobs/sbx-new/disk.qcow2", "/var/lib/libvirt/images/jobs/sbx-new/cloud-init.iso")
+	newXML, err := modifyClonedXMLHelper(sourceXML, "sbx-new", "/var/lib/libvirt/images/jobs/sbx-new/disk.qcow2", "/var/lib/libvirt/images/jobs/sbx-new/cloud-init.iso", 0, 0, "")
 	if err != nil {
-		t.Fatalf("modifyClonedXML() error = %v", err)
+		t.Fatalf("modifyClonedXMLHelper() error = %v", err)
 	}
 
 	// Should have added CDROM device with cloud-init ISO
 	if !strings.Contains(newXML, `device="cdrom"`) {
-		t.Errorf("modifyClonedXML() did not add CDROM device in XML:\n%s", newXML)
+		t.Errorf("modifyClonedXMLHelper() did not add CDROM device in XML:\n%s", newXML)
 	}
 
 	if !strings.Contains(newXML, "/var/lib/libvirt/images/jobs/sbx-new/cloud-init.iso") {
-		t.Errorf("modifyClonedXML() did not add cloud-init ISO path in XML:\n%s", newXML)
+		t.Errorf("modifyClonedXMLHelper() did not add cloud-init ISO path in XML:\n%s", newXML)
 	}
 
 	// Should have added SCSI controller for the CDROM
 	if !strings.Contains(newXML, `type="scsi"`) {
-		t.Errorf("modifyClonedXML() did not add SCSI controller in XML:\n%s", newXML)
+		t.Errorf("modifyClonedXMLHelper() did not add SCSI controller in XML:\n%s", newXML)
 	}
 }
 
 func TestModifyClonedXML_NoCloudInitISO(t *testing.T) {
-	// Test that modifyClonedXML works without cloud-init ISO (empty string)
+	// Test that modifyClonedXMLHelper works without cloud-init ISO (empty string)
 	sourceXML := `<domain type='kvm'>
   <name>test-vm</name>
   <uuid>12345678-1234-1234-1234-123456789012</uuid>
@@ -764,21 +764,21 @@ func TestModifyClonedXML_NoCloudInitISO(t *testing.T) {
 </domain>`
 
 	// Empty cloudInitISO - should not modify CDROM
-	newXML, err := modifyClonedXML(sourceXML, "sbx-no-cloud", "/var/lib/libvirt/images/jobs/sbx-no-cloud/disk.qcow2", "")
+	newXML, err := modifyClonedXMLHelper(sourceXML, "sbx-no-cloud", "/var/lib/libvirt/images/jobs/sbx-no-cloud/disk.qcow2", "", 0, 0, "")
 	if err != nil {
-		t.Fatalf("modifyClonedXML() error = %v", err)
+		t.Fatalf("modifyClonedXMLHelper() error = %v", err)
 	}
 
 	// Old CDROM path should still be there (unchanged)
 	if !strings.Contains(newXML, "/tmp/old-seed.img") {
-		t.Errorf("modifyClonedXML() modified CDROM when cloudInitISO was empty:\n%s", newXML)
+		t.Errorf("modifyClonedXMLHelper() modified CDROM when cloudInitISO was empty:\n%s", newXML)
 	}
 
 	// Name and disk should still be updated
 	if !strings.Contains(newXML, "<name>sbx-no-cloud</name>") {
-		t.Error("modifyClonedXML() did not update VM name")
+		t.Error("modifyClonedXMLHelper() did not update VM name")
 	}
 	if !strings.Contains(newXML, "/var/lib/libvirt/images/jobs/sbx-no-cloud/disk.qcow2") {
-		t.Error("modifyClonedXML() did not update disk path")
+		t.Error("modifyClonedXMLHelper() did not update disk path")
 	}
 }

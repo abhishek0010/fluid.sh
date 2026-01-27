@@ -1,6 +1,6 @@
-# virsh-sandbox API Makefile
+# fluid-remote API Makefile
 
-.PHONY: all build run clean fmt lint vet test check generate-openapi create-test-vm setup-lima help install-tools
+.PHONY: all build run clean fmt lint vet test check generate-openapi help install-tools
 
 # Go parameters
 GOCMD=go
@@ -9,8 +9,19 @@ GORUN=$(GOCMD) run
 GOTEST=$(GOCMD) test
 GOVET=$(GOCMD) vet
 GOMOD=$(GOCMD) mod
-BINARY_NAME=virsh-sandbox-api
+BINARY_NAME=fluid-remote
 CMD_PATH=./cmd/api
+TAGS=libvirt
+
+# PostHog key (empty by default for dev builds)
+POSTHOG_KEY ?=
+
+# Build flags
+LDFLAGS=-s -w
+ifneq ($(POSTHOG_KEY),)
+  LDFLAGS += -X github.com/aspectrr/fluid.sh/fluid-remote/internal/telemetry.posthogAPIKey=$(POSTHOG_KEY)
+endif
+BUILD_FLAGS=-ldflags "$(LDFLAGS)" -tags "$(TAGS)"
 
 # Default target
 all: check build
@@ -18,7 +29,7 @@ all: check build
 ## Build targets
 
 build: ## Build the API binary
-	$(GOBUILD) -o bin/$(BINARY_NAME) $(CMD_PATH)
+	$(GOBUILD) $(BUILD_FLAGS) -o bin/$(BINARY_NAME) $(CMD_PATH)
 
 run: ## Run the API server
 	$(GORUN) $(CMD_PATH)
@@ -30,19 +41,22 @@ clean: ## Clean build artifacts
 ## Code quality targets
 
 fmt: ## Format code with gofumpt
-	./scripts/fmt.sh
+	@echo "Formatting code..."
+	gofumpt -w .
 
 lint: ## Run golangci-lint
-	./scripts/lint.sh
+	@echo "Running golangci-lint..."
+	golangci-lint run --build-tags=$(TAGS) ./...
 
 vet: ## Run go vet
-	./scripts/vet.sh
+	@echo "Running go vet..."
+	$(GOVET) -tags=$(TAGS) ./...
 
 test: ## Run tests
-	$(GOTEST) -v -race ./...
+	$(GOTEST) -v -race -tags=$(TAGS) ./...
 
 test-coverage: ## Run tests with coverage
-	$(GOTEST) -v -race -coverprofile=coverage.out ./...
+	$(GOTEST) -v -race -tags=$(TAGS) -coverprofile=coverage.out ./...
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
 
 check: fmt vet lint ## Run all code quality checks (fmt, vet, lint)
@@ -70,16 +84,10 @@ install-tools: ## Install development tools (gofumpt, golangci-lint, swag)
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install github.com/swaggo/swag/cmd/swag@latest
 
-setup-lima: ## Setup Lima libvirt environment
-	./scripts/setup-lima-libvirt.sh
-
-create-test-vm: ## Create a test VM for development
-	./scripts/create-test-vm.sh
-
 ## Docker targets
 
 docker-build: ## Build Docker image
-	docker build -f Dockerfile -t virsh-sandbox-api .
+	docker build -f Dockerfile -t fluid-remote-api .
 
 ## Help
 

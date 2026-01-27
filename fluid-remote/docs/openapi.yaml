@@ -2,20 +2,21 @@ openapi: 3.0.1
 info:
   contact: {}
   description: API for managing virtual machine sandboxes using libvirt
-  title: virsh-sandbox API
+  title: fluid-remote API
   version: 0.0.1-beta
 servers:
-- url: /
+  - url: /
 tags:
-- description: "Sandbox lifecycle management - create, start, run commands, snapshot,\
-    \ and destroy sandboxes"
-  name: Sandbox
-- description: Virtual machine listing and information
-  name: VMs
-- description: Ansible playbook job management
-  name: Ansible
-- description: Health check endpoints
-  name: Health
+  - description:
+      "Sandbox lifecycle management - create, start, run commands, snapshot,\
+      \ and destroy sandboxes"
+    name: Sandbox
+  - description: Virtual machine listing and information
+    name: VMs
+  - description: Ansible playbook job management
+    name: Ansible
+  - description: Health check endpoints
+    name: Health
 paths:
   /v1/access/ca-pubkey:
     get:
@@ -36,18 +37,18 @@ paths:
           description: Internal Server Error
       summary: Get the SSH CA public key
       tags:
-      - Access
+        - Access
   /v1/access/certificate/{certID}:
     delete:
       description: "Immediately revokes a certificate, terminating any active sessions"
       operationId: revokeCertificate
       parameters:
-      - description: Certificate ID
-        in: path
-        name: certID
-        required: true
-        schema:
-          type: string
+        - description: Certificate ID
+          in: path
+          name: certID
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -82,18 +83,18 @@ paths:
           description: Internal Server Error
       summary: Revoke a certificate
       tags:
-      - Access
+        - Access
       x-codegen-request-body-name: request
     get:
       description: Returns details about an issued certificate
       operationId: getCertificate
       parameters:
-      - description: Certificate ID
-        in: path
-        name: certID
-        required: true
-        schema:
-          type: string
+        - description: Certificate ID
+          in: path
+          name: certID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           content:
@@ -115,42 +116,42 @@ paths:
           description: Internal Server Error
       summary: Get certificate details
       tags:
-      - Access
+        - Access
   /v1/access/certificates:
     get:
       description: Lists issued certificates with optional filtering
       operationId: listCertificates
       parameters:
-      - description: Filter by sandbox ID
-        in: query
-        name: sandbox_id
-        schema:
-          type: string
-      - description: Filter by user ID
-        in: query
-        name: user_id
-        schema:
-          type: string
-      - description: "Filter by status (ACTIVE, EXPIRED, REVOKED)"
-        in: query
-        name: status
-        schema:
-          type: string
-      - description: "Only show active, non-expired certificates"
-        in: query
-        name: active_only
-        schema:
-          type: boolean
-      - description: Maximum results to return
-        in: query
-        name: limit
-        schema:
-          type: integer
-      - description: Offset for pagination
-        in: query
-        name: offset
-        schema:
-          type: integer
+        - description: Filter by sandbox ID
+          in: query
+          name: sandbox_id
+          schema:
+            type: string
+        - description: Filter by user ID
+          in: query
+          name: user_id
+          schema:
+            type: string
+        - description: "Filter by status (ACTIVE, EXPIRED, REVOKED)"
+          in: query
+          name: status
+          schema:
+            type: string
+        - description: "Only show active, non-expired certificates"
+          in: query
+          name: active_only
+          schema:
+            type: boolean
+        - description: Maximum results to return
+          in: query
+          name: limit
+          schema:
+            type: integer
+        - description: Offset for pagination
+          in: query
+          name: offset
+          schema:
+            type: integer
       responses:
         "200":
           content:
@@ -166,10 +167,11 @@ paths:
           description: Internal Server Error
       summary: List certificates
       tags:
-      - Access
+        - Access
   /v1/access/request:
     post:
-      description: Issues a short-lived SSH certificate for accessing a sandbox via
+      description:
+        Issues a short-lived SSH certificate for accessing a sandbox via
         tmux
       operationId: requestAccess
       requestBody:
@@ -206,7 +208,7 @@ paths:
           description: Internal Server Error
       summary: Request SSH access to a sandbox
       tags:
-      - Access
+        - Access
       x-codegen-request-body-name: request
   /v1/access/session/end:
     post:
@@ -240,7 +242,7 @@ paths:
           description: Internal Server Error
       summary: Record session end
       tags:
-      - Access
+        - Access
       x-codegen-request-body-name: request
   /v1/access/session/start:
     post:
@@ -274,43 +276,43 @@ paths:
           description: Internal Server Error
       summary: Record session start
       tags:
-      - Access
+        - Access
       x-codegen-request-body-name: request
   /v1/access/sessions:
     get:
       description: Lists access sessions with optional filtering
       operationId: listSessions
       parameters:
-      - description: Filter by sandbox ID
-        in: query
-        name: sandbox_id
-        schema:
-          type: string
-      - description: Filter by certificate ID
-        in: query
-        name: certificate_id
-        schema:
-          type: string
-      - description: Filter by user ID
-        in: query
-        name: user_id
-        schema:
-          type: string
-      - description: Only show active sessions
-        in: query
-        name: active_only
-        schema:
-          type: boolean
-      - description: Maximum results to return
-        in: query
-        name: limit
-        schema:
-          type: integer
-      - description: Offset for pagination
-        in: query
-        name: offset
-        schema:
-          type: integer
+        - description: Filter by sandbox ID
+          in: query
+          name: sandbox_id
+          schema:
+            type: string
+        - description: Filter by certificate ID
+          in: query
+          name: certificate_id
+          schema:
+            type: string
+        - description: Filter by user ID
+          in: query
+          name: user_id
+          schema:
+            type: string
+        - description: Only show active sessions
+          in: query
+          name: active_only
+          schema:
+            type: boolean
+        - description: Maximum results to return
+          in: query
+          name: limit
+          schema:
+            type: integer
+        - description: Offset for pagination
+          in: query
+          name: offset
+          schema:
+            type: integer
       responses:
         "200":
           content:
@@ -326,7 +328,7 @@ paths:
           description: Internal Server Error
       summary: List sessions
       tags:
-      - Access
+        - Access
   /v1/ansible/jobs:
     post:
       description: Creates a new Ansible playbook execution job
@@ -335,7 +337,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/virsh-sandbox_internal_ansible.JobRequest"
+              $ref: "#/components/schemas/fluid-remote_internal_ansible.JobRequest"
         description: Job creation parameters
         required: true
       responses:
@@ -343,78 +345,78 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_ansible.JobResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_ansible.JobResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Bad Request
       summary: Create Ansible job
       tags:
-      - Ansible
+        - Ansible
       x-codegen-request-body-name: request
   /v1/ansible/jobs/{job_id}:
     get:
       description: Gets the status of an Ansible job
       operationId: getAnsibleJob
       parameters:
-      - description: Job ID
-        in: path
-        name: job_id
-        required: true
-        schema:
-          type: string
+        - description: Job ID
+          in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_ansible.Job"
+                $ref: "#/components/schemas/fluid-remote_internal_ansible.Job"
           description: OK
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Get Ansible job
       tags:
-      - Ansible
+        - Ansible
   /v1/ansible/jobs/{job_id}/stream:
     get:
       description: Connects via WebSocket to run an Ansible job and stream output
       operationId: streamAnsibleJobOutput
       parameters:
-      - description: Job ID
-        in: path
-        name: job_id
-        required: true
-        schema:
-          type: string
+        - description: Job ID
+          in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
       responses:
         "101":
           content:
-            '*/*':
+            "*/*":
               schema:
                 type: string
           description: Switching Protocols - WebSocket connection established
         "404":
           content:
-            '*/*':
+            "*/*":
               schema:
                 type: string
           description: Invalid job ID
         "409":
           content:
-            '*/*':
+            "*/*":
               schema:
                 type: string
           description: Job already started or finished
       summary: Stream Ansible job output
       tags:
-      - Ansible
+        - Ansible
   /v1/ansible/playbooks:
     get:
       description: Lists all Ansible playbooks
@@ -428,7 +430,7 @@ paths:
           description: OK
       summary: List playbooks
       tags:
-      - Ansible Playbooks
+        - Ansible Playbooks
     post:
       description: Creates a new Ansible playbook
       operationId: createPlaybook
@@ -450,29 +452,29 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Bad Request
         "409":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Conflict
       summary: Create playbook
       tags:
-      - Ansible Playbooks
+        - Ansible Playbooks
       x-codegen-request-body-name: request
   /v1/ansible/playbooks/{playbook_name}:
     delete:
       description: Deletes a playbook and all its tasks
       operationId: deletePlaybook
       parameters:
-      - description: Playbook name
-        in: path
-        name: playbook_name
-        required: true
-        schema:
-          type: string
+        - description: Playbook name
+          in: path
+          name: playbook_name
+          required: true
+          schema:
+            type: string
       responses:
         "204":
           content: {}
@@ -481,21 +483,21 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Delete playbook
       tags:
-      - Ansible Playbooks
+        - Ansible Playbooks
     get:
       description: Gets a playbook and its tasks by name
       operationId: getPlaybook
       parameters:
-      - description: Playbook name
-        in: path
-        name: playbook_name
-        required: true
-        schema:
-          type: string
+        - description: Playbook name
+          in: path
+          name: playbook_name
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           content:
@@ -507,22 +509,22 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Get playbook
       tags:
-      - Ansible Playbooks
+        - Ansible Playbooks
   /v1/ansible/playbooks/{playbook_name}/export:
     get:
       description: Exports a playbook as raw YAML
       operationId: exportPlaybook
       parameters:
-      - description: Playbook name
-        in: path
-        name: playbook_name
-        required: true
-        schema:
-          type: string
+        - description: Playbook name
+          in: path
+          name: playbook_name
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           content:
@@ -534,22 +536,22 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Export playbook
       tags:
-      - Ansible Playbooks
+        - Ansible Playbooks
   /v1/ansible/playbooks/{playbook_name}/tasks:
     post:
       description: Adds a new task to an existing playbook
       operationId: addPlaybookTask
       parameters:
-      - description: Playbook name
-        in: path
-        name: playbook_name
-        required: true
-        schema:
-          type: string
+        - description: Playbook name
+          in: path
+          name: playbook_name
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -568,35 +570,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Add task to playbook
       tags:
-      - Ansible Playbooks
+        - Ansible Playbooks
       x-codegen-request-body-name: request
   /v1/ansible/playbooks/{playbook_name}/tasks/{task_id}:
     delete:
       description: Removes a task from a playbook
       operationId: deletePlaybookTask
       parameters:
-      - description: Playbook name
-        in: path
-        name: playbook_name
-        required: true
-        schema:
-          type: string
-      - description: Task ID
-        in: path
-        name: task_id
-        required: true
-        schema:
-          type: string
+        - description: Playbook name
+          in: path
+          name: playbook_name
+          required: true
+          schema:
+            type: string
+        - description: Task ID
+          in: path
+          name: task_id
+          required: true
+          schema:
+            type: string
       responses:
         "204":
           content: {}
@@ -605,27 +607,27 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Delete task
       tags:
-      - Ansible Playbooks
+        - Ansible Playbooks
     put:
       description: Updates an existing task in a playbook
       operationId: updatePlaybookTask
       parameters:
-      - description: Playbook name
-        in: path
-        name: playbook_name
-        required: true
-        schema:
-          type: string
-      - description: Task ID
-        in: path
-        name: task_id
-        required: true
-        schema:
-          type: string
+        - description: Playbook name
+          in: path
+          name: playbook_name
+          required: true
+          schema:
+            type: string
+        - description: Task ID
+          in: path
+          name: task_id
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -644,29 +646,29 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Update task
       tags:
-      - Ansible Playbooks
+        - Ansible Playbooks
       x-codegen-request-body-name: request
   /v1/ansible/playbooks/{playbook_name}/tasks/reorder:
     patch:
       description: Reorders tasks in a playbook
       operationId: reorderPlaybookTasks
       parameters:
-      - description: Playbook name
-        in: path
-        name: playbook_name
-        required: true
-        schema:
-          type: string
+        - description: Playbook name
+          in: path
+          name: playbook_name
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -682,17 +684,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Reorder tasks
       tags:
-      - Ansible Playbooks
+        - Ansible Playbooks
       x-codegen-request-body-name: request
   /v1/health:
     get:
@@ -703,78 +705,81 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.healthResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.healthResponse"
           description: OK
       summary: Health check
       tags:
-      - Health
+        - Health
   /v1/sandboxes:
     get:
-      description: "Lists all sandboxes with optional filtering by agent_id, job_id,\
+      description:
+        "Lists all sandboxes with optional filtering by agent_id, job_id,\
         \ base_image, state, or vm_name"
       operationId: listSandboxes
       parameters:
-      - description: Filter by agent ID
-        in: query
-        name: agent_id
-        schema:
-          type: string
-      - description: Filter by job ID
-        in: query
-        name: job_id
-        schema:
-          type: string
-      - description: Filter by base image
-        in: query
-        name: base_image
-        schema:
-          type: string
-      - description: "Filter by state (CREATED, STARTING, RUNNING, STOPPED, DESTROYED,\
-          \ ERROR)"
-        in: query
-        name: state
-        schema:
-          type: string
-      - description: Filter by VM name
-        in: query
-        name: vm_name
-        schema:
-          type: string
-      - description: Max results to return
-        in: query
-        name: limit
-        schema:
-          type: integer
-      - description: Number of results to skip
-        in: query
-        name: offset
-        schema:
-          type: integer
+        - description: Filter by agent ID
+          in: query
+          name: agent_id
+          schema:
+            type: string
+        - description: Filter by job ID
+          in: query
+          name: job_id
+          schema:
+            type: string
+        - description: Filter by base image
+          in: query
+          name: base_image
+          schema:
+            type: string
+        - description:
+            "Filter by state (CREATED, STARTING, RUNNING, STOPPED, DESTROYED,\
+            \ ERROR)"
+          in: query
+          name: state
+          schema:
+            type: string
+        - description: Filter by VM name
+          in: query
+          name: vm_name
+          schema:
+            type: string
+        - description: Max results to return
+          in: query
+          name: limit
+          schema:
+            type: integer
+        - description: Number of results to skip
+          in: query
+          name: offset
+          schema:
+            type: integer
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.listSandboxesResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.listSandboxesResponse"
           description: OK
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: List sandboxes
       tags:
-      - Sandbox
+        - Sandbox
     post:
-      description: Creates a new virtual machine sandbox by cloning from an existing
+      description:
+        Creates a new virtual machine sandbox by cloning from an existing
         VM
       operationId: createSandbox
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/virsh-sandbox_internal_rest.createSandboxRequest"
+              $ref: "#/components/schemas/fluid-remote_internal_rest.createSandboxRequest"
         description: Sandbox creation parameters
         required: true
       responses:
@@ -782,172 +787,173 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.createSandboxResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.createSandboxResponse"
           description: Created
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Create a new sandbox
       tags:
-      - Sandbox
+        - Sandbox
       x-codegen-request-body-name: request
   /v1/sandboxes/{id}:
     delete:
       description: Destroys the sandbox and cleans up resources
       operationId: destroySandbox
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.destroySandboxResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.destroySandboxResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Destroy sandbox
       tags:
-      - Sandbox
+        - Sandbox
     get:
-      description: Returns detailed information about a specific sandbox including
+      description:
+        Returns detailed information about a specific sandbox including
         recent commands
       operationId: getSandbox
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      - description: Include command history
-        in: query
-        name: include_commands
-        schema:
-          type: boolean
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: Include command history
+          in: query
+          name: include_commands
+          schema:
+            type: boolean
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.getSandboxResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.getSandboxResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Get sandbox details
       tags:
-      - Sandbox
+        - Sandbox
   /v1/sandboxes/{id}/commands:
     get:
       description: Returns all commands executed in the sandbox
       operationId: listSandboxCommands
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      - description: Max results to return
-        in: query
-        name: limit
-        schema:
-          type: integer
-      - description: Number of results to skip
-        in: query
-        name: offset
-        schema:
-          type: integer
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: Max results to return
+          in: query
+          name: limit
+          schema:
+            type: integer
+        - description: Number of results to skip
+          in: query
+          name: offset
+          schema:
+            type: integer
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.listSandboxCommandsResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.listSandboxCommandsResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: List sandbox commands
       tags:
-      - Sandbox
+        - Sandbox
   /v1/sandboxes/{id}/diff:
     post:
       description: Computes differences between two snapshots
       operationId: diffSnapshots
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/virsh-sandbox_internal_rest.diffRequest"
+              $ref: "#/components/schemas/fluid-remote_internal_rest.diffRequest"
         description: Diff parameters
         required: true
       responses:
@@ -955,113 +961,114 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.diffResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.diffResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Diff snapshots
       tags:
-      - Sandbox
+        - Sandbox
       x-codegen-request-body-name: request
   /v1/sandboxes/{id}/generate/{tool}:
     post:
       description: Generates Ansible or Puppet configuration from sandbox changes
       operationId: generateConfiguration
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      - description: Tool type (ansible or puppet)
-        in: path
-        name: tool
-        required: true
-        schema:
-          type: string
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: Tool type (ansible or puppet)
+          in: path
+          name: tool
+          required: true
+          schema:
+            type: string
       responses:
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "501":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.generateResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.generateResponse"
           description: Not Implemented
       summary: Generate configuration
       tags:
-      - Sandbox
+        - Sandbox
   /v1/sandboxes/{id}/ip:
     get:
-      description: Discovers and returns the IP address for a running sandbox. Use
+      description:
+        Discovers and returns the IP address for a running sandbox. Use
         this for async workflows where wait_for_ip was false during start.
       operationId: discoverSandboxIP
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.discoverIPResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.discoverIPResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Discover sandbox IP
       tags:
-      - Sandbox
+        - Sandbox
   /v1/sandboxes/{id}/publish:
     post:
       description: Publishes sandbox changes to GitOps repository
       operationId: publishChanges
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/virsh-sandbox_internal_rest.publishRequest"
+              $ref: "#/components/schemas/fluid-remote_internal_rest.publishRequest"
         description: Publish parameters
         required: true
       responses:
@@ -1069,35 +1076,36 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "501":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.publishResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.publishResponse"
           description: Not Implemented
       summary: Publish changes
       tags:
-      - Sandbox
+        - Sandbox
       x-codegen-request-body-name: request
   /v1/sandboxes/{id}/run:
     post:
-      description: "Executes a command inside the sandbox via SSH. If private_key_path\
+      description:
+        "Executes a command inside the sandbox via SSH. If private_key_path\
         \ is omitted and SSH CA is configured, managed credentials will be used automatically."
       operationId: runSandboxCommand
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/virsh-sandbox_internal_rest.runCommandRequest"
+              $ref: "#/components/schemas/fluid-remote_internal_rest.runCommandRequest"
         description: Command execution parameters
         required: true
       responses:
@@ -1105,40 +1113,40 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.runCommandResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.runCommandResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Run command in sandbox
       tags:
-      - Sandbox
+        - Sandbox
       x-codegen-request-body-name: request
   /v1/sandboxes/{id}/snapshot:
     post:
       description: Creates a snapshot of the sandbox
       operationId: createSnapshot
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/virsh-sandbox_internal_rest.snapshotRequest"
+              $ref: "#/components/schemas/fluid-remote_internal_rest.snapshotRequest"
         description: Snapshot parameters
         required: true
       responses:
@@ -1146,40 +1154,40 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.snapshotResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.snapshotResponse"
           description: Created
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Create snapshot
       tags:
-      - Sandbox
+        - Sandbox
       x-codegen-request-body-name: request
   /v1/sandboxes/{id}/sshkey:
     post:
       description: Injects a public SSH key for a user in the sandbox
       operationId: injectSshKey
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/virsh-sandbox_internal_rest.injectSSHKeyRequest"
+              $ref: "#/components/schemas/fluid-remote_internal_rest.injectSSHKeyRequest"
         description: SSH key injection parameters
         required: true
       responses:
@@ -1190,34 +1198,34 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Inject SSH key into sandbox
       tags:
-      - Sandbox
+        - Sandbox
       x-codegen-request-body-name: request
   /v1/sandboxes/{id}/start:
     post:
       description: Starts the virtual machine sandbox
       operationId: startSandbox
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/virsh-sandbox_internal_rest.startSandboxRequest"
+              $ref: "#/components/schemas/fluid-remote_internal_rest.startSandboxRequest"
         description: Start parameters
         required: false
       responses:
@@ -1225,58 +1233,59 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.startSandboxResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.startSandboxResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Start sandbox
       tags:
-      - Sandbox
+        - Sandbox
       x-codegen-request-body-name: request
   /v1/sandboxes/{id}/stream:
     get:
-      description: "Connects via WebSocket to stream realtime sandbox activity (commands,\
+      description:
+        "Connects via WebSocket to stream realtime sandbox activity (commands,\
         \ file changes)"
       operationId: streamSandboxActivity
       parameters:
-      - description: Sandbox ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Sandbox ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       responses:
         "101":
           content:
-            '*/*':
+            "*/*":
               schema:
                 type: string
           description: Switching Protocols - WebSocket connection established
         "400":
           content:
-            '*/*':
+            "*/*":
               schema:
                 type: string
           description: Invalid sandbox ID
         "404":
           content:
-            '*/*':
+            "*/*":
               schema:
                 type: string
           description: Sandbox not found
       summary: Stream sandbox activity
       tags:
-      - Sandbox
+        - Sandbox
   /v1/vms:
     get:
       description: Returns a list of all virtual machines from the libvirt instance
@@ -1286,17 +1295,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.listVMsResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.listVMsResponse"
           description: OK
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/virsh-sandbox_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: List all VMs
       tags:
-      - VMs
+        - VMs
 components:
   schemas:
     internal_ansible.Job:
@@ -1330,16 +1339,16 @@ components:
       type: object
     internal_ansible.JobStatus:
       enum:
-      - pending
-      - running
-      - finished
-      - failed
+        - pending
+        - running
+        - finished
+        - failed
       type: string
       x-enum-varnames:
-      - JobStatusPending
-      - JobStatusRunning
-      - JobStatusFinished
-      - JobStatusFailed
+        - JobStatusPending
+        - JobStatusRunning
+        - JobStatusFinished
+        - JobStatusFailed
     internal_ansible.addTaskRequest:
       properties:
         module:
@@ -1362,7 +1371,7 @@ components:
           playbook_id: playbook_id
       properties:
         task:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.PlaybookTask"
+          $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
       type: object
     internal_ansible.createPlaybookRequest:
       properties:
@@ -1385,7 +1394,7 @@ components:
           become: true
       properties:
         playbook:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Playbook"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
       type: object
     internal_ansible.exportPlaybookResponse:
       example:
@@ -1397,20 +1406,20 @@ components:
     internal_ansible.getPlaybookResponse:
       example:
         tasks:
-        - module: module
-          name: name
-          created_at: created_at
-          id: id
-          position: 0
-          params: "{}"
-          playbook_id: playbook_id
-        - module: module
-          name: name
-          created_at: created_at
-          id: id
-          position: 0
-          params: "{}"
-          playbook_id: playbook_id
+          - module: module
+            name: name
+            created_at: created_at
+            id: id
+            position: 0
+            params: "{}"
+            playbook_id: playbook_id
+          - module: module
+            name: name
+            created_at: created_at
+            id: id
+            position: 0
+            params: "{}"
+            playbook_id: playbook_id
         playbook:
           file_path: file_path
           updated_at: updated_at
@@ -1421,34 +1430,34 @@ components:
           become: true
       properties:
         playbook:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Playbook"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
         tasks:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.PlaybookTask"
+            $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
           type: array
       type: object
     internal_ansible.listPlaybooksResponse:
       example:
         total: 0
         playbooks:
-        - file_path: file_path
-          updated_at: updated_at
-          hosts: hosts
-          name: name
-          created_at: created_at
-          id: id
-          become: true
-        - file_path: file_path
-          updated_at: updated_at
-          hosts: hosts
-          name: name
-          created_at: created_at
-          id: id
-          become: true
+          - file_path: file_path
+            updated_at: updated_at
+            hosts: hosts
+            name: name
+            created_at: created_at
+            id: id
+            become: true
+          - file_path: file_path
+            updated_at: updated_at
+            hosts: hosts
+            name: name
+            created_at: created_at
+            id: id
+            become: true
       properties:
         playbooks:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.Playbook"
+            $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
           type: array
         total:
           type: integer
@@ -1482,7 +1491,7 @@ components:
           playbook_id: playbook_id
       properties:
         task:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.PlaybookTask"
+          $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
       type: object
     internal_rest.ErrorResponse:
       properties:
@@ -1522,8 +1531,8 @@ components:
       example:
         ttl_seconds: 6
         principals:
-        - principals
-        - principals
+          - principals
+          - principals
         serial_number: 0
         issued_at: issued_at
         valid_after: valid_after
@@ -1598,7 +1607,7 @@ components:
           description: populated when auto_start and wait_for_ip are true
           type: string
         sandbox:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Sandbox"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Sandbox"
       type: object
     internal_rest.destroySandboxResponse:
       properties:
@@ -1607,7 +1616,7 @@ components:
         sandbox_name:
           type: string
         state:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.SandboxState"
+          $ref: "#/components/schemas/fluid-remote_internal_store.SandboxState"
         ttl_seconds:
           type: integer
       type: object
@@ -1623,7 +1632,7 @@ components:
     internal_rest.diffResponse:
       properties:
         diff:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Diff"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Diff"
       type: object
     internal_rest.discoverIPResponse:
       properties:
@@ -1641,10 +1650,10 @@ components:
       properties:
         commands:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.Command"
+            $ref: "#/components/schemas/fluid-remote_internal_store.Command"
           type: array
         sandbox:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Sandbox"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Sandbox"
       type: object
     internal_rest.healthResponse:
       properties:
@@ -1657,43 +1666,43 @@ components:
           description: required
           type: string
         username:
-          description: "required (explicit); typical: \"ubuntu\" or \"centos\""
+          description: 'required (explicit); typical: "ubuntu" or "centos"'
           type: string
       type: object
     internal_rest.listCertificatesResponse:
       example:
         total: 0
         certificates:
-        - ttl_seconds: 6
-          principals:
-          - principals
-          - principals
-          serial_number: 0
-          issued_at: issued_at
-          valid_after: valid_after
-          vm_id: vm_id
-          is_expired: true
-          valid_before: valid_before
-          user_id: user_id
-          identity: identity
-          sandbox_id: sandbox_id
-          id: id
-          status: status
-        - ttl_seconds: 6
-          principals:
-          - principals
-          - principals
-          serial_number: 0
-          issued_at: issued_at
-          valid_after: valid_after
-          vm_id: vm_id
-          is_expired: true
-          valid_before: valid_before
-          user_id: user_id
-          identity: identity
-          sandbox_id: sandbox_id
-          id: id
-          status: status
+          - ttl_seconds: 6
+            principals:
+              - principals
+              - principals
+            serial_number: 0
+            issued_at: issued_at
+            valid_after: valid_after
+            vm_id: vm_id
+            is_expired: true
+            valid_before: valid_before
+            user_id: user_id
+            identity: identity
+            sandbox_id: sandbox_id
+            id: id
+            status: status
+          - ttl_seconds: 6
+            principals:
+              - principals
+              - principals
+            serial_number: 0
+            issued_at: issued_at
+            valid_after: valid_after
+            vm_id: vm_id
+            is_expired: true
+            valid_before: valid_before
+            user_id: user_id
+            identity: identity
+            sandbox_id: sandbox_id
+            id: id
+            status: status
       properties:
         certificates:
           items:
@@ -1706,7 +1715,7 @@ components:
       properties:
         commands:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.Command"
+            $ref: "#/components/schemas/fluid-remote_internal_store.Command"
           type: array
         total:
           type: integer
@@ -1723,28 +1732,28 @@ components:
     internal_rest.listSessionsResponse:
       example:
         sessions:
-        - certificate_id: certificate_id
-          duration_seconds: 0
-          vm_id: vm_id
-          user_id: user_id
-          sandbox_id: sandbox_id
-          started_at: started_at
-          vm_ip_address: vm_ip_address
-          id: id
-          ended_at: ended_at
-          source_ip: source_ip
-          status: status
-        - certificate_id: certificate_id
-          duration_seconds: 0
-          vm_id: vm_id
-          user_id: user_id
-          sandbox_id: sandbox_id
-          started_at: started_at
-          vm_ip_address: vm_ip_address
-          id: id
-          ended_at: ended_at
-          source_ip: source_ip
-          status: status
+          - certificate_id: certificate_id
+            duration_seconds: 0
+            vm_id: vm_id
+            user_id: user_id
+            sandbox_id: sandbox_id
+            started_at: started_at
+            vm_ip_address: vm_ip_address
+            id: id
+            ended_at: ended_at
+            source_ip: source_ip
+            status: status
+          - certificate_id: certificate_id
+            duration_seconds: 0
+            vm_id: vm_id
+            user_id: user_id
+            sandbox_id: sandbox_id
+            started_at: started_at
+            vm_ip_address: vm_ip_address
+            id: id
+            ended_at: ended_at
+            source_ip: source_ip
+            status: status
         total: 6
       properties:
         sessions:
@@ -1863,7 +1872,8 @@ components:
           description: optional
           type: object
         private_key_path:
-          description: "optional; if empty, uses managed credentials (requires SSH\
+          description:
+            "optional; if empty, uses managed credentials (requires SSH\
             \ CA)"
           type: string
         timeout_sec:
@@ -1876,7 +1886,7 @@ components:
     internal_rest.runCommandResponse:
       properties:
         command:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Command"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Command"
       type: object
     internal_rest.sandboxInfo:
       properties:
@@ -1983,7 +1993,7 @@ components:
     internal_rest.snapshotResponse:
       properties:
         snapshot:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Snapshot"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Snapshot"
       type: object
     internal_rest.startSandboxRequest:
       properties:
@@ -2011,26 +2021,26 @@ components:
       type: object
     time.Duration:
       enum:
-      - -9223372036854775808
-      - 9223372036854775807
-      - 1
-      - 1000
-      - 1000000
-      - 1000000000
-      - 60000000000
-      - 3600000000000
+        - -9223372036854775808
+        - 9223372036854775807
+        - 1
+        - 1000
+        - 1000000
+        - 1000000000
+        - 60000000000
+        - 3600000000000
       format: int64
       type: integer
       x-enum-varnames:
-      - minDuration
-      - maxDuration
-      - Nanosecond
-      - Microsecond
-      - Millisecond
-      - Second
-      - Minute
-      - Hour
-    virsh-sandbox_internal_ansible.Job:
+        - minDuration
+        - maxDuration
+        - Nanosecond
+        - Microsecond
+        - Millisecond
+        - Second
+        - Minute
+        - Hour
+    fluid-remote_internal_ansible.Job:
       example:
         check: true
         id: id
@@ -2045,11 +2055,11 @@ components:
         playbook:
           type: string
         status:
-          $ref: "#/components/schemas/virsh-sandbox_internal_ansible.JobStatus"
+          $ref: "#/components/schemas/fluid-remote_internal_ansible.JobStatus"
         vm_name:
           type: string
       type: object
-    virsh-sandbox_internal_ansible.JobRequest:
+    fluid-remote_internal_ansible.JobRequest:
       properties:
         check:
           type: boolean
@@ -2058,7 +2068,7 @@ components:
         vm_name:
           type: string
       type: object
-    virsh-sandbox_internal_ansible.JobResponse:
+    fluid-remote_internal_ansible.JobResponse:
       example:
         job_id: job_id
         ws_url: ws_url
@@ -2068,19 +2078,19 @@ components:
         ws_url:
           type: string
       type: object
-    virsh-sandbox_internal_ansible.JobStatus:
+    fluid-remote_internal_ansible.JobStatus:
       enum:
-      - pending
-      - running
-      - finished
-      - failed
+        - pending
+        - running
+        - finished
+        - failed
       type: string
       x-enum-varnames:
-      - JobStatusPending
-      - JobStatusRunning
-      - JobStatusFinished
-      - JobStatusFailed
-    virsh-sandbox_internal_ansible.addTaskRequest:
+        - JobStatusPending
+        - JobStatusRunning
+        - JobStatusFinished
+        - JobStatusFailed
+    fluid-remote_internal_ansible.addTaskRequest:
       properties:
         module:
           type: string
@@ -2090,12 +2100,12 @@ components:
           properties: {}
           type: object
       type: object
-    virsh-sandbox_internal_ansible.addTaskResponse:
+    fluid-remote_internal_ansible.addTaskResponse:
       properties:
         task:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.PlaybookTask"
+          $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
       type: object
-    virsh-sandbox_internal_ansible.createPlaybookRequest:
+    fluid-remote_internal_ansible.createPlaybookRequest:
       properties:
         become:
           type: boolean
@@ -2104,42 +2114,42 @@ components:
         name:
           type: string
       type: object
-    virsh-sandbox_internal_ansible.createPlaybookResponse:
+    fluid-remote_internal_ansible.createPlaybookResponse:
       properties:
         playbook:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Playbook"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
       type: object
-    virsh-sandbox_internal_ansible.exportPlaybookResponse:
+    fluid-remote_internal_ansible.exportPlaybookResponse:
       properties:
         yaml:
           type: string
       type: object
-    virsh-sandbox_internal_ansible.getPlaybookResponse:
+    fluid-remote_internal_ansible.getPlaybookResponse:
       properties:
         playbook:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Playbook"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
         tasks:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.PlaybookTask"
+            $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
           type: array
       type: object
-    virsh-sandbox_internal_ansible.listPlaybooksResponse:
+    fluid-remote_internal_ansible.listPlaybooksResponse:
       properties:
         playbooks:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.Playbook"
+            $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
           type: array
         total:
           type: integer
       type: object
-    virsh-sandbox_internal_ansible.reorderTasksRequest:
+    fluid-remote_internal_ansible.reorderTasksRequest:
       properties:
         task_ids:
           items:
             type: string
           type: array
       type: object
-    virsh-sandbox_internal_ansible.updateTaskRequest:
+    fluid-remote_internal_ansible.updateTaskRequest:
       properties:
         module:
           type: string
@@ -2149,12 +2159,12 @@ components:
           properties: {}
           type: object
       type: object
-    virsh-sandbox_internal_ansible.updateTaskResponse:
+    fluid-remote_internal_ansible.updateTaskResponse:
       properties:
         task:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.PlaybookTask"
+          $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
       type: object
-    virsh-sandbox_internal_error.ErrorResponse:
+    fluid-remote_internal_error.ErrorResponse:
       example:
         code: 0
         details: details
@@ -2167,7 +2177,7 @@ components:
         error:
           type: string
       type: object
-    virsh-sandbox_internal_rest.ErrorResponse:
+    fluid-remote_internal_rest.ErrorResponse:
       example:
         code: 1
         details: details
@@ -2180,7 +2190,7 @@ components:
         error:
           type: string
       type: object
-    virsh-sandbox_internal_rest.accessErrorResponse:
+    fluid-remote_internal_rest.accessErrorResponse:
       properties:
         code:
           type: integer
@@ -2189,7 +2199,7 @@ components:
         error:
           type: string
       type: object
-    virsh-sandbox_internal_rest.caPublicKeyResponse:
+    fluid-remote_internal_rest.caPublicKeyResponse:
       properties:
         public_key:
           description: PublicKey is the CA public key in OpenSSH format.
@@ -2198,7 +2208,7 @@ components:
           description: Usage explains how to use this key.
           type: string
       type: object
-    virsh-sandbox_internal_rest.certificateResponse:
+    fluid-remote_internal_rest.certificateResponse:
       properties:
         id:
           type: string
@@ -2229,7 +2239,7 @@ components:
         vm_id:
           type: string
       type: object
-    virsh-sandbox_internal_rest.createSandboxRequest:
+    fluid-remote_internal_rest.createSandboxRequest:
       properties:
         agent_id:
           description: required
@@ -2256,7 +2266,7 @@ components:
           description: "optional; if true and auto_start, wait for IP discovery"
           type: boolean
       type: object
-    virsh-sandbox_internal_rest.createSandboxResponse:
+    fluid-remote_internal_rest.createSandboxResponse:
       example:
         sandbox:
           base_image: base_image
@@ -2277,9 +2287,9 @@ components:
           description: populated when auto_start and wait_for_ip are true
           type: string
         sandbox:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Sandbox"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Sandbox"
       type: object
-    virsh-sandbox_internal_rest.destroySandboxResponse:
+    fluid-remote_internal_rest.destroySandboxResponse:
       example:
         base_image: base_image
         ttl_seconds: 0
@@ -2291,11 +2301,11 @@ components:
         sandbox_name:
           type: string
         state:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.SandboxState"
+          $ref: "#/components/schemas/fluid-remote_internal_store.SandboxState"
         ttl_seconds:
           type: integer
       type: object
-    virsh-sandbox_internal_rest.diffRequest:
+    fluid-remote_internal_rest.diffRequest:
       properties:
         from_snapshot:
           description: required
@@ -2304,7 +2314,7 @@ components:
           description: required
           type: string
       type: object
-    virsh-sandbox_internal_rest.diffResponse:
+    fluid-remote_internal_rest.diffResponse:
       example:
         diff:
           to_snapshot: to_snapshot
@@ -2315,16 +2325,16 @@ components:
           diff_json: "{}"
       properties:
         diff:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Diff"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Diff"
       type: object
-    virsh-sandbox_internal_rest.discoverIPResponse:
+    fluid-remote_internal_rest.discoverIPResponse:
       example:
         ip_address: ip_address
       properties:
         ip_address:
           type: string
       type: object
-    virsh-sandbox_internal_rest.generateResponse:
+    fluid-remote_internal_rest.generateResponse:
       example:
         note: note
         message: message
@@ -2334,7 +2344,7 @@ components:
         note:
           type: string
       type: object
-    virsh-sandbox_internal_rest.getSandboxResponse:
+    fluid-remote_internal_rest.getSandboxResponse:
       example:
         sandbox:
           base_image: base_image
@@ -2350,174 +2360,174 @@ components:
           deleted_at: deleted_at
           network: network
         commands:
-        - metadata:
-            redacted:
-              key: redacted
-            work_dir: work_dir
-            user: user
-            timeout: 6
-          stdout: stdout
-          env_json: env_json
-          exit_code: 0
-          sandbox_id: sandbox_id
-          started_at: started_at
-          id: id
-          stderr: stderr
-          command: command
-          ended_at: ended_at
-        - metadata:
-            redacted:
-              key: redacted
-            work_dir: work_dir
-            user: user
-            timeout: 6
-          stdout: stdout
-          env_json: env_json
-          exit_code: 0
-          sandbox_id: sandbox_id
-          started_at: started_at
-          id: id
-          stderr: stderr
-          command: command
-          ended_at: ended_at
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
       properties:
         commands:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.Command"
+            $ref: "#/components/schemas/fluid-remote_internal_store.Command"
           type: array
         sandbox:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Sandbox"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Sandbox"
       type: object
-    virsh-sandbox_internal_rest.healthResponse:
+    fluid-remote_internal_rest.healthResponse:
       example:
         status: status
       properties:
         status:
           type: string
       type: object
-    virsh-sandbox_internal_rest.injectSSHKeyRequest:
+    fluid-remote_internal_rest.injectSSHKeyRequest:
       properties:
         public_key:
           description: required
           type: string
         username:
-          description: "required (explicit); typical: \"ubuntu\" or \"centos\""
+          description: 'required (explicit); typical: "ubuntu" or "centos"'
           type: string
       type: object
-    virsh-sandbox_internal_rest.listCertificatesResponse:
+    fluid-remote_internal_rest.listCertificatesResponse:
       properties:
         certificates:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_rest.certificateResponse"
+            $ref: "#/components/schemas/fluid-remote_internal_rest.certificateResponse"
           type: array
         total:
           type: integer
       type: object
-    virsh-sandbox_internal_rest.listSandboxCommandsResponse:
+    fluid-remote_internal_rest.listSandboxCommandsResponse:
       example:
         total: 0
         commands:
-        - metadata:
-            redacted:
-              key: redacted
-            work_dir: work_dir
-            user: user
-            timeout: 6
-          stdout: stdout
-          env_json: env_json
-          exit_code: 0
-          sandbox_id: sandbox_id
-          started_at: started_at
-          id: id
-          stderr: stderr
-          command: command
-          ended_at: ended_at
-        - metadata:
-            redacted:
-              key: redacted
-            work_dir: work_dir
-            user: user
-            timeout: 6
-          stdout: stdout
-          env_json: env_json
-          exit_code: 0
-          sandbox_id: sandbox_id
-          started_at: started_at
-          id: id
-          stderr: stderr
-          command: command
-          ended_at: ended_at
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
       properties:
         commands:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.Command"
+            $ref: "#/components/schemas/fluid-remote_internal_store.Command"
           type: array
         total:
           type: integer
       type: object
-    virsh-sandbox_internal_rest.listSandboxesResponse:
+    fluid-remote_internal_rest.listSandboxesResponse:
       example:
         total: 6
         sandboxes:
-        - base_image: base_image
-          agent_id: agent_id
-          updated_at: updated_at
-          job_id: job_id
-          ttl_seconds: 0
-          created_at: created_at
-          sandbox_name: sandbox_name
-          id: id
-          ip_address: ip_address
-          state: state
-          network: network
-        - base_image: base_image
-          agent_id: agent_id
-          updated_at: updated_at
-          job_id: job_id
-          ttl_seconds: 0
-          created_at: created_at
-          sandbox_name: sandbox_name
-          id: id
-          ip_address: ip_address
-          state: state
-          network: network
+          - base_image: base_image
+            agent_id: agent_id
+            updated_at: updated_at
+            job_id: job_id
+            ttl_seconds: 0
+            created_at: created_at
+            sandbox_name: sandbox_name
+            id: id
+            ip_address: ip_address
+            state: state
+            network: network
+          - base_image: base_image
+            agent_id: agent_id
+            updated_at: updated_at
+            job_id: job_id
+            ttl_seconds: 0
+            created_at: created_at
+            sandbox_name: sandbox_name
+            id: id
+            ip_address: ip_address
+            state: state
+            network: network
       properties:
         sandboxes:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_rest.sandboxInfo"
+            $ref: "#/components/schemas/fluid-remote_internal_rest.sandboxInfo"
           type: array
         total:
           type: integer
       type: object
-    virsh-sandbox_internal_rest.listSessionsResponse:
+    fluid-remote_internal_rest.listSessionsResponse:
       properties:
         sessions:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_rest.sessionResponse"
+            $ref: "#/components/schemas/fluid-remote_internal_rest.sessionResponse"
           type: array
         total:
           type: integer
       type: object
-    virsh-sandbox_internal_rest.listVMsResponse:
+    fluid-remote_internal_rest.listVMsResponse:
       example:
         vms:
-        - name: name
-          state: state
-          persistent: true
-          uuid: uuid
-          disk_path: disk_path
-        - name: name
-          state: state
-          persistent: true
-          uuid: uuid
-          disk_path: disk_path
+          - name: name
+            state: state
+            persistent: true
+            uuid: uuid
+            disk_path: disk_path
+          - name: name
+            state: state
+            persistent: true
+            uuid: uuid
+            disk_path: disk_path
       properties:
         vms:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_rest.vmInfo"
+            $ref: "#/components/schemas/fluid-remote_internal_rest.vmInfo"
           type: array
       type: object
-    virsh-sandbox_internal_rest.publishRequest:
+    fluid-remote_internal_rest.publishRequest:
       properties:
         job_id:
           description: required
@@ -2531,7 +2541,7 @@ components:
             type: string
           type: array
       type: object
-    virsh-sandbox_internal_rest.publishResponse:
+    fluid-remote_internal_rest.publishResponse:
       example:
         note: note
         message: message
@@ -2541,7 +2551,7 @@ components:
         note:
           type: string
       type: object
-    virsh-sandbox_internal_rest.requestAccessRequest:
+    fluid-remote_internal_rest.requestAccessRequest:
       properties:
         public_key:
           description: PublicKey is the user's SSH public key in OpenSSH format.
@@ -2556,7 +2566,7 @@ components:
           description: UserID identifies the requesting user.
           type: string
       type: object
-    virsh-sandbox_internal_rest.requestAccessResponse:
+    fluid-remote_internal_rest.requestAccessResponse:
       properties:
         certificate:
           description: Certificate is the SSH certificate content (save as key-cert.pub).
@@ -2586,19 +2596,19 @@ components:
           description: VMIPAddress is the IP address of the sandbox VM.
           type: string
       type: object
-    virsh-sandbox_internal_rest.revokeCertificateRequest:
+    fluid-remote_internal_rest.revokeCertificateRequest:
       properties:
         reason:
           type: string
       type: object
-    virsh-sandbox_internal_rest.revokeCertificateResponse:
+    fluid-remote_internal_rest.revokeCertificateResponse:
       properties:
         id:
           type: string
         message:
           type: string
       type: object
-    virsh-sandbox_internal_rest.runCommandRequest:
+    fluid-remote_internal_rest.runCommandRequest:
       properties:
         command:
           description: required
@@ -2609,7 +2619,8 @@ components:
           description: optional
           type: object
         private_key_path:
-          description: "optional; if empty, uses managed credentials (requires SSH\
+          description:
+            "optional; if empty, uses managed credentials (requires SSH\
             \ CA)"
           type: string
         timeout_sec:
@@ -2619,7 +2630,7 @@ components:
           description: optional; defaults to "sandbox" when using managed credentials
           type: string
       type: object
-    virsh-sandbox_internal_rest.runCommandResponse:
+    fluid-remote_internal_rest.runCommandResponse:
       example:
         command:
           metadata:
@@ -2639,9 +2650,9 @@ components:
           ended_at: ended_at
       properties:
         command:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Command"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Command"
       type: object
-    virsh-sandbox_internal_rest.sandboxInfo:
+    fluid-remote_internal_rest.sandboxInfo:
       example:
         base_image: base_image
         agent_id: agent_id
@@ -2678,21 +2689,21 @@ components:
         updated_at:
           type: string
       type: object
-    virsh-sandbox_internal_rest.sessionEndRequest:
+    fluid-remote_internal_rest.sessionEndRequest:
       properties:
         reason:
           type: string
         session_id:
           type: string
       type: object
-    virsh-sandbox_internal_rest.sessionEndResponse:
+    fluid-remote_internal_rest.sessionEndResponse:
       properties:
         message:
           type: string
         session_id:
           type: string
       type: object
-    virsh-sandbox_internal_rest.sessionResponse:
+    fluid-remote_internal_rest.sessionResponse:
       properties:
         certificate_id:
           type: string
@@ -2717,19 +2728,19 @@ components:
         vm_ip_address:
           type: string
       type: object
-    virsh-sandbox_internal_rest.sessionStartRequest:
+    fluid-remote_internal_rest.sessionStartRequest:
       properties:
         certificate_id:
           type: string
         source_ip:
           type: string
       type: object
-    virsh-sandbox_internal_rest.sessionStartResponse:
+    fluid-remote_internal_rest.sessionStartResponse:
       properties:
         session_id:
           type: string
       type: object
-    virsh-sandbox_internal_rest.snapshotRequest:
+    fluid-remote_internal_rest.snapshotRequest:
       properties:
         external:
           description: optional; default false (internal snapshot)
@@ -2738,7 +2749,7 @@ components:
           description: required
           type: string
       type: object
-    virsh-sandbox_internal_rest.snapshotResponse:
+    fluid-remote_internal_rest.snapshotResponse:
       example:
         snapshot:
           ref: ref
@@ -2750,22 +2761,22 @@ components:
           meta_json: meta_json
       properties:
         snapshot:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.Snapshot"
+          $ref: "#/components/schemas/fluid-remote_internal_store.Snapshot"
       type: object
-    virsh-sandbox_internal_rest.startSandboxRequest:
+    fluid-remote_internal_rest.startSandboxRequest:
       properties:
         wait_for_ip:
           description: optional; default false
           type: boolean
       type: object
-    virsh-sandbox_internal_rest.startSandboxResponse:
+    fluid-remote_internal_rest.startSandboxResponse:
       example:
         ip_address: ip_address
       properties:
         ip_address:
           type: string
       type: object
-    virsh-sandbox_internal_rest.vmInfo:
+    fluid-remote_internal_rest.vmInfo:
       example:
         name: name
         state: state
@@ -2784,11 +2795,11 @@ components:
         uuid:
           type: string
       type: object
-    virsh-sandbox_internal_store.ChangeDiff:
+    fluid-remote_internal_store.ChangeDiff:
       properties:
         commands_run:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.CommandSummary"
+            $ref: "#/components/schemas/fluid-remote_internal_store.CommandSummary"
           type: array
         files_added:
           items:
@@ -2804,18 +2815,18 @@ components:
           type: array
         packages_added:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.PackageInfo"
+            $ref: "#/components/schemas/fluid-remote_internal_store.PackageInfo"
           type: array
         packages_removed:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.PackageInfo"
+            $ref: "#/components/schemas/fluid-remote_internal_store.PackageInfo"
           type: array
         services_changed:
           items:
-            $ref: "#/components/schemas/virsh-sandbox_internal_store.ServiceChange"
+            $ref: "#/components/schemas/fluid-remote_internal_store.ServiceChange"
           type: array
       type: object
-    virsh-sandbox_internal_store.Command:
+    fluid-remote_internal_store.Command:
       example:
         metadata:
           redacted:
@@ -2845,7 +2856,7 @@ components:
         id:
           type: string
         metadata:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.CommandExecRecord"
+          $ref: "#/components/schemas/fluid-remote_internal_store.CommandExecRecord"
         sandbox_id:
           type: string
         started_at:
@@ -2855,7 +2866,7 @@ components:
         stdout:
           type: string
       type: object
-    virsh-sandbox_internal_store.CommandExecRecord:
+    fluid-remote_internal_store.CommandExecRecord:
       example:
         redacted:
           key: redacted
@@ -2875,7 +2886,7 @@ components:
         work_dir:
           type: string
       type: object
-    virsh-sandbox_internal_store.CommandSummary:
+    fluid-remote_internal_store.CommandSummary:
       properties:
         at:
           type: string
@@ -2884,7 +2895,7 @@ components:
         exit_code:
           type: integer
       type: object
-    virsh-sandbox_internal_store.Diff:
+    fluid-remote_internal_store.Diff:
       example:
         to_snapshot: to_snapshot
         from_snapshot: from_snapshot
@@ -2897,7 +2908,7 @@ components:
           type: string
         diff_json:
           allOf:
-          - $ref: "#/components/schemas/virsh-sandbox_internal_store.ChangeDiff"
+            - $ref: "#/components/schemas/fluid-remote_internal_store.ChangeDiff"
           description: JSON-encoded change diff
           type: object
         from_snapshot:
@@ -2909,14 +2920,14 @@ components:
         to_snapshot:
           type: string
       type: object
-    virsh-sandbox_internal_store.PackageInfo:
+    fluid-remote_internal_store.PackageInfo:
       properties:
         name:
           type: string
         version:
           type: string
       type: object
-    virsh-sandbox_internal_store.Playbook:
+    fluid-remote_internal_store.Playbook:
       example:
         file_path: file_path
         updated_at: updated_at
@@ -2935,7 +2946,7 @@ components:
           description: rendered YAML file path
           type: string
         hosts:
-          description: "target hosts pattern (e.g., \"all\", \"webservers\")"
+          description: 'target hosts pattern (e.g., "all", "webservers")'
           type: string
         id:
           type: string
@@ -2945,7 +2956,7 @@ components:
         updated_at:
           type: string
       type: object
-    virsh-sandbox_internal_store.PlaybookTask:
+    fluid-remote_internal_store.PlaybookTask:
       example:
         module: module
         name: name
@@ -2975,7 +2986,7 @@ components:
           description: ordering within playbook
           type: integer
       type: object
-    virsh-sandbox_internal_store.Sandbox:
+    fluid-remote_internal_store.Sandbox:
       example:
         base_image: base_image
         agent_id: agent_id
@@ -3002,7 +3013,7 @@ components:
         deleted_at:
           type: string
         id:
-          description: "e.g., \"SBX-0001\""
+          description: 'e.g., "SBX-0001"'
           type: string
         ip_address:
           description: discovered IP (if any)
@@ -3017,30 +3028,30 @@ components:
           description: libvirt domain name
           type: string
         state:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.SandboxState"
+          $ref: "#/components/schemas/fluid-remote_internal_store.SandboxState"
         ttl_seconds:
           description: optional TTL for auto GC
           type: integer
         updated_at:
           type: string
       type: object
-    virsh-sandbox_internal_store.SandboxState:
+    fluid-remote_internal_store.SandboxState:
       enum:
-      - CREATED
-      - STARTING
-      - RUNNING
-      - STOPPED
-      - DESTROYED
-      - ERROR
+        - CREATED
+        - STARTING
+        - RUNNING
+        - STOPPED
+        - DESTROYED
+        - ERROR
       type: string
       x-enum-varnames:
-      - SandboxStateCreated
-      - SandboxStateStarting
-      - SandboxStateRunning
-      - SandboxStateStopped
-      - SandboxStateDestroyed
-      - SandboxStateError
-    virsh-sandbox_internal_store.ServiceChange:
+        - SandboxStateCreated
+        - SandboxStateStarting
+        - SandboxStateRunning
+        - SandboxStateStopped
+        - SandboxStateDestroyed
+        - SandboxStateError
+    fluid-remote_internal_store.ServiceChange:
       properties:
         enabled:
           type: boolean
@@ -3050,7 +3061,7 @@ components:
           description: started|stopped|restarted|reloaded
           type: string
       type: object
-    virsh-sandbox_internal_store.Snapshot:
+    fluid-remote_internal_store.Snapshot:
       example:
         ref: ref
         kind: INTERNAL
@@ -3065,7 +3076,7 @@ components:
         id:
           type: string
         kind:
-          $ref: "#/components/schemas/virsh-sandbox_internal_store.SnapshotKind"
+          $ref: "#/components/schemas/fluid-remote_internal_store.SnapshotKind"
         meta_json:
           description: optional JSON metadata
           type: string
@@ -3080,12 +3091,12 @@ components:
         sandbox_id:
           type: string
       type: object
-    virsh-sandbox_internal_store.SnapshotKind:
+    fluid-remote_internal_store.SnapshotKind:
       enum:
-      - INTERNAL
-      - EXTERNAL
+        - INTERNAL
+        - EXTERNAL
       type: string
       x-enum-varnames:
-      - SnapshotKindInternal
-      - SnapshotKindExternal
+        - SnapshotKindInternal
+        - SnapshotKindExternal
 x-original-swagger-version: "2.0"

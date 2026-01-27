@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"virsh-sandbox/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/config"
 )
 
 // mockSSHRunner implements SSHRunner for testing.

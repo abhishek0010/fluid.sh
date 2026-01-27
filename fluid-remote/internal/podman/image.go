@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"virsh-sandbox/internal/workflow"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/workflow"
 )
 
 // ImageBuilder handles Podman image building operations.

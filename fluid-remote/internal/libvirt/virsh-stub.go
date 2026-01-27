@@ -53,6 +53,38 @@ type Manager interface {
 
 	// GetVMState returns the current state of a VM using virsh domstate.
 	GetVMState(ctx context.Context, vmName string) (VMState, error)
+
+	// ValidateSourceVM performs pre-flight checks on a source VM before cloning.
+	// Returns a ValidationResult with warnings and errors about the VM's readiness.
+	ValidateSourceVM(ctx context.Context, vmName string) (*VMValidationResult, error)
+
+	// CheckHostResources validates that the host has sufficient resources for a new sandbox.
+	// Returns a ResourceCheckResult with available resources and any warnings.
+	CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*ResourceCheckResult, error)
+}
+
+// VMValidationResult contains the results of validating a source VM.
+type VMValidationResult struct {
+	Valid      bool     `json:"valid"`
+	State      VMState  `json:"state"`
+	HasNetwork bool     `json:"has_network"`
+	MACAddress string   `json:"mac_address,omitempty"`
+	IPAddress  string   `json:"ip_address,omitempty"`
+	Warnings   []string `json:"warnings,omitempty"`
+	Errors     []string `json:"errors,omitempty"`
+}
+
+// ResourceCheckResult contains the results of host resource validation.
+type ResourceCheckResult struct {
+	Valid             bool     `json:"valid"`
+	AvailableMemoryMB int64    `json:"available_memory_mb"`
+	TotalMemoryMB     int64    `json:"total_memory_mb"`
+	AvailableCPUs     int      `json:"available_cpus"`
+	AvailableDiskMB   int64    `json:"available_disk_mb"`
+	RequiredMemoryMB  int      `json:"required_memory_mb"`
+	RequiredCPUs      int      `json:"required_cpus"`
+	Warnings          []string `json:"warnings,omitempty"`
+	Errors            []string `json:"errors,omitempty"`
 }
 
 // VMState represents possible VM states from virsh domstate.
@@ -221,4 +253,14 @@ func (m *VirshManager) GetVMMAC(ctx context.Context, vmName string) (string, err
 // ReleaseDHCPLease is a stub that returns an error when libvirt is not available.
 func (m *VirshManager) ReleaseDHCPLease(ctx context.Context, network, mac string) error {
 	return ErrLibvirtNotAvailable
+}
+
+// ValidateSourceVM is a stub that returns an error when libvirt is not available.
+func (m *VirshManager) ValidateSourceVM(ctx context.Context, vmName string) (*VMValidationResult, error) {
+	return nil, ErrLibvirtNotAvailable
+}
+
+// CheckHostResources is a stub that returns an error when libvirt is not available.
+func (m *VirshManager) CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*ResourceCheckResult, error) {
+	return nil, ErrLibvirtNotAvailable
 }

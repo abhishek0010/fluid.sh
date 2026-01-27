@@ -16,17 +16,17 @@ const (
 
 // Message represents a message in a conversation.
 type Message struct {
-	Role      Role       `json:"role"`
-	Content   string     `json:"content"`
-	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-	ToolCallID string    `json:"tool_call_id,omitempty"`
-	Name      string     `json:"name,omitempty"`
+	Role       Role       `json:"role"`
+	Content    string     `json:"content"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+	Name       string     `json:"name,omitempty"`
 }
 
 // ToolCall represents a tool call made by the LLM.
 type ToolCall struct {
-	ID       string `json:"id"`
-	Type     string `json:"type"`
+	ID       string       `json:"id"`
+	Type     string       `json:"type"`
 	Function FunctionCall `json:"function"`
 }
 
@@ -44,16 +44,16 @@ type Tool struct {
 
 // Function represents the definition of a tool function.
 type Function struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description,omitempty"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
 	Parameters  ParameterSchema `json:"parameters,omitempty"`
 }
 
 // ParameterSchema represents the JSON schema for tool parameters.
 type ParameterSchema struct {
-	Type       string            `json:"type"`
+	Type       string              `json:"type"`
 	Properties map[string]Property `json:"properties"`
-	Required   []string          `json:"required,omitempty"`
+	Required   []string            `json:"required,omitempty"`
 }
 
 // Property represents a property in the ParameterSchema.
@@ -78,8 +78,8 @@ type ChatResponse struct {
 
 // Choice represents a single choice in a ChatResponse.
 type Choice struct {
-	Message Message `json:"message"`
-	FinishReason string `json:"finish_reason"`
+	Message      Message `json:"message"`
+	FinishReason string  `json:"finish_reason"`
 }
 
 // Client is the interface for LLM providers.

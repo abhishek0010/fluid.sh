@@ -8,17 +8,19 @@ import (
 	"io"
 	"log/slog"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"fluid/internal/ansible"
-	"fluid/internal/config"
-	"fluid/internal/libvirt"
-	"fluid/internal/llm"
-	"fluid/internal/store"
-	"fluid/internal/vm"
+	"github.com/aspectrr/fluid.sh/fluid/internal/ansible"
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid/internal/llm"
+	"github.com/aspectrr/fluid.sh/fluid/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid/internal/telemetry"
+	"github.com/aspectrr/fluid.sh/fluid/internal/vm"
 )
 
 // FluidAgent implements AgentRunner for the fluid CLI
@@ -29,6 +31,7 @@ type FluidAgent struct {
 	manager         libvirt.Manager
 	llmClient       llm.Client
 	playbookService *ansible.PlaybookService
+	telemetry       telemetry.Service
 
 	// Multi-host support
 	multiHostMgr *libvirt.MultiHostDomainManager
@@ -38,10 +41,13 @@ type FluidAgent struct {
 
 	// Conversation history for context
 	history []llm.Message
+
+	// Track sandboxes created during this session for cleanup on exit
+	createdSandboxes []string
 }
 
 // NewFluidAgent creates a new fluid agent
-func NewFluidAgent(cfg *config.Config, store store.Store, vmService *vm.Service, manager libvirt.Manager) *FluidAgent {
+func NewFluidAgent(cfg *config.Config, store store.Store, vmService *vm.Service, manager libvirt.Manager, tele telemetry.Service) *FluidAgent {
 	var llmClient llm.Client
 	if cfg.AIAgent.Provider == "openrouter" {
 		llmClient = llm.NewOpenRouterClient(cfg.AIAgent)
@@ -54,6 +60,7 @@ func NewFluidAgent(cfg *config.Config, store store.Store, vmService *vm.Service,
 		manager:         manager,
 		llmClient:       llmClient,
 		playbookService: ansible.NewPlaybookService(store, cfg.Ansible.PlaybooksDir),
+		telemetry:       tele,
 		history:         make([]llm.Message, 0),
 	}
 
@@ -93,13 +100,24 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 				return AgentResponseMsg{Response: AgentResponse{
 					Content: a.formatVMsResult(result, err),
 				}}
-			case "/hosts":
+			case "/sandboxes":
+				result, err := a.listSandboxes(ctx)
 				return AgentResponseMsg{Response: AgentResponse{
-					Content: a.getHostsInfo(),
+					Content: a.formatSandboxesResult(result, err),
+				}}
+			case "/hosts":
+				result, err := a.listHostsWithVMs(ctx)
+				return AgentResponseMsg{Response: AgentResponse{
+					Content: a.formatHostsResult(result, err),
+				}}
+			case "/playbooks":
+				result, err := a.listPlaybooks(ctx)
+				return AgentResponseMsg{Response: AgentResponse{
+					Content: a.formatPlaybooksResult(result, err),
 				}}
 			default:
 				return AgentResponseMsg{Response: AgentResponse{
-					Content: fmt.Sprintf("Unknown command: %s. Available: /vms, /hosts, /settings", input),
+					Content: fmt.Sprintf("Unknown command: %s. Available: /vms, /sandboxes, /hosts, /playbooks, /settings", input),
 				}}
 			}
 		}
@@ -121,6 +139,14 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 					Content: a.cfg.AIAgent.DefaultSystem,
 				}}, a.history...),
 				Tools: llm.GetTools(),
+			}
+
+			if a.telemetry != nil {
+				a.telemetry.Track("agent_prompt_sent", map[string]any{
+					"message_count": len(req.Messages),
+					"provider":      a.cfg.AIAgent.Provider,
+					"model":         a.cfg.AIAgent.Model,
+				})
 			}
 
 			resp, err := a.llmClient.Chat(ctx, req)
@@ -200,6 +226,12 @@ func (a *FluidAgent) executeTool(ctx context.Context, tc llm.ToolCall) (interfac
 		ToolName: tc.Function.Name,
 		Args:     args,
 	})
+
+	if a.telemetry != nil {
+		a.telemetry.Track("agent_tool_call", map[string]interface{}{
+			"tool_name": tc.Function.Name,
+		})
+	}
 
 	switch tc.Function.Name {
 	case "list_sandboxes":
@@ -374,6 +406,9 @@ func (a *FluidAgent) createSandbox(ctx context.Context, args []string) (map[stri
 				return nil, err
 			}
 
+			// Track the created sandbox for cleanup on exit
+			a.createdSandboxes = append(a.createdSandboxes, sb.ID)
+
 			result := map[string]interface{}{
 				"sandbox_id": sb.ID,
 				"name":       sb.SandboxName,
@@ -392,6 +427,9 @@ func (a *FluidAgent) createSandbox(ctx context.Context, args []string) (map[stri
 	if err != nil {
 		return nil, err
 	}
+
+	// Track the created sandbox for cleanup on exit
+	a.createdSandboxes = append(a.createdSandboxes, sb.ID)
 
 	result := map[string]interface{}{
 		"sandbox_id": sb.ID,
@@ -539,7 +577,7 @@ func (a *FluidAgent) listVMs(ctx context.Context) (map[string]interface{}, error
 	return a.listVMsLocal(ctx)
 }
 
-// listVMsFromHosts queries all configured remote hosts for VMs
+// listVMsFromHosts queries all configured remote hosts for VMs (excludes sandboxes)
 func (a *FluidAgent) listVMsFromHosts(ctx context.Context) (map[string]interface{}, error) {
 	listResult, err := a.multiHostMgr.ListDomains(ctx)
 	if err != nil {
@@ -548,6 +586,10 @@ func (a *FluidAgent) listVMsFromHosts(ctx context.Context) (map[string]interface
 
 	result := make([]map[string]interface{}, 0)
 	for _, domain := range listResult.Domains {
+		// Skip sandboxes (names starting with "sbx-")
+		if strings.HasPrefix(domain.Name, "sbx-") {
+			continue
+		}
 		item := map[string]interface{}{
 			"name":         domain.Name,
 			"state":        domain.State.String(),
@@ -581,7 +623,7 @@ func (a *FluidAgent) listVMsFromHosts(ctx context.Context) (map[string]interface
 	return response, nil
 }
 
-// listVMsLocal queries local virsh for VMs
+// listVMsLocal queries local virsh for VMs (excludes sandboxes)
 func (a *FluidAgent) listVMsLocal(ctx context.Context) (map[string]interface{}, error) {
 	// Use virsh list --all --name to get all VMs
 	cmd := exec.CommandContext(ctx, "virsh", "list", "--all", "--name")
@@ -597,6 +639,10 @@ func (a *FluidAgent) listVMsLocal(ctx context.Context) (map[string]interface{}, 
 	for _, name := range strings.Split(stdout.String(), "\n") {
 		name = strings.TrimSpace(name)
 		if name == "" {
+			continue
+		}
+		// Skip sandboxes (names starting with "sbx-")
+		if strings.HasPrefix(name, "sbx-") {
 			continue
 		}
 		result = append(result, map[string]interface{}{
@@ -631,120 +677,6 @@ func (a *FluidAgent) createSnapshot(ctx context.Context, sandboxID, name string)
 }
 
 // Formatting helpers
-
-func (a *FluidAgent) formatListResult(result map[string]interface{}) string {
-	if result == nil {
-		return "No sandboxes found."
-	}
-
-	sandboxes, ok := result["sandboxes"].([]map[string]interface{})
-	if !ok || len(sandboxes) == 0 {
-		return "No sandboxes found."
-	}
-
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Found %d sandbox(es):\n\n", len(sandboxes)))
-	for _, sb := range sandboxes {
-		b.WriteString(fmt.Sprintf("- **%s** (%s)\n", sb["name"], sb["id"]))
-		b.WriteString(fmt.Sprintf("  State: %s", sb["state"]))
-		if host, ok := sb["host"].(string); ok && host != "" {
-			b.WriteString(fmt.Sprintf(" | Host: %s", host))
-		}
-		if ip, ok := sb["ip"].(string); ok && ip != "" {
-			b.WriteString(fmt.Sprintf(" | IP: %s", ip))
-		}
-		b.WriteString("\n")
-	}
-	return b.String()
-}
-
-func (a *FluidAgent) formatCreateResult(result map[string]interface{}, err error) string {
-	if err != nil {
-		return fmt.Sprintf("Failed to create sandbox: %v", err)
-	}
-	if result == nil {
-		return "Sandbox created but no details available."
-	}
-
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Sandbox created successfully!\n\n"))
-	b.WriteString(fmt.Sprintf("- **ID**: %s\n", result["sandbox_id"]))
-	b.WriteString(fmt.Sprintf("- **Name**: %s\n", result["name"]))
-	b.WriteString(fmt.Sprintf("- **State**: %s\n", result["state"]))
-	if host, ok := result["host"].(string); ok && host != "" {
-		b.WriteString(fmt.Sprintf("- **Host**: %s\n", host))
-	}
-	if ip, ok := result["ip"].(string); ok && ip != "" {
-		b.WriteString(fmt.Sprintf("- **IP**: %s\n", ip))
-	}
-	return b.String()
-}
-
-func (a *FluidAgent) formatDestroyResult(result map[string]interface{}, err error) string {
-	if err != nil {
-		return fmt.Sprintf("Failed to destroy sandbox: %v", err)
-	}
-	return fmt.Sprintf("Sandbox %s destroyed successfully.", result["sandbox_id"])
-}
-
-func (a *FluidAgent) formatRunResult(result map[string]interface{}, err error) string {
-	if err != nil && result == nil {
-		return fmt.Sprintf("Command failed: %v", err)
-	}
-
-	var b strings.Builder
-	exitCode := 0
-	if ec, ok := result["exit_code"].(int); ok {
-		exitCode = ec
-	}
-
-	b.WriteString(fmt.Sprintf("Command completed (exit code: %d)\n\n", exitCode))
-
-	if stdout, ok := result["stdout"].(string); ok && stdout != "" {
-		b.WriteString("**stdout:**\n```\n")
-		b.WriteString(stdout)
-		b.WriteString("```\n")
-	}
-
-	if stderr, ok := result["stderr"].(string); ok && stderr != "" {
-		b.WriteString("**stderr:**\n```\n")
-		b.WriteString(stderr)
-		b.WriteString("```\n")
-	}
-
-	return b.String()
-}
-
-func (a *FluidAgent) formatStartResult(result map[string]interface{}, err error) string {
-	if err != nil {
-		return fmt.Sprintf("Failed to start sandbox: %v", err)
-	}
-
-	msg := fmt.Sprintf("Sandbox %s started.", result["sandbox_id"])
-	if ip, ok := result["ip"].(string); ok && ip != "" {
-		msg += fmt.Sprintf(" IP: %s", ip)
-	}
-	return msg
-}
-
-func (a *FluidAgent) formatStopResult(result map[string]interface{}, err error) string {
-	if err != nil {
-		return fmt.Sprintf("Failed to stop sandbox: %v", err)
-	}
-	return fmt.Sprintf("Sandbox %s stopped.", result["sandbox_id"])
-}
-
-func (a *FluidAgent) formatGetResult(result map[string]interface{}, err error) string {
-	if err != nil {
-		return fmt.Sprintf("Failed to get sandbox: %v", err)
-	}
-	if result == nil {
-		return "Sandbox not found."
-	}
-
-	data, _ := json.MarshalIndent(result, "", "  ")
-	return fmt.Sprintf("Sandbox details:\n```json\n%s\n```", string(data))
-}
 
 func (a *FluidAgent) formatVMsResult(result map[string]interface{}, err error) string {
 	if err != nil {
@@ -795,80 +727,323 @@ func (a *FluidAgent) formatVMsResult(result map[string]interface{}, err error) s
 	return b.String()
 }
 
-func (a *FluidAgent) formatSnapshotResult(result map[string]interface{}, err error) string {
+func (a *FluidAgent) formatSandboxesResult(result map[string]interface{}, err error) string {
 	if err != nil {
-		return fmt.Sprintf("Failed to create snapshot: %v", err)
+		return fmt.Sprintf("Failed to list sandboxes: %v", err)
 	}
-	return fmt.Sprintf("Snapshot **%s** created for sandbox %s.", result["name"], result["sandbox_id"])
-}
 
-func (a *FluidAgent) getHelpText() string {
-	return `# Available Commands
+	sandboxes, ok := result["sandboxes"].([]map[string]interface{})
+	if !ok || len(sandboxes) == 0 {
+		return "No sandboxes found."
+	}
 
-## Sandbox Management
-- **list** (ls) - List all sandboxes
-- **create** <source-vm> [--name=name] [--host=hostname] - Create a new sandbox
-- **destroy** <sandbox-id> - Destroy a sandbox
-- **get** <sandbox-id> - Get sandbox details
-- **start** <sandbox-id> - Start a stopped sandbox
-- **stop** <sandbox-id> - Stop a running sandbox
-
-## Command Execution
-- **run** <sandbox-id> <command> - Run a command in a sandbox
-
-## Snapshots
-- **snapshot** <sandbox-id> [name] - Create a snapshot
-
-## Other
-- **vms** - List available VMs from all configured hosts
-- **hosts** - Show configured remote hosts
-- **help** - Show this help message
-
-## Multi-Host Support
-When hosts are configured, VMs will be queried from all remote hosts.
-Use --host=<hostname> to target a specific host when creating sandboxes.
-
-## Examples
-` + "```" + `
-hosts
-vms
-create ubuntu-base
-create ubuntu-base --host=kvm-01
-list
-run SBX-abc123 whoami
-snapshot SBX-abc123 my-snapshot
-destroy SBX-abc123
-` + "```"
-}
-
-func (a *FluidAgent) getHostsInfo() string {
 	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Found %d sandbox(es):\n\n", len(sandboxes)))
 
-	if a.multiHostMgr == nil || len(a.cfg.Hosts) == 0 {
-		return "No remote hosts configured. Using local virsh only.\n\nTo configure hosts, add them to your config.yaml:\n```yaml\nhosts:\n  - name: kvm-01\n    address: 10.0.0.11\n    ssh_user: root  # optional, default: root\n    ssh_port: 22    # optional, default: 22\n```"
+	// Group sandboxes by host if host information is present
+	hostSandboxes := make(map[string][]map[string]interface{})
+	for _, sb := range sandboxes {
+		host := "local"
+		if h, ok := sb["host"].(string); ok && h != "" {
+			host = h
+		}
+		hostSandboxes[host] = append(hostSandboxes[host], sb)
 	}
 
-	b.WriteString(fmt.Sprintf("# Configured Hosts (%d)\n\n", len(a.cfg.Hosts)))
-
-	for _, host := range a.cfg.Hosts {
-		b.WriteString(fmt.Sprintf("### %s\n", host.Name))
-		b.WriteString(fmt.Sprintf("- **Address**: %s\n", host.Address))
-
-		sshUser := host.SSHUser
-		if sshUser == "" {
-			sshUser = "root (default)"
+	// Display sandboxes grouped by host
+	for host, sbs := range hostSandboxes {
+		if len(hostSandboxes) > 1 || host != "local" {
+			b.WriteString(fmt.Sprintf("### Host: %s\n", host))
 		}
-		b.WriteString(fmt.Sprintf("- **SSH User**: %s\n", sshUser))
+		for _, sb := range sbs {
+			state := "unknown"
+			if s, ok := sb["state"].(string); ok {
+				state = s
+			}
+			name := sb["name"]
+			id := sb["id"]
+			baseImage := sb["base_image"]
 
-		sshPort := host.SSHPort
-		if sshPort == 0 {
-			sshPort = 22
+			b.WriteString(fmt.Sprintf("- **%s** (%s)\n", name, id))
+			b.WriteString(fmt.Sprintf("  State: %s | Base: %s", state, baseImage))
+			if ip, ok := sb["ip"].(string); ok {
+				b.WriteString(fmt.Sprintf(" | IP: %s", ip))
+			}
+			b.WriteString("\n")
 		}
-		b.WriteString(fmt.Sprintf("- **SSH Port**: %d\n", sshPort))
 		b.WriteString("\n")
 	}
 
-	b.WriteString("Use `vms` to query VMs from all hosts.\n")
+	return b.String()
+}
+
+// listHostsWithVMs queries all hosts and returns VMs differentiated by type (host VM vs sandbox)
+func (a *FluidAgent) listHostsWithVMs(ctx context.Context) (map[string]interface{}, error) {
+	// Get sandboxes from database
+	sandboxes, err := a.vmService.GetSandboxes(ctx, store.SandboxFilter{}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("list sandboxes: %w", err)
+	}
+
+	// Build a set of sandbox names for quick lookup
+	sandboxNames := make(map[string]bool)
+	for _, sb := range sandboxes {
+		sandboxNames[sb.SandboxName] = true
+	}
+
+	// Get all domains from libvirt
+	var domains []map[string]interface{}
+	var hostErrors []map[string]interface{}
+
+	if a.multiHostMgr != nil {
+		listResult, err := a.multiHostMgr.ListDomains(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list domains from hosts: %w", err)
+		}
+		for _, domain := range listResult.Domains {
+			isSandbox := strings.HasPrefix(domain.Name, "sbx-") || sandboxNames[domain.Name]
+			domains = append(domains, map[string]interface{}{
+				"name":         domain.Name,
+				"state":        domain.State.String(),
+				"host":         domain.HostName,
+				"host_address": domain.HostAddress,
+				"type":         vmType(isSandbox),
+			})
+		}
+		for _, he := range listResult.HostErrors {
+			hostErrors = append(hostErrors, map[string]interface{}{
+				"host":    he.HostName,
+				"address": he.HostAddress,
+				"error":   he.Error,
+			})
+		}
+	} else {
+		// Local virsh
+		cmd := exec.CommandContext(ctx, "virsh", "list", "--all", "--name")
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err != nil {
+			return nil, fmt.Errorf("virsh list: %w: %s", err, stderr.String())
+		}
+
+		for _, name := range strings.Split(stdout.String(), "\n") {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			isSandbox := strings.HasPrefix(name, "sbx-") || sandboxNames[name]
+			domains = append(domains, map[string]interface{}{
+				"name":  name,
+				"state": "unknown",
+				"host":  "local",
+				"type":  vmType(isSandbox),
+			})
+		}
+	}
+
+	response := map[string]interface{}{
+		"domains": domains,
+		"count":   len(domains),
+	}
+	if len(hostErrors) > 0 {
+		response["host_errors"] = hostErrors
+	}
+
+	return response, nil
+}
+
+// vmType returns "sandbox" or "host_vm" based on whether the domain is a sandbox
+func vmType(isSandbox bool) string {
+	if isSandbox {
+		return "sandbox"
+	}
+	return "host_vm"
+}
+
+func (a *FluidAgent) formatHostsResult(result map[string]interface{}, err error) string {
+	if err != nil {
+		return fmt.Sprintf("Failed to list hosts: %v", err)
+	}
+
+	domains, ok := result["domains"].([]map[string]interface{})
+	if !ok || len(domains) == 0 {
+		return "No domains found on any host."
+	}
+
+	var b strings.Builder
+
+	// Group domains by host
+	hostDomains := make(map[string][]map[string]interface{})
+	for _, d := range domains {
+		host := "local"
+		if h, ok := d["host"].(string); ok && h != "" {
+			host = h
+		}
+		hostDomains[host] = append(hostDomains[host], d)
+	}
+
+	// Count totals
+	totalHostVMs := 0
+	totalSandboxes := 0
+	for _, ds := range hostDomains {
+		for _, d := range ds {
+			if d["type"] == "sandbox" {
+				totalSandboxes++
+			} else {
+				totalHostVMs++
+			}
+		}
+	}
+
+	b.WriteString("# Hosts Overview\n\n")
+	b.WriteString(fmt.Sprintf("Total: %d host VM(s), %d sandbox(es)\n\n", totalHostVMs, totalSandboxes))
+
+	// Display domains grouped by host
+	for host, ds := range hostDomains {
+		// Count per host
+		hostVMCount := 0
+		sandboxCount := 0
+		for _, d := range ds {
+			if d["type"] == "sandbox" {
+				sandboxCount++
+			} else {
+				hostVMCount++
+			}
+		}
+
+		b.WriteString(fmt.Sprintf("## %s\n", host))
+		b.WriteString(fmt.Sprintf("Host VMs: %d | Sandboxes: %d\n\n", hostVMCount, sandboxCount))
+
+		// Display host VMs first
+		if hostVMCount > 0 {
+			b.WriteString("**Host VMs (available for cloning):**\n")
+			for _, d := range ds {
+				if d["type"] != "host_vm" {
+					continue
+				}
+				state := "unknown"
+				if s, ok := d["state"].(string); ok {
+					state = s
+				}
+				b.WriteString(fmt.Sprintf("- %s (%s)\n", d["name"], state))
+			}
+			b.WriteString("\n")
+		}
+
+		// Display sandboxes
+		if sandboxCount > 0 {
+			b.WriteString("**Sandboxes (ephemeral VMs):**\n")
+			for _, d := range ds {
+				if d["type"] != "sandbox" {
+					continue
+				}
+				state := "unknown"
+				if s, ok := d["state"].(string); ok {
+					state = s
+				}
+				b.WriteString(fmt.Sprintf("- %s (%s)\n", d["name"], state))
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	// Display any host errors
+	if hostErrors, ok := result["host_errors"].([]map[string]interface{}); ok && len(hostErrors) > 0 {
+		b.WriteString("## Host Errors\n")
+		for _, he := range hostErrors {
+			b.WriteString(fmt.Sprintf("- **%s**: %s\n", he["host"], he["error"]))
+		}
+	}
 
 	return b.String()
+}
+
+func (a *FluidAgent) listPlaybooks(ctx context.Context) (map[string]interface{}, error) {
+	playbooks, err := a.playbookService.ListPlaybooks(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]map[string]interface{}, 0, len(playbooks))
+	for _, pb := range playbooks {
+		path := ""
+		if pb.FilePath != nil && *pb.FilePath != "" {
+			path = *pb.FilePath
+		} else {
+			path = filepath.Join(a.cfg.Ansible.PlaybooksDir, pb.Name+".yml")
+		}
+		result = append(result, map[string]interface{}{
+			"id":         pb.ID,
+			"name":       pb.Name,
+			"path":       path,
+			"created_at": pb.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	return map[string]interface{}{
+		"playbooks": result,
+		"count":     len(result),
+	}, nil
+}
+
+func (a *FluidAgent) formatPlaybooksResult(result map[string]interface{}, err error) string {
+	if err != nil {
+		return fmt.Sprintf("Failed to list playbooks: %v", err)
+	}
+
+	playbooks, ok := result["playbooks"].([]map[string]interface{})
+	if !ok || len(playbooks) == 0 {
+		return "No playbooks found."
+	}
+
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Found %d playbook(s):\n\n", len(playbooks)))
+	for _, pb := range playbooks {
+		name := pb["name"].(string)
+		path := pb["path"].(string)
+
+		absPath, _ := filepath.Abs(path)
+		// OSC 8 hyperlink
+		link := fmt.Sprintf("\033]8;;file://%s\033\\%s\033]8;;\033\\", absPath, path)
+
+		b.WriteString(fmt.Sprintf("- **%s**: %s\n", name, link))
+	}
+	return b.String()
+}
+
+// Cleanup destroys all sandboxes created during this session.
+// This is called when the TUI exits to ensure no orphaned VMs are left running.
+func (a *FluidAgent) Cleanup(ctx context.Context) error {
+	if len(a.createdSandboxes) == 0 {
+		return nil
+	}
+
+	var errs []error
+	for _, id := range a.createdSandboxes {
+		// Check if sandbox still exists before destroying
+		if _, err := a.vmService.GetSandbox(ctx, id); err != nil {
+			// Sandbox no longer exists (already destroyed by user), skip
+			continue
+		}
+
+		if _, err := a.vmService.DestroySandbox(ctx, id); err != nil {
+			errs = append(errs, fmt.Errorf("destroy sandbox %s: %w", id, err))
+			// Continue trying to destroy others even if one fails
+		}
+	}
+
+	// Clear the list
+	a.createdSandboxes = nil
+
+	if len(errs) > 0 {
+		return fmt.Errorf("cleanup errors: %v", errs)
+	}
+	return nil
+}
+
+// CreatedSandboxCount returns the number of sandboxes created during this session.
+func (a *FluidAgent) CreatedSandboxCount() int {
+	return len(a.createdSandboxes)
 }

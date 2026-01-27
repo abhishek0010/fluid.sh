@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"fluid/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 )
 
 // mockVMService implements the minimal interface needed for testing

@@ -1,4 +1,4 @@
-# virsh-sandbox API configuration
+# fluid-remote API configuration
 # Copy this file to config.yaml and modify as needed.
 # Environment variables can override any setting for backward compatibility.
 
@@ -42,8 +42,8 @@ vm:
 
 ssh:
   # proxy_jump: "user@jumphost:22"  # optional: for VMs on isolated networks
-  ca_key_path: "/etc/virsh-sandbox/ssh_ca"
-  ca_pub_path: "/etc/virsh-sandbox/ssh_ca.pub"
+  ca_key_path: "/etc/fluid-remote/ssh_ca"
+  ca_pub_path: "/etc/fluid-remote/ssh_ca.pub"
   key_dir: "/tmp/sandbox-keys"
   cert_ttl: 5m
   max_ttl: 10m

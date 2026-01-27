@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"virsh-sandbox/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/store"
 )
 
 // mockVMService implements the minimal interface needed for testing
@@ -246,7 +246,6 @@ func TestCreateSandboxRequestJSON(t *testing.T) {
 	req := createSandboxRequest{
 		SourceVMName: "test-vm",
 		AgentID:      "agent-123",
-		VMName:       "my-sandbox",
 		CPU:          4,
 		MemoryMB:     4096,
 		TTLSeconds:   &ttl,

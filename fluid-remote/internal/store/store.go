@@ -246,6 +246,11 @@ type DataStore interface {
 	GetSandbox(ctx context.Context, id string) (*Sandbox, error)
 	GetSandboxByVMName(ctx context.Context, vmName string) (*Sandbox, error)
 	ListSandboxes(ctx context.Context, filter SandboxFilter, opt *ListOptions) ([]*Sandbox, error)
+	// ListExpiredSandboxes returns sandboxes that have exceeded their TTL.
+	// It checks for sandboxes in RUNNING or STARTING state where:
+	// - TTLSeconds is set AND created_at + ttl_seconds < now
+	// - OR defaultTTL > 0, TTLSeconds is NULL, AND created_at + defaultTTL < now
+	ListExpiredSandboxes(ctx context.Context, defaultTTL time.Duration) ([]*Sandbox, error)
 	UpdateSandbox(ctx context.Context, sb *Sandbox) error
 	UpdateSandboxState(ctx context.Context, id string, newState SandboxState, ipAddr *string) error
 	DeleteSandbox(ctx context.Context, id string) error

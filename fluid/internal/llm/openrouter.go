@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 )
 
 type openRouterClient struct {
@@ -43,7 +43,7 @@ func (c *openRouterClient) Chat(ctx context.Context, req ChatRequest) (*ChatResp
 
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.config.APIKey)
-	
+
 	if c.config.SiteURL != "" {
 		httpReq.Header.Set("HTTP-Referer", c.config.SiteURL)
 	}
@@ -55,7 +55,7 @@ func (c *openRouterClient) Chat(ctx context.Context, req ChatRequest) (*ChatResp
 	if err != nil {
 		return nil, fmt.Errorf("do request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		var errResp struct {

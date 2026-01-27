@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"fluid/internal/workflow"
+	"github.com/aspectrr/fluid.sh/fluid/internal/workflow"
 )
 
 // MountManager handles qemu-nbd attachment and filesystem mounting.

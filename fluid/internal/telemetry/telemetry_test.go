@@ -3,7 +3,7 @@ package telemetry
 import (
 	"testing"
 
-	"fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 )
 
 func TestNewNoopService(t *testing.T) {

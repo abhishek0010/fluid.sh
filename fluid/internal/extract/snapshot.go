@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"fluid/internal/libvirt"
-	"fluid/internal/model"
-	"fluid/internal/workflow"
+	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid/internal/model"
+	"github.com/aspectrr/fluid.sh/fluid/internal/workflow"
 )
 
 // SnapshotManager handles snapshot creation and extraction mode detection.

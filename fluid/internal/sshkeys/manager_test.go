@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"fluid/internal/sshca"
+	"github.com/aspectrr/fluid.sh/fluid/internal/sshca"
 )
 
 // testCA creates a real CA for testing.

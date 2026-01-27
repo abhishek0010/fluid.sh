@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"virsh-sandbox/internal/sshca"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/sshca"
 )
 
 // testCA creates a real CA for testing.

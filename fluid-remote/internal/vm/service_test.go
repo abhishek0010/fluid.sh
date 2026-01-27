@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"virsh-sandbox/internal/libvirt"
-	"virsh-sandbox/internal/store"
-	"virsh-sandbox/internal/telemetry"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/telemetry"
 )
 
 // mockStore implements store.Store for testing
@@ -62,6 +62,10 @@ func (m *mockStore) UpdateSandboxState(ctx context.Context, id string, newState 
 
 func (m *mockStore) DeleteSandbox(ctx context.Context, id string) error {
 	return nil
+}
+
+func (m *mockStore) ListExpiredSandboxes(ctx context.Context, defaultTTL time.Duration) ([]*store.Sandbox, error) {
+	return nil, nil
 }
 
 func (m *mockStore) CreateSnapshot(ctx context.Context, sn *store.Snapshot) error {
@@ -454,6 +458,14 @@ func (m *mockManager) GetVMState(ctx context.Context, vmName string) (libvirt.VM
 	return libvirt.VMState("running"), nil
 }
 
+func (m *mockManager) ValidateSourceVM(ctx context.Context, vmName string) (*libvirt.VMValidationResult, error) {
+	return &libvirt.VMValidationResult{Valid: true}, nil
+}
+
+func (m *mockManager) CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*libvirt.ResourceCheckResult, error) {
+	return &libvirt.ResourceCheckResult{Valid: true}, nil
+}
+
 func TestRunCommand_Success(t *testing.T) {
 	ip := "192.168.1.100"
 	mockSt := &mockStore{
@@ -477,17 +489,11 @@ func TestRunCommand_Success(t *testing.T) {
 		},
 	}
 
-	mockMgr := &mockManager{
-		getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
-			return "192.168.1.100", "52:54:00:12:34:56", nil
-		},
-	}
-
 	svc := &Service{
 		telemetry: telemetry.NewNoopService(),
 		store:     mockSt,
 		ssh:       mockSSH,
-		mgr:       mockMgr,
+		mgr:       &mockManager{},
 		timeNowFn: time.Now,
 		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
 	}
@@ -530,17 +536,11 @@ func TestRunCommand_SSHConnectionFailed(t *testing.T) {
 		},
 	}
 
-	mockMgr := &mockManager{
-		getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
-			return "192.168.1.100", "52:54:00:12:34:56", nil
-		},
-	}
-
 	svc := &Service{
 		telemetry: telemetry.NewNoopService(),
 		store:     mockSt,
 		ssh:       mockSSH,
-		mgr:       mockMgr,
+		mgr:       &mockManager{},
 		timeNowFn: time.Now,
 		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
 	}
@@ -585,17 +585,11 @@ func TestRunCommand_CommandFailed(t *testing.T) {
 		},
 	}
 
-	mockMgr := &mockManager{
-		getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
-			return "192.168.1.100", "52:54:00:12:34:56", nil
-		},
-	}
-
 	svc := &Service{
 		telemetry: telemetry.NewNoopService(),
 		store:     mockSt,
 		ssh:       mockSSH,
-		mgr:       mockMgr,
+		mgr:       &mockManager{},
 		timeNowFn: time.Now,
 		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
 	}
@@ -714,17 +708,11 @@ func TestRunCommand_WithEnvironmentVariables(t *testing.T) {
 		},
 	}
 
-	mockMgr := &mockManager{
-		getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
-			return "192.168.1.100", "52:54:00:12:34:56", nil
-		},
-	}
-
 	svc := &Service{
 		telemetry: telemetry.NewNoopService(),
 		store:     mockSt,
 		ssh:       mockSSH,
-		mgr:       mockMgr,
+		mgr:       &mockManager{},
 		timeNowFn: time.Now,
 		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
 	}
@@ -768,16 +756,10 @@ func TestRunCommand_IPConflictDetected(t *testing.T) {
 		},
 	}
 
-	mockMgr := &mockManager{
-		getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
-			return "192.168.1.100", "52:54:00:12:34:56", nil
-		},
-	}
-
 	svc := &Service{
 		telemetry: telemetry.NewNoopService(),
 		store:     mockSt,
-		mgr:       mockMgr,
+		mgr:       &mockManager{},
 		timeNowFn: time.Now,
 		logger:    slog.Default(),
 		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},

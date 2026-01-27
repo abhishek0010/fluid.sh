@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"virsh-sandbox/internal/workflow"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/workflow"
 )
 
 // Sanitizer handles filesystem sanitization for container usage.

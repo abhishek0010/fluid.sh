@@ -20,7 +20,7 @@ pre-commit:
       root: "fluid"
       run: make lint
 
-    # Go - fluid CLI
+    # Go - fluid-remote API
     fmt-fluid-remote:
       glob: "*.go"
       root: "fluid-remote"
@@ -77,15 +77,19 @@ pre-commit:
 
     # Landing Page
     fmt-landing-page:
-      glob: "*.{ts,tsx,js,jsx,json,css,md}"
-      root: "web"
+      glob: "*.{ts,tsx,js,jsx,json,css,md,astro}"
+      root: "landing-page"
       run: bun format
       stage_fixed: true
     lint-landing-page:
-      glob: "*.ts"
-      root: "web"
+      glob: "*.{ts,tsx,js,jsx,css,astro}"
+      root: "landing-page"
       run: bun lint
     typecheck-landing-page:
-      glob: "*.ts"
-      root: "web"
+      glob: "*.{ts,tsx,js,jsx,css,astro}"
+      root: "landing-page"
       run: "bun typecheck"
+    check-landing-page:
+      glob: "*.{ts,tsx,js,jsx,css,astro}"
+      root: "landing-page"
+      run: "bun check"

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"virsh-sandbox/internal/libvirt"
-	"virsh-sandbox/internal/model"
-	"virsh-sandbox/internal/workflow"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/model"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/workflow"
 )
 
 // SnapshotManager handles snapshot creation and extraction mode detection.

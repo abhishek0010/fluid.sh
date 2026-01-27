@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode"
 
-	"virsh-sandbox/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/config"
 )
 
 const (

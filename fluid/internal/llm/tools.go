@@ -132,7 +132,7 @@ func GetTools() []Tool {
 			Type: "function",
 			Function: Function{
 				Name:        "list_vms",
-				Description: "List available source VMs (images) that can be cloned to create sandboxes.",
+				Description: "List available host VMs (base images) that can be cloned to create sandboxes. Does not include sandboxes - use list_sandboxes for those.",
 				Parameters: ParameterSchema{
 					Type:       "object",
 					Properties: map[string]Property{},

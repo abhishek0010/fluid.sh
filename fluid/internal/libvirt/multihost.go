@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode"
 
-	"fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 )
 
 const (

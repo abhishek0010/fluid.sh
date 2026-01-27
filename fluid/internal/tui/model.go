@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 
-	"fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 )
 
 // State represents the current state of the TUI
@@ -74,9 +74,6 @@ type Model struct {
 
 	// Markdown renderer
 	mdRenderer *glamour.TermRenderer
-
-	// For review requests
-	pendingReview *ReviewRequestMsg
 }
 
 // AgentRunner is the interface for running agent commands

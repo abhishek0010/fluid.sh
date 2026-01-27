@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"virsh-sandbox/internal/workflow"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/workflow"
 )
 
 // MountManager handles qemu-nbd attachment and filesystem mounting.

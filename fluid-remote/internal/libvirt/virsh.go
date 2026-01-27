@@ -16,8 +16,6 @@ import (
 	"strings"
 	"text/template"
 	"time"
-
-	"github.com/beevik/etree"
 )
 
 // generateMACAddress generates a random MAC address with the locally administered bit set.
@@ -67,6 +65,38 @@ type Manager interface {
 
 	// GetVMState returns the current state of a VM using virsh domstate.
 	GetVMState(ctx context.Context, vmName string) (VMState, error)
+
+	// ValidateSourceVM performs pre-flight checks on a source VM before cloning.
+	// Returns a ValidationResult with warnings and errors about the VM's readiness.
+	ValidateSourceVM(ctx context.Context, vmName string) (*VMValidationResult, error)
+
+	// CheckHostResources validates that the host has sufficient resources for a new sandbox.
+	// Returns a ResourceCheckResult with available resources and any warnings.
+	CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*ResourceCheckResult, error)
+}
+
+// VMValidationResult contains the results of validating a source VM.
+type VMValidationResult struct {
+	Valid      bool     `json:"valid"`
+	State      VMState  `json:"state"`
+	HasNetwork bool     `json:"has_network"`
+	MACAddress string   `json:"mac_address,omitempty"`
+	IPAddress  string   `json:"ip_address,omitempty"`
+	Warnings   []string `json:"warnings,omitempty"`
+	Errors     []string `json:"errors,omitempty"`
+}
+
+// ResourceCheckResult contains the results of host resource validation.
+type ResourceCheckResult struct {
+	Valid             bool     `json:"valid"`
+	AvailableMemoryMB int64    `json:"available_memory_mb"`
+	TotalMemoryMB     int64    `json:"total_memory_mb"`
+	AvailableCPUs     int      `json:"available_cpus"`
+	AvailableDiskMB   int64    `json:"available_disk_mb"`
+	RequiredMemoryMB  int      `json:"required_memory_mb"`
+	RequiredCPUs      int      `json:"required_cpus"`
+	Warnings          []string `json:"warnings,omitempty"`
+	Errors            []string `json:"errors,omitempty"`
 }
 
 // VMState represents possible VM states from virsh domstate.
@@ -355,7 +385,7 @@ func (m *VirshManager) CloneFromVM(ctx context.Context, sourceVMName, newVMName 
 		return DomainRef{}, fmt.Errorf("dumpxml source vm: %w", err)
 	}
 
-	newXML, err := modifyClonedXML(sourceXML, newVMName, overlayPath, cloudInitISO)
+	newXML, err := modifyClonedXMLHelper(sourceXML, newVMName, overlayPath, cloudInitISO, cpu, memoryMB, network)
 	if err != nil {
 		return DomainRef{}, fmt.Errorf("modify cloned xml: %w", err)
 	}
@@ -383,181 +413,6 @@ func (m *VirshManager) CloneFromVM(ctx context.Context, sourceVMName, newVMName 
 // <address> element from the network interface to prevent PCI slot conflicts.
 // If cloudInitISO is provided, any existing CDROM device is updated to use it, ensuring the
 // cloned VM gets a unique instance-id and fresh network configuration via cloud-init.
-func modifyClonedXML(sourceXML, newName, newDiskPath, cloudInitISO string) (string, error) {
-	doc := etree.NewDocument()
-	if err := doc.ReadFromString(sourceXML); err != nil {
-		return "", fmt.Errorf("parse source XML: %w", err)
-	}
-
-	root := doc.Root()
-	if root == nil {
-		return "", fmt.Errorf("invalid XML: no root element")
-	}
-
-	// Update VM name
-	nameElem := root.SelectElement("name")
-	if nameElem == nil {
-		return "", fmt.Errorf("invalid XML: missing <name> element")
-	}
-	nameElem.SetText(newName)
-
-	// Remove UUID
-	if uuidElem := root.SelectElement("uuid"); uuidElem != nil {
-		root.RemoveChild(uuidElem)
-	}
-
-	// Update disk path for the main virtual disk (vda)
-	// This finds the first disk with a virtio bus and assumes it's the one to replace.
-	// This might need to be more robust if multiple virtio disks are present.
-	var diskReplaced bool
-	for _, disk := range root.FindElements("./devices/disk[@device='disk']") {
-		if target := disk.SelectElement("target"); target != nil {
-			if bus := target.SelectAttr("bus"); bus != nil && bus.Value == "virtio" {
-				if source := disk.SelectElement("source"); source != nil {
-					source.SelectAttr("file").Value = newDiskPath
-					diskReplaced = true
-					break
-				}
-			}
-		}
-	}
-	if !diskReplaced {
-		return "", fmt.Errorf("could not find a virtio disk in the source XML to replace")
-	}
-
-	// Handle cloud-init CDROM: update existing or add new one
-	// This is critical for cloned VMs - they need a unique instance-id to trigger
-	// cloud-init re-initialization, including DHCP network configuration
-	if cloudInitISO != "" {
-		devices := root.SelectElement("devices")
-		if devices == nil {
-			return "", fmt.Errorf("invalid XML: missing <devices> element")
-		}
-
-		// Look for existing CDROM device to update
-		var cdromUpdated bool
-		for _, disk := range root.FindElements("./devices/disk[@device='cdrom']") {
-			if source := disk.SelectElement("source"); source != nil {
-				if fileAttr := source.SelectAttr("file"); fileAttr != nil {
-					fileAttr.Value = cloudInitISO
-					cdromUpdated = true
-					break
-				}
-			}
-		}
-
-		// If no existing CDROM, add one with SCSI controller
-		if !cdromUpdated {
-			// Add SCSI controller if not present
-			hasScsiController := false
-			for _, ctrl := range root.FindElements("./devices/controller[@type='scsi']") {
-				if model := ctrl.SelectAttr("model"); model != nil && model.Value == "virtio-scsi" {
-					hasScsiController = true
-					break
-				}
-			}
-			if !hasScsiController {
-				scsiCtrl := devices.CreateElement("controller")
-				scsiCtrl.CreateAttr("type", "scsi")
-				scsiCtrl.CreateAttr("model", "virtio-scsi")
-			}
-
-			// Add CDROM device
-			cdrom := devices.CreateElement("disk")
-			cdrom.CreateAttr("type", "file")
-			cdrom.CreateAttr("device", "cdrom")
-
-			driver := cdrom.CreateElement("driver")
-			driver.CreateAttr("name", "qemu")
-			driver.CreateAttr("type", "raw")
-
-			source := cdrom.CreateElement("source")
-			source.CreateAttr("file", cloudInitISO)
-
-			target := cdrom.CreateElement("target")
-			target.CreateAttr("dev", "sda")
-			target.CreateAttr("bus", "scsi")
-
-			cdrom.CreateElement("readonly")
-		}
-	}
-
-	// Update network interface: set new MAC and remove PCI address
-	if iface := root.FindElement("./devices/interface"); iface != nil {
-		// This handles standard libvirt network interfaces.
-		// Set a new MAC address
-		macElem := iface.SelectElement("mac")
-		if macElem != nil {
-			if addrAttr := macElem.SelectAttr("address"); addrAttr != nil {
-				addrAttr.Value = generateMACAddress()
-			}
-		} else {
-			// If no <mac> element, create one
-			macElem = iface.CreateElement("mac")
-			macElem.CreateAttr("address", generateMACAddress())
-		}
-
-		// Remove the address element to let libvirt assign a new one
-		if addrElem := iface.SelectElement("address"); addrElem != nil {
-			iface.RemoveChild(addrElem)
-		}
-	} else {
-		// Handle socket_vmnet case (qemu:commandline)
-		// The namespace makes selection tricky, so we iterate.
-		var cmdline *etree.Element
-		for _, child := range root.ChildElements() {
-			if child.Tag == "commandline" && child.Space == "qemu" {
-				cmdline = child
-				break
-			}
-		}
-
-		if cmdline != nil {
-			for _, child := range cmdline.ChildElements() {
-				if child.Tag == "arg" && child.Space == "qemu" {
-					if valAttr := child.SelectAttr("value"); valAttr != nil {
-						if strings.HasPrefix(valAttr.Value, "virtio-net-pci") && strings.Contains(valAttr.Value, "mac=") {
-							parts := strings.Split(valAttr.Value, ",")
-							newParts := make([]string, 0, len(parts))
-							macUpdated := false
-							for _, part := range parts {
-								if strings.HasPrefix(part, "mac=") {
-									newParts = append(newParts, "mac="+generateMACAddress())
-									macUpdated = true
-								} else {
-									newParts = append(newParts, part)
-								}
-							}
-							if macUpdated {
-								valAttr.Value = strings.Join(newParts, ",")
-								break // Assuming only one network device per command line
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// Remove existing graphics password
-	if graphics := root.FindElement("./devices/graphics"); graphics != nil {
-		graphics.RemoveAttr("passwd")
-	}
-
-	// Remove existing sound devices
-	for _, sound := range root.FindElements("./devices/sound") {
-		root.SelectElement("devices").RemoveChild(sound)
-	}
-
-	doc.Indent(2)
-	newXML, err := doc.WriteToString()
-	if err != nil {
-		return "", fmt.Errorf("failed to write modified XML: %w", err)
-	}
-
-	return newXML, nil
-}
-
 func (m *VirshManager) InjectSSHKey(ctx context.Context, sandboxName, username, publicKey string) error {
 	if sandboxName == "" {
 		return fmt.Errorf("sandboxName is required")
@@ -1232,13 +1087,6 @@ func defaultGuestUser(vmName string) string {
 	return "cloud-user"
 }
 
-func parseDomIfAddrIPv4(s string) string {
-	ip, _ := parseDomIfAddrIPv4WithMAC(s)
-	return ip
-}
-
-// parseDomIfAddrIPv4WithMAC parses virsh domifaddr output and returns both IP and MAC address.
-// This allows callers to verify the IP belongs to the expected VM by checking the MAC.
 func parseDomIfAddrIPv4WithMAC(s string) (ip string, mac string) {
 	// virsh domifaddr output example:
 	// Name       MAC address          Protocol     Address
@@ -1401,77 +1249,6 @@ func normalizeMAC(mac string) string {
 		}
 	}
 	return strings.Join(parts, ":")
-}
-
-// vmArchInfo holds architecture details extracted from a VM's XML.
-type vmArchInfo struct {
-	Arch       string // e.g., "x86_64" or "aarch64"
-	Machine    string // e.g., "pc-q35-6.2" or "virt"
-	DomainType string // e.g., "kvm" or "qemu"
-}
-
-// getVMArchitecture extracts the architecture and machine type from a VM's domain XML.
-func (m *VirshManager) getVMArchitecture(ctx context.Context, vmName string) (vmArchInfo, error) {
-	virsh := m.binPath("virsh", m.cfg.VirshPath)
-	out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "dumpxml", vmName)
-	if err != nil {
-		return vmArchInfo{}, fmt.Errorf("dumpxml %s: %w", vmName, err)
-	}
-
-	log.Printf("getVMArchitecture: dumpxml output for %s:\n%s", vmName, out)
-
-	// Parse arch from: <type arch='aarch64' machine='virt-8.2'>hvm</type>
-	// Parse domain type from: <domain type='qemu' id='1'>
-	// Note: libvirt uses single quotes in XML output
-	// Simple string parsing to avoid XML dependency
-	info := vmArchInfo{}
-
-	// Find domain type (e.g., "qemu" or "kvm")
-	if idx := strings.Index(out, `<domain type='`); idx >= 0 {
-		start := idx + len(`<domain type='`)
-		end := strings.Index(out[start:], `'`)
-		if end > 0 {
-			info.DomainType = out[start : start+end]
-		}
-	} else if idx := strings.Index(out, `<domain type="`); idx >= 0 {
-		start := idx + len(`<domain type="`)
-		end := strings.Index(out[start:], `"`)
-		if end > 0 {
-			info.DomainType = out[start : start+end]
-		}
-	}
-
-	// Find arch attribute (try single quotes first, then double quotes)
-	if idx := strings.Index(out, `arch='`); idx >= 0 {
-		start := idx + len(`arch='`)
-		end := strings.Index(out[start:], `'`)
-		if end > 0 {
-			info.Arch = out[start : start+end]
-		}
-	} else if idx := strings.Index(out, `arch="`); idx >= 0 {
-		start := idx + len(`arch="`)
-		end := strings.Index(out[start:], `"`)
-		if end > 0 {
-			info.Arch = out[start : start+end]
-		}
-	}
-
-	// Find machine attribute (try single quotes first, then double quotes)
-	if idx := strings.Index(out, `machine='`); idx >= 0 {
-		start := idx + len(`machine='`)
-		end := strings.Index(out[start:], `'`)
-		if end > 0 {
-			info.Machine = out[start : start+end]
-		}
-	} else if idx := strings.Index(out, `machine="`); idx >= 0 {
-		start := idx + len(`machine="`)
-		end := strings.Index(out[start:], `"`)
-		if end > 0 {
-			info.Machine = out[start : start+end]
-		}
-	}
-
-	return info, nil
 }
 
 // --- Domain XML rendering ---
@@ -1811,4 +1588,340 @@ local-hostname: %s
 func hasBin(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
+}
+
+// ValidateSourceVM performs pre-flight checks on a source VM before cloning.
+func (m *VirshManager) ValidateSourceVM(ctx context.Context, vmName string) (*VMValidationResult, error) {
+	if vmName == "" {
+		return nil, fmt.Errorf("vmName is required")
+	}
+
+	result := &VMValidationResult{
+		Valid:    true,
+		Warnings: []string{},
+		Errors:   []string{},
+	}
+
+	// Check VM state
+	state, err := m.GetVMState(ctx, vmName)
+	if err != nil {
+		result.Valid = false
+		result.Errors = append(result.Errors, fmt.Sprintf("Failed to get VM state: %v", err))
+		return result, nil
+	}
+	result.State = state
+
+	// Check if VM has a network interface with MAC address
+	mac, macErr := m.GetVMMAC(ctx, vmName)
+	if macErr != nil {
+		result.Warnings = append(result.Warnings,
+			fmt.Sprintf("Could not get MAC address from VM definition: %v", macErr))
+		result.Warnings = append(result.Warnings,
+			"The source VM may not have a network interface configured properly")
+	} else {
+		result.MACAddress = mac
+		result.HasNetwork = true
+	}
+
+	// Check if VM has an IP address (only if running)
+	switch state {
+	case VMStateRunning:
+		virsh := m.binPath("virsh", m.cfg.VirshPath)
+		out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "domifaddr", vmName, "--source", "lease")
+		if err == nil {
+			ip, mac := parseDomIfAddrIPv4WithMAC(out)
+			if ip != "" {
+				result.IPAddress = ip
+				if mac != "" && result.MACAddress == "" {
+					result.MACAddress = mac
+					result.HasNetwork = true
+				}
+			} else {
+				result.Warnings = append(result.Warnings,
+					"Source VM is running but has no IP address assigned")
+				result.Warnings = append(result.Warnings,
+					"This may indicate cloud-init or DHCP issues - cloned sandboxes may also fail to get IPs")
+			}
+		}
+
+		// Check network interface statistics if we have a MAC
+		if result.MACAddress != "" {
+			stats, statsErr := m.getVMNetworkStats(ctx, vmName)
+			if statsErr == nil {
+				if stats.txPackets == 0 && stats.rxPackets == 0 {
+					result.Warnings = append(result.Warnings,
+						"Source VM network interface shows zero TX/RX packets - network may not be functioning")
+				} else if stats.txPackets == 0 {
+					result.Warnings = append(result.Warnings,
+						"Source VM network interface shows zero TX packets - VM may not be sending network traffic")
+				}
+			}
+		}
+	case VMStateShutOff:
+		// VM is shut off - this is fine for cloning, but warn that we can't verify network
+		result.Warnings = append(result.Warnings,
+			"Source VM is shut off - cannot verify network configuration (IP/DHCP)")
+		result.Warnings = append(result.Warnings,
+			"Consider starting the source VM to verify it can obtain an IP before cloning")
+	default:
+		// VM is in an unexpected state
+		result.Warnings = append(result.Warnings,
+			fmt.Sprintf("Source VM is in state '%s' - expected 'running' or 'shut off'", state))
+	}
+
+	// Check if VM has cloud-init CDROM (helpful for diagnostics)
+	hasCloudInit := m.vmHasCloudInitCDROM(ctx, vmName)
+
+	if !hasCloudInit {
+		result.Warnings = append(result.Warnings,
+			"Source VM does not appear to have a cloud-init CDROM attached")
+		result.Warnings = append(result.Warnings,
+			"Cloned sandboxes will still get their own cloud-init ISO for network config")
+	}
+
+	return result, nil
+}
+
+// vmNetworkStats holds network interface statistics
+type vmNetworkStats struct {
+	rxBytes   int64
+	rxPackets int64
+	txBytes   int64
+	txPackets int64
+}
+
+// getVMNetworkStats returns network interface statistics for a VM
+func (m *VirshManager) getVMNetworkStats(ctx context.Context, vmName string) (*vmNetworkStats, error) {
+	virsh := m.binPath("virsh", m.cfg.VirshPath)
+
+	// Get interface name first
+	out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "domiflist", vmName)
+	if err != nil {
+		return nil, fmt.Errorf("get interface list: %w", err)
+	}
+
+	// Parse domiflist to get interface name
+	var ifaceName string
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "Interface") || strings.HasPrefix(line, "-") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) >= 1 && fields[0] != "-" {
+			ifaceName = fields[0]
+			break
+		}
+	}
+
+	if ifaceName == "" || ifaceName == "-" {
+		// Interface name is "-" for some network types, try to get stats anyway
+		return nil, fmt.Errorf("no named interface found")
+	}
+
+	// Get interface stats
+	out, err = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "domifstat", vmName, ifaceName)
+	if err != nil {
+		return nil, fmt.Errorf("get interface stats: %w", err)
+	}
+
+	stats := &vmNetworkStats{}
+	for _, line := range strings.Split(out, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 {
+			var val int64
+			_, _ = fmt.Sscanf(fields[1], "%d", &val)
+			switch {
+			case strings.Contains(fields[0], "rx_bytes"):
+				stats.rxBytes = val
+			case strings.Contains(fields[0], "rx_packets"):
+				stats.rxPackets = val
+			case strings.Contains(fields[0], "tx_bytes"):
+				stats.txBytes = val
+			case strings.Contains(fields[0], "tx_packets"):
+				stats.txPackets = val
+			}
+		}
+	}
+
+	return stats, nil
+}
+
+// vmHasCloudInitCDROM checks if a VM has a cloud-init CDROM attached
+func (m *VirshManager) vmHasCloudInitCDROM(ctx context.Context, vmName string) bool {
+	virsh := m.binPath("virsh", m.cfg.VirshPath)
+	out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "domblklist", vmName, "--details")
+	if err != nil {
+		return false
+	}
+
+	// Look for cdrom device with cloud-init related path
+	for _, line := range strings.Split(out, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 4 && fields[1] == "cdrom" {
+			path := strings.ToLower(fields[3])
+			if strings.Contains(path, "cloud") || strings.Contains(path, "seed") ||
+				strings.Contains(path, "cidata") || strings.Contains(path, "init") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// CheckHostResources validates that the host has sufficient resources for a new sandbox.
+func (m *VirshManager) CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*ResourceCheckResult, error) {
+	result := &ResourceCheckResult{
+		Valid:            true,
+		RequiredCPUs:     requiredCPUs,
+		RequiredMemoryMB: requiredMemoryMB,
+		Warnings:         []string{},
+		Errors:           []string{},
+	}
+
+	// Check available resources using virsh nodeinfo
+	info, err := m.getHostInfo(ctx)
+	if err != nil {
+		result.Warnings = append(result.Warnings,
+			fmt.Sprintf("Could not check host resources: %v", err))
+	} else {
+		result.TotalMemoryMB = info.totalMB
+		result.AvailableMemoryMB = info.availableMB
+		result.AvailableCPUs = info.cpus
+
+		// Check if we have enough memory
+		if int64(requiredMemoryMB) > info.availableMB {
+			result.Valid = false
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Insufficient memory: need %d MB but only %d MB available",
+					requiredMemoryMB, info.availableMB))
+		} else if float64(requiredMemoryMB) > float64(info.availableMB)*0.8 {
+			// Warn if using more than 80% of available memory
+			result.Warnings = append(result.Warnings,
+				fmt.Sprintf("Low memory warning: requesting %d MB of %d MB available (%.1f%%)",
+					requiredMemoryMB, info.availableMB,
+					float64(requiredMemoryMB)/float64(info.availableMB)*100))
+		}
+
+		// Check if we have enough CPUs
+		if requiredCPUs > info.cpus {
+			result.Valid = false
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Insufficient CPUs: need %d but only %d available",
+					requiredCPUs, info.cpus))
+		}
+	}
+
+	// Check available disk space in work directory
+	diskInfo, err := m.getWorkDirDiskSpace(ctx)
+	if err != nil {
+		result.Warnings = append(result.Warnings,
+			fmt.Sprintf("Could not check disk space: %v", err))
+	} else {
+		result.AvailableDiskMB = diskInfo.availableMB
+
+		// Warn if disk space is low (less than 10GB)
+		if diskInfo.availableMB < 10*1024 {
+			result.Warnings = append(result.Warnings,
+				fmt.Sprintf("Low disk space warning: only %d MB available in work directory (%s)",
+					diskInfo.availableMB, m.cfg.WorkDir))
+		}
+
+		// Error if disk space is critically low (less than 1GB)
+		if diskInfo.availableMB < 1024 {
+			result.Valid = false
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Insufficient disk space: only %d MB available in work directory (%s)",
+					diskInfo.availableMB, m.cfg.WorkDir))
+		}
+	}
+
+	return result, nil
+}
+
+// hostInfo holds host resource information
+type hostInfo struct {
+	cpus        int
+	totalMB     int64
+	availableMB int64
+}
+
+// getHostInfo returns available and total resources on the host
+func (m *VirshManager) getHostInfo(ctx context.Context) (*hostInfo, error) {
+	virsh := m.binPath("virsh", m.cfg.VirshPath)
+	info := &hostInfo{}
+
+	// Get CPU info from nodeinfo
+	out, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "nodeinfo")
+	if err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			if strings.HasPrefix(line, "CPU(s):") {
+				fields := strings.Fields(line)
+				if len(fields) >= 2 {
+					_, _ = fmt.Sscanf(fields[1], "%d", &info.cpus)
+				}
+			}
+			if strings.HasPrefix(line, "Memory size:") {
+				fields := strings.Fields(line)
+				if len(fields) >= 3 {
+					var val int64
+					_, _ = fmt.Sscanf(fields[2], "%d", &val)
+					info.totalMB = val / 1024
+					info.availableMB = info.totalMB / 2 // Fallback estimate
+				}
+			}
+		}
+	}
+
+	// Try virsh nodememstats for more accurate available memory
+	out, err = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "nodememstats")
+	if err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				var val int64
+				_, _ = fmt.Sscanf(fields[len(fields)-2], "%d", &val)
+				if strings.Contains(fields[0], "free") {
+					info.availableMB = val / 1024
+				}
+			}
+		}
+	}
+
+	return info, nil
+}
+
+type diskSpaceInfo struct {
+	availableMB int64
+}
+
+func (m *VirshManager) getWorkDirDiskSpace(ctx context.Context) (*diskSpaceInfo, error) {
+	workDir := m.cfg.WorkDir
+	if workDir == "" {
+		workDir = "/var/lib/libvirt/images/sandboxes"
+	}
+
+	// Use df command to get disk space
+	var stdout bytes.Buffer
+	cmd := exec.CommandContext(ctx, "df", "-m", workDir)
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("df command failed: %w", err)
+	}
+
+	// Parse df output (second line, 4th column for available)
+	lines := strings.Split(stdout.String(), "\n")
+	if len(lines) >= 2 {
+		fields := strings.Fields(lines[1])
+		if len(fields) >= 4 {
+			var available int64
+			_, _ = fmt.Sscanf(fields[3], "%d", &available)
+			return &diskSpaceInfo{
+				availableMB: available,
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not parse df output")
 }

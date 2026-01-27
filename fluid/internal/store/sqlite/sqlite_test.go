@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"fluid/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 )
 
 func setupTestStore(t *testing.T) (store.Store, func()) {

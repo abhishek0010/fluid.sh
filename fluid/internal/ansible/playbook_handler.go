@@ -6,9 +6,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	serverError "fluid/internal/error"
-	serverJSON "fluid/internal/json"
-	"fluid/internal/store"
+	serverError "github.com/aspectrr/fluid.sh/fluid/internal/error"
+	serverJSON "github.com/aspectrr/fluid.sh/fluid/internal/json"
+	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 )
 
 // PlaybookHandler provides HTTP handlers for playbook management.

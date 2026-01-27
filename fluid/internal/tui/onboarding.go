@@ -12,7 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 )
 
 // OnboardingStep represents the current step in onboarding
@@ -74,9 +74,8 @@ type OnboardingModel struct {
 	errorMsg       string
 
 	// Host configuration state
-	hostInputs      []textinput.Model // Multiple inputs for host config
-	hostInputFocus  int               // Which input is focused
-	configuredHosts []config.HostConfig
+	hostInputs     []textinput.Model // Multiple inputs for host config
+	hostInputFocus int               // Which input is focused
 
 	// Demo state
 	demoSteps        []DemoStep
@@ -225,9 +224,6 @@ func (m OnboardingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case sshCACheckDoneMsg:
 		m.sshCAExists = msg.exists
-		if !msg.exists {
-			// Will offer to generate
-		}
 
 	case sshCAGeneratedMsg:
 		m.testing = false
@@ -287,11 +283,12 @@ func (m OnboardingModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.hostInputs[m.hostInputFocus].Focus()
 			return m, nil
 		}
-		if m.step == StepInfraChoice {
+		switch m.step {
+		case StepInfraChoice:
 			if m.selectedOption < 2 {
 				m.selectedOption++
 			}
-		} else if m.step == StepOfferDemo {
+		case StepOfferDemo:
 			if m.selectedOption < 1 {
 				m.selectedOption++
 			}

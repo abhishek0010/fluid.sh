@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 )
 
 // mockSSHRunner implements SSHRunner for testing.

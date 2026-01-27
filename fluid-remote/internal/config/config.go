@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config is the root configuration for virsh-sandbox API.
+// Config is the root configuration for fluid-remote API.
 type Config struct {
 	API       APIConfig       `yaml:"api"`
 	Database  DatabaseConfig  `yaml:"database"`
@@ -18,7 +18,8 @@ type Config struct {
 	Ansible   AnsibleConfig   `yaml:"ansible"`
 	Logging   LoggingConfig   `yaml:"logging"`
 	Telemetry TelemetryConfig `yaml:"telemetry"`
-	Hosts     []HostConfig    `yaml:"hosts"` // Remote libvirt hosts for multi-host VM listing
+	Janitor   JanitorConfig   `yaml:"janitor"` // Background cleanup of expired sandboxes
+	Hosts     []HostConfig    `yaml:"hosts"`   // Remote libvirt hosts for multi-host VM listing
 }
 
 // APIConfig holds HTTP server settings.
@@ -90,6 +91,17 @@ type LoggingConfig struct {
 	Format string `yaml:"format"`
 }
 
+// JanitorConfig holds settings for the background sandbox cleanup service.
+type JanitorConfig struct {
+	// Enabled controls whether the janitor runs. Default: true
+	Enabled bool `yaml:"enabled"`
+	// Interval is how often the janitor checks for expired sandboxes. Default: 1m
+	Interval time.Duration `yaml:"interval"`
+	// DefaultTTL is the default TTL for sandboxes that don't specify one. Default: 0 (no auto-cleanup)
+	// Sandboxes with TTLSeconds set will use their own TTL instead.
+	DefaultTTL time.Duration `yaml:"default_ttl"`
+}
+
 // HostConfig represents a remote libvirt host for multi-host VM management.
 // Authentication uses system SSH config (~/.ssh/config and ssh-agent).
 type HostConfig struct {
@@ -134,8 +146,8 @@ func DefaultConfig() *Config {
 			IPDiscoveryTimeout: 2 * time.Minute,
 		},
 		SSH: SSHConfig{
-			CAKeyPath:   "/etc/virsh-sandbox/ssh_ca",
-			CAPubPath:   "/etc/virsh-sandbox/ssh_ca.pub",
+			CAKeyPath:   "/etc/fluid-remote/ssh_ca",
+			CAPubPath:   "/etc/fluid-remote/ssh_ca.pub",
 			KeyDir:      "/tmp/sandbox-keys",
 			CertTTL:     5 * time.Minute,
 			MaxTTL:      10 * time.Minute,
@@ -151,6 +163,11 @@ func DefaultConfig() *Config {
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "text",
+		},
+		Janitor: JanitorConfig{
+			Enabled:    true,
+			Interval:   1 * time.Minute,
+			DefaultTTL: 0, // No auto-cleanup by default; sandboxes must set TTLSeconds
 		},
 	}
 }
@@ -297,6 +314,21 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv("LOG_FORMAT"); v != "" {
 		cfg.Logging.Format = v
+	}
+
+	// Janitor
+	if v := os.Getenv("JANITOR_ENABLED"); v != "" {
+		cfg.Janitor.Enabled = v == "true" || v == "1"
+	}
+	if v := os.Getenv("JANITOR_INTERVAL"); v != "" {
+		if d := parseDuration(v); d > 0 {
+			cfg.Janitor.Interval = d
+		}
+	}
+	if v := os.Getenv("SANDBOX_DEFAULT_TTL"); v != "" {
+		if d := parseDuration(v); d > 0 {
+			cfg.Janitor.DefaultTTL = d
+		}
 	}
 }
 

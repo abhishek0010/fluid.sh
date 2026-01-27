@@ -12,12 +12,12 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/websocket"
 
-	"fluid/internal/ansible"
-	serverError "fluid/internal/error"
-	serverJSON "fluid/internal/json"
-	"fluid/internal/libvirt"
-	"fluid/internal/store"
-	"fluid/internal/vm"
+	"github.com/aspectrr/fluid.sh/fluid/internal/ansible"
+	serverError "github.com/aspectrr/fluid.sh/fluid/internal/error"
+	serverJSON "github.com/aspectrr/fluid.sh/fluid/internal/json"
+	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid/internal/vm"
 )
 
 // Server wires the HTTP layer to application services.

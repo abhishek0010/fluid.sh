@@ -1,1 +1,1 @@
-{"root":["./.astro/types.d.ts","./astro.config.mjs","./src/env.d.ts","./src/content/config.ts","./src/pages/install.sh.ts"],"version":"5.9.3"}
+{"root":["./.astro/types.d.ts","./astro.config.mjs","./eslint.config.js","./src/env.d.ts","./src/content/config.ts","./src/pages/install.sh.ts"],"version":"5.9.3"}

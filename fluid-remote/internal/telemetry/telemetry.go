@@ -3,11 +3,15 @@ package telemetry
 import (
 	"runtime"
 
-	"virsh-sandbox/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid-remote/internal/config"
 
 	"github.com/google/uuid"
 	"github.com/posthog/posthog-go"
 )
+
+// posthogAPIKey is the PostHog API key. By default uses dev key.
+// Override at build time with: -ldflags "-X github.com/aspectrr/fluid.sh/fluid-remote/internal/telemetry.posthogAPIKey=YOUR_KEY"
+var posthogAPIKey = "phc_QR3I1IKrEOqx5jIfJkBMfyznynIxRYd8kzmZM9o9fRZ"
 
 // Service defines the interface for telemetry operations.
 type Service interface {
@@ -40,7 +44,7 @@ func NewService(cfg config.TelemetryConfig) (Service, error) {
 		return &NoopService{}, nil
 	}
 
-	client, err := posthog.NewWithConfig("phc_QR3I1IKrEOqx5jIfJkBMfyznynIxRYd8kzmZM9o9fRZ", posthog.Config{Endpoint: "https://us.i.posthog.com"})
+	client, err := posthog.NewWithConfig(posthogAPIKey, posthog.Config{Endpoint: "https://us.i.posthog.com"})
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-module virsh-sandbox
+module github.com/aspectrr/fluid.sh/fluid-remote
 
 go 1.24.0
 

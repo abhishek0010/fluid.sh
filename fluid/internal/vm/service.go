@@ -14,11 +14,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"fluid/internal/config"
-	"fluid/internal/libvirt"
-	"fluid/internal/sshkeys"
-	"fluid/internal/store"
-	"fluid/internal/telemetry"
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid/internal/sshkeys"
+	"github.com/aspectrr/fluid.sh/fluid/internal/store"
+	"github.com/aspectrr/fluid.sh/fluid/internal/telemetry"
 )
 
 // Service orchestrates libvirt operations and data persistence.
@@ -145,6 +145,26 @@ func (s *Service) getManagerForSandbox(sb *store.Sandbox) libvirt.Manager {
 	return s.mgr
 }
 
+func (s *Service) validateResources(ctx context.Context, mgr libvirt.Manager, sourceVMName string, cpu, memoryMB int) error {
+	// 1. Validate source VM
+	vmValidation, err := mgr.ValidateSourceVM(ctx, sourceVMName)
+	if err != nil {
+		s.logger.Warn("source VM validation failed", "source_vm", sourceVMName, "error", err)
+	} else if !vmValidation.Valid {
+		return fmt.Errorf("source VM %s validation failed: %s", sourceVMName, strings.Join(vmValidation.Errors, "; "))
+	}
+
+	// 2. Check host resources
+	resourceCheck, err := mgr.CheckHostResources(ctx, cpu, memoryMB)
+	if err != nil {
+		s.logger.Warn("host resource check failed", "error", err)
+	} else if !resourceCheck.Valid {
+		return fmt.Errorf("host resource check failed: %s", strings.Join(resourceCheck.Errors, "; "))
+	}
+
+	return nil
+}
+
 // CreateSandbox clones a VM from an existing VM and persists a Sandbox record.
 //
 // sourceSandboxName is the name of the existing VM in libvirt to clone from.
@@ -205,6 +225,9 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID,
 	if memoryMB <= 0 {
 		memoryMB = s.cfg.DefaultMemoryMB
 	}
+
+	// Validate resources before cloning
+	// Use provided sandbox name or generate one with sbx- prefix
 	if sandboxName == "" {
 		sandboxName = fmt.Sprintf("sbx-%s", shortID())
 	}
@@ -362,8 +385,18 @@ func (s *Service) CreateSandboxOnHost(ctx context.Context, host *config.HostConf
 	if memoryMB <= 0 {
 		memoryMB = s.cfg.DefaultMemoryMB
 	}
+
+	// Use provided sandbox name or generate one with sbx- prefix
 	if sandboxName == "" {
 		sandboxName = fmt.Sprintf("sbx-%s", shortID())
+	}
+
+	// Create a remote manager for this host
+	remoteMgr := libvirt.NewRemoteVirshManager(*host, s.virshCfg, s.logger)
+
+	// Validate resources before cloning on remote host
+	if err := s.validateResources(ctx, remoteMgr, sourceSandboxName, cpu, memoryMB); err != nil {
+		return nil, "", err
 	}
 
 	s.logger.Info("creating sandbox on remote host",
@@ -377,9 +410,6 @@ func (s *Service) CreateSandboxOnHost(ctx context.Context, host *config.HostConf
 		"auto_start", autoStart,
 		"wait_for_ip", waitForIP,
 	)
-
-	// Create a remote manager for this host
-	remoteMgr := libvirt.NewRemoteVirshManager(*host, s.virshCfg, s.logger)
 
 	jobID := fmt.Sprintf("JOB-%s", shortID())
 
