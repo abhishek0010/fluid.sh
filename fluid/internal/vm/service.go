@@ -232,6 +232,11 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID,
 		sandboxName = fmt.Sprintf("sbx-%s", shortID())
 	}
 
+	// Validate resources (source VM existence and host capacity)
+	if err := s.validateResources(ctx, s.mgr, sourceSandboxName, cpu, memoryMB); err != nil {
+		return nil, "", fmt.Errorf("validate resources: %w", err)
+	}
+
 	s.logger.Info("creating sandbox",
 		"source_vm_name", sourceSandboxName,
 		"agent_id", agentID,

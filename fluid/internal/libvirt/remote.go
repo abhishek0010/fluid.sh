@@ -526,6 +526,7 @@ func (m *RemoteVirshManager) CheckHostResources(ctx context.Context, requiredCPU
 	// Check memory using virsh nodememstats
 	out, err = m.runSSH(ctx, "virsh nodememstats")
 	if err == nil {
+		var free, buffers, cached int64
 		for _, line := range strings.Split(out, "\n") {
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
@@ -535,10 +536,17 @@ func (m *RemoteVirshManager) CheckHostResources(ctx context.Context, requiredCPU
 				case strings.Contains(fields[0], "total"):
 					result.TotalMemoryMB = val / 1024
 				case strings.Contains(fields[0], "free"):
-					result.AvailableMemoryMB = val / 1024
+					free = val
+				case strings.Contains(fields[0], "buffers"):
+					buffers = val
+				case strings.Contains(fields[0], "cached"):
+					cached = val
 				}
 			}
 		}
+		// Calculate available as free + buffers + cached
+		// This is more accurate than just free, as buffers/cached can be reclaimed
+		result.AvailableMemoryMB = (free + buffers + cached) / 1024
 
 		if result.TotalMemoryMB > 0 {
 			if int64(requiredMemoryMB) > result.AvailableMemoryMB {

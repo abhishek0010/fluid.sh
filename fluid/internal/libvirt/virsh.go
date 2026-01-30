@@ -2057,15 +2057,27 @@ func (m *VirshManager) getHostInfo(ctx context.Context) (*hostInfo, error) {
 	// Try virsh nodememstats for more accurate available memory
 	out, err = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "nodememstats")
 	if err == nil {
+		var free, buffers, cached int64
+		foundFree := false
 		for _, line := range strings.Split(out, "\n") {
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
 				var val int64
 				_, _ = fmt.Sscanf(fields[len(fields)-2], "%d", &val)
 				if strings.Contains(fields[0], "free") {
-					info.availableMB = val / 1024
+					free = val
+					foundFree = true
+				} else if strings.Contains(fields[0], "buffers") {
+					buffers = val
+				} else if strings.Contains(fields[0], "cached") {
+					cached = val
 				}
 			}
+		}
+		if foundFree {
+			// Available memory is roughly free + buffers + cached
+			// This is more accurate than just free, as buffers/cached can be reclaimed
+			info.availableMB = (free + buffers + cached) / 1024
 		}
 	}
 
