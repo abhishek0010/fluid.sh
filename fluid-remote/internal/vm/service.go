@@ -51,6 +51,10 @@ type Config struct {
 	// IPDiscoveryTimeout controls how long StartSandbox waits for the VM IP (when requested).
 	IPDiscoveryTimeout time.Duration
 
+	// SSHReadinessTimeout controls how long to wait for SSH to become available after IP discovery.
+	// If zero, SSH readiness check is skipped. Default: 60s
+	SSHReadinessTimeout time.Duration
+
 	// SSHProxyJump specifies a jump host for SSH connections to VMs.
 	// Format: "user@host:port" or just "host" for default user/port.
 	// Required when VMs are on an isolated network not directly reachable.
@@ -104,6 +108,9 @@ func NewService(mgr libvirt.Manager, st store.Store, cfg Config, opts ...Option)
 	}
 	if cfg.IPDiscoveryTimeout <= 0 {
 		cfg.IPDiscoveryTimeout = 2 * time.Minute
+	}
+	if cfg.SSHReadinessTimeout <= 0 {
+		cfg.SSHReadinessTimeout = 60 * time.Second
 	}
 	s := &Service{
 		mgr:       mgr,
@@ -168,6 +175,97 @@ func (s *Service) validateIPUniqueness(ctx context.Context, currentSandboxID, ip
 		}
 	}
 	return nil
+}
+
+// waitForSSH waits until SSH is accepting connections on the given IP.
+// It uses exponential backoff to probe SSH readiness.
+func (s *Service) waitForSSH(ctx context.Context, sandboxID, ip string, timeout time.Duration) error {
+	if timeout <= 0 {
+		return nil // SSH readiness check disabled
+	}
+
+	// Skip if no key manager configured
+	if s.keyMgr == nil {
+		s.logger.Debug("no key manager configured, skipping SSH readiness check")
+		return nil
+	}
+
+	s.logger.Info("waiting for SSH to become ready",
+		"sandbox_id", sandboxID,
+		"ip", ip,
+		"timeout", timeout,
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	// Get credentials for SSH probe - use default "sandbox" user
+	creds, err := s.keyMgr.GetCredentials(ctx, sandboxID, "sandbox")
+	if err != nil {
+		s.logger.Warn("failed to get SSH credentials for readiness check, skipping",
+			"sandbox_id", sandboxID,
+			"error", err,
+		)
+		return nil // Don't fail sandbox creation if we can't get creds
+	}
+
+	// Use short command timeout for probes
+	probeTimeout := 10 * time.Second
+
+	// Exponential backoff: 1s, 2s, 4s, 8s, 16s (capped)
+	initialDelay := 1 * time.Second
+	maxDelay := 16 * time.Second
+	attempt := 0
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("SSH readiness timeout after %v: %w", timeout, ctx.Err())
+		default:
+		}
+
+		// Try to run a simple command
+		_, _, exitCode, runErr := s.ssh.RunWithCert(
+			ctx,
+			ip,
+			creds.Username,
+			creds.PrivateKeyPath,
+			creds.CertificatePath,
+			"true", // Simple command that succeeds if SSH works
+			probeTimeout,
+			nil,
+		)
+
+		if runErr == nil && exitCode == 0 {
+			s.logger.Info("SSH is ready",
+				"sandbox_id", sandboxID,
+				"ip", ip,
+				"attempts", attempt+1,
+			)
+			return nil
+		}
+
+		// Calculate backoff delay
+		delay := initialDelay * time.Duration(1<<uint(attempt))
+		if delay > maxDelay {
+			delay = maxDelay
+		}
+
+		s.logger.Debug("SSH not ready, retrying",
+			"sandbox_id", sandboxID,
+			"ip", ip,
+			"attempt", attempt+1,
+			"delay", delay,
+			"error", runErr,
+		)
+
+		select {
+		case <-time.After(delay):
+			attempt++
+		case <-ctx.Done():
+			return fmt.Errorf("SSH readiness timeout after %v: %w", timeout, ctx.Err())
+		}
+	}
 }
 
 func (s *Service) validateResources(ctx context.Context, mgr libvirt.Manager, sourceVMName string, cpu, memoryMB int) error {
@@ -312,6 +410,16 @@ func (s *Service) CreateSandbox(ctx context.Context, sourceSandboxName, agentID 
 				_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, nil)
 				sb.State = store.SandboxStateRunning
 				return sb, "", fmt.Errorf("ip conflict: %w", err)
+			}
+
+			// Wait for SSH to become ready before marking as RUNNING
+			if err := s.waitForSSH(ctx, sb.ID, ip, s.cfg.SSHReadinessTimeout); err != nil {
+				s.logger.Warn("SSH readiness check failed",
+					"sandbox_id", sb.ID,
+					"ip_address", ip,
+					"error", err,
+				)
+				// Don't fail - sandbox is still usable, just may need retries
 			}
 
 			if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, &ip); err != nil {
@@ -488,6 +596,17 @@ func (s *Service) CreateSandboxOnHost(ctx context.Context, host *config.HostConf
 				_ = s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, nil)
 				sb.State = store.SandboxStateRunning
 				return sb, "", fmt.Errorf("ip conflict on host %s: %w", host.Name, err)
+			}
+
+			// Wait for SSH to become ready before marking as RUNNING
+			if err := s.waitForSSH(ctx, sb.ID, ip, s.cfg.SSHReadinessTimeout); err != nil {
+				s.logger.Warn("SSH readiness check failed on remote host",
+					"sandbox_id", sb.ID,
+					"ip_address", ip,
+					"host", host.Name,
+					"error", err,
+				)
+				// Don't fail - sandbox is still usable, just may need retries
 			}
 
 			if err := s.store.UpdateSandboxState(ctx, sb.ID, store.SandboxStateRunning, &ip); err != nil {
@@ -1021,11 +1140,70 @@ type DefaultSSHRunner struct {
 	// Format: "user@host:port" or just "host" for default user/port.
 	// If empty, direct connections are made.
 	ProxyJump string
+
+	// MaxRetries is the maximum number of retry attempts for transient SSH failures.
+	// Default: 5
+	MaxRetries int
+
+	// InitialRetryDelay is the initial delay before the first retry.
+	// Default: 2s
+	InitialRetryDelay time.Duration
+
+	// MaxRetryDelay is the maximum delay between retries.
+	// Default: 30s
+	MaxRetryDelay time.Duration
+}
+
+// sshRetryConfig returns the retry configuration with defaults applied.
+func (r *DefaultSSHRunner) sshRetryConfig() (maxRetries int, initialDelay, maxDelay time.Duration) {
+	maxRetries = r.MaxRetries
+	if maxRetries <= 0 {
+		maxRetries = 5
+	}
+	initialDelay = r.InitialRetryDelay
+	if initialDelay <= 0 {
+		initialDelay = 2 * time.Second
+	}
+	maxDelay = r.MaxRetryDelay
+	if maxDelay <= 0 {
+		maxDelay = 30 * time.Second
+	}
+	return
+}
+
+// isRetryableSSHError checks if the error indicates a transient SSH failure
+// that should be retried (e.g., connection refused, sshd not ready).
+func isRetryableSSHError(stderr string, exitCode int) bool {
+	// Exit code 255 indicates SSH connection failure
+	if exitCode != 255 {
+		return false
+	}
+	// Check for common transient connection errors
+	retryablePatterns := []string{
+		"Connection refused",
+		"Connection closed",
+		"Connection reset",
+		"Connection timed out",
+		"No route to host",
+		"Network is unreachable",
+		"Host is down",
+		"port 22: Connection refused",
+		"port 65535", // Malformed connection error
+		"UNKNOWN",    // SSH parsing error during connection failure
+	}
+	stderrLower := strings.ToLower(stderr)
+	for _, pattern := range retryablePatterns {
+		if strings.Contains(stderrLower, strings.ToLower(pattern)) {
+			return true
+		}
+	}
+	return false
 }
 
 // Run implements SSHRunner.Run using the local ssh client.
 // It disables strict host key checking and sets a connect timeout.
 // It assumes the VM is reachable on the default SSH port (22).
+// Includes retry logic with exponential backoff for transient connection failures.
 func (r *DefaultSSHRunner) Run(ctx context.Context, addr, user, privateKeyPath, command string, timeout time.Duration, _ map[string]string) (string, string, int, error) {
 	// Pre-flight check: verify the private key file exists and has correct permissions
 	keyInfo, err := os.Stat(privateKeyPath)
@@ -1062,35 +1240,78 @@ func (r *DefaultSSHRunner) Run(ctx context.Context, addr, user, privateKeyPath, 
 		command,
 	)
 
-	var stdout, stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, "ssh", args...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	maxRetries, initialDelay, maxDelay := r.sshRetryConfig()
+	var lastStdout, lastStderr string
+	var lastExitCode int
+	var lastErr error
 
-	err = cmd.Run()
-	exitCode := 0
-	if err != nil {
-		// Best-effort extract exit code
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			exitCode = ee.ExitCode()
-		} else {
-			exitCode = 255
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Check context before each attempt
+		if ctx.Err() != nil {
+			return lastStdout, lastStderr, lastExitCode, fmt.Errorf("context cancelled after %d attempts: %w", attempt, ctx.Err())
 		}
-		// Include stderr in error message for better debugging
-		stderrStr := stderr.String()
-		if stderrStr != "" {
-			err = fmt.Errorf("%w: %s", err, stderrStr)
+
+		var stdout, stderr bytes.Buffer
+		cmd := exec.CommandContext(ctx, "ssh", args...)
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		err = cmd.Run()
+		exitCode := 0
+		if err != nil {
+			// Best-effort extract exit code
+			var ee *exec.ExitError
+			if errors.As(err, &ee) {
+				exitCode = ee.ExitCode()
+			} else {
+				exitCode = 255
+			}
+			stderrStr := stderr.String()
+
+			// Check if this is a retryable error
+			if attempt < maxRetries && isRetryableSSHError(stderrStr, exitCode) {
+				// Calculate backoff delay: 2s, 4s, 8s, 16s, 30s (capped)
+				delay := initialDelay * time.Duration(1<<uint(attempt))
+				if delay > maxDelay {
+					delay = maxDelay
+				}
+				slog.Default().Warn("SSH connection failed, retrying",
+					"attempt", attempt+1,
+					"max_retries", maxRetries,
+					"delay", delay,
+					"addr", addr,
+					"stderr", stderrStr,
+				)
+				select {
+				case <-time.After(delay):
+					// Continue to next attempt
+				case <-ctx.Done():
+					return stdout.String(), stderrStr, exitCode, fmt.Errorf("context cancelled during retry backoff: %w", ctx.Err())
+				}
+				lastStdout, lastStderr, lastExitCode, lastErr = stdout.String(), stderrStr, exitCode, err
+				continue
+			}
+
+			// Not retryable or max retries exceeded
+			if stderrStr != "" {
+				err = fmt.Errorf("%w: %s", err, stderrStr)
+			}
+			return stdout.String(), stderrStr, exitCode, err
 		}
-		return stdout.String(), stderrStr, exitCode, err
+
+		// Success
+		if cmd.ProcessState != nil {
+			exitCode = cmd.ProcessState.ExitCode()
+		}
+		return stdout.String(), stderr.String(), exitCode, nil
 	}
-	if cmd.ProcessState != nil {
-		exitCode = cmd.ProcessState.ExitCode()
-	}
-	return stdout.String(), stderr.String(), exitCode, nil
+
+	// Should not reach here, but return last error if we do
+	return lastStdout, lastStderr, lastExitCode, fmt.Errorf("max retries (%d) exceeded: %w", maxRetries, lastErr)
 }
 
 // RunWithCert implements SSHRunner.RunWithCert using the local ssh client with certificate auth.
+// Includes retry logic with exponential backoff for transient connection failures.
 func (r *DefaultSSHRunner) RunWithCert(ctx context.Context, addr, user, privateKeyPath, certPath, command string, timeout time.Duration, _ map[string]string) (string, string, int, error) {
 	// Pre-flight check: verify the private key file exists and has correct permissions
 	keyInfo, err := os.Stat(privateKeyPath)
@@ -1135,30 +1356,73 @@ func (r *DefaultSSHRunner) RunWithCert(ctx context.Context, addr, user, privateK
 		command,
 	)
 
-	var stdout, stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, "ssh", args...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	maxRetries, initialDelay, maxDelay := r.sshRetryConfig()
+	var lastStdout, lastStderr string
+	var lastExitCode int
+	var lastErr error
 
-	err = cmd.Run()
-	exitCode := 0
-	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			exitCode = ee.ExitCode()
-		} else {
-			exitCode = 255
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Check context before each attempt
+		if ctx.Err() != nil {
+			return lastStdout, lastStderr, lastExitCode, fmt.Errorf("context cancelled after %d attempts: %w", attempt, ctx.Err())
 		}
-		stderrStr := stderr.String()
-		if stderrStr != "" {
-			err = fmt.Errorf("%w: %s", err, stderrStr)
+
+		var stdout, stderr bytes.Buffer
+		cmd := exec.CommandContext(ctx, "ssh", args...)
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		err = cmd.Run()
+		exitCode := 0
+		if err != nil {
+			var ee *exec.ExitError
+			if errors.As(err, &ee) {
+				exitCode = ee.ExitCode()
+			} else {
+				exitCode = 255
+			}
+			stderrStr := stderr.String()
+
+			// Check if this is a retryable error
+			if attempt < maxRetries && isRetryableSSHError(stderrStr, exitCode) {
+				// Calculate backoff delay: 2s, 4s, 8s, 16s, 30s (capped)
+				delay := initialDelay * time.Duration(1<<uint(attempt))
+				if delay > maxDelay {
+					delay = maxDelay
+				}
+				slog.Default().Warn("SSH connection failed (cert auth), retrying",
+					"attempt", attempt+1,
+					"max_retries", maxRetries,
+					"delay", delay,
+					"addr", addr,
+					"stderr", stderrStr,
+				)
+				select {
+				case <-time.After(delay):
+					// Continue to next attempt
+				case <-ctx.Done():
+					return stdout.String(), stderrStr, exitCode, fmt.Errorf("context cancelled during retry backoff: %w", ctx.Err())
+				}
+				lastStdout, lastStderr, lastExitCode, lastErr = stdout.String(), stderrStr, exitCode, err
+				continue
+			}
+
+			// Not retryable or max retries exceeded
+			if stderrStr != "" {
+				err = fmt.Errorf("%w: %s", err, stderrStr)
+			}
+			return stdout.String(), stderrStr, exitCode, err
 		}
-		return stdout.String(), stderrStr, exitCode, err
+
+		// Success
+		if cmd.ProcessState != nil {
+			exitCode = cmd.ProcessState.ExitCode()
+		}
+		return stdout.String(), stderr.String(), exitCode, nil
 	}
-	if cmd.ProcessState != nil {
-		exitCode = cmd.ProcessState.ExitCode()
-	}
-	return stdout.String(), stderr.String(), exitCode, nil
+
+	// Should not reach here, but return last error if we do
+	return lastStdout, lastStderr, lastExitCode, fmt.Errorf("max retries (%d) exceeded: %w", maxRetries, lastErr)
 }
 
 // Helpers

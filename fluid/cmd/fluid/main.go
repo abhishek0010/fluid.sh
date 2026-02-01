@@ -46,9 +46,8 @@ func main() {
 
 var rootCmd = &cobra.Command{
 	Use:   "fluid",
-	Short: "Fluid - Embedded CLI for AI agent sandboxes",
-	Long: `Fluid is a CLI tool that lets AI agents create and manage VM sandboxes.
-Local SQLite for state, direct libvirt access via local socket or SSH.`,
+	Short: "Fluid - Make Infrastructure Safe for AI",
+	Long:  "Fluid is a terminal agent that AI manage infrastructure via sandboxed resources, audit trails and human approval.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip init for these commands (they handle their own init)
 		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" || cmd.Name() == "fluid" {
@@ -328,12 +327,49 @@ var createCmd = &cobra.Command{
 
 		ctx := context.Background()
 
+		// Check resources first - if insufficient memory, prompt for approval
+		mgr := vmService.GetManager()
+		memoryMB := memory
+		if memoryMB <= 0 {
+			memoryMB = vmService.GetDefaultMemory()
+		}
+		cpuCount := cpu
+		if cpuCount <= 0 {
+			cpuCount = vmService.GetDefaultCPUs()
+		}
+
+		validation := vmService.CheckResourcesForSandbox(ctx, mgr, sourceVM, cpuCount, memoryMB)
+		if !validation.SourceVMValid {
+			return fmt.Errorf("source VM validation failed: %s", strings.Join(validation.VMErrors, "; "))
+		}
+
+		// If resources are insufficient, require interactive approval via TUI
+		if validation.NeedsApproval {
+			request := tui.MemoryApprovalRequest{
+				SourceVM:          sourceVM,
+				RequiredMemoryMB:  validation.ResourceCheck.RequiredMemoryMB,
+				AvailableMemoryMB: validation.ResourceCheck.AvailableMemoryMB,
+				TotalMemoryMB:     validation.ResourceCheck.TotalMemoryMB,
+				Warnings:          validation.ResourceCheck.Warnings,
+				Errors:            validation.ResourceCheck.Errors,
+			}
+
+			approved, err := tui.RunConfirmDialog(request)
+			if err != nil {
+				return fmt.Errorf("approval dialog: %w", err)
+			}
+			if !approved {
+				return fmt.Errorf("sandbox creation cancelled: insufficient memory (need %d MB, have %d MB available)",
+					validation.ResourceCheck.RequiredMemoryMB, validation.ResourceCheck.AvailableMemoryMB)
+			}
+		}
+
 		sb, ip, err := vmService.CreateSandbox(ctx, sourceVM, agentID, "", cpu, memory, nil, autoStart, waitIP)
 		if err != nil {
 			return err
 		}
 
-		result := map[string]interface{}{
+		result := map[string]any{
 			"sandbox_id": sb.ID,
 			"name":       sb.SandboxName,
 			"state":      sb.State,
@@ -354,7 +390,6 @@ func init() {
 	createCmd.Flags().Int("memory", 0, "Memory in MB (default from config)")
 	createCmd.Flags().Bool("auto-start", true, "Auto-start the VM after creation")
 	createCmd.Flags().Bool("wait-ip", true, "Wait for IP address discovery")
-	createCmd.Flags().Bool("skip-validation", false, "Skip pre-flight validation checks")
 }
 
 // --- List Command ---
@@ -453,7 +488,7 @@ var destroyCmd = &cobra.Command{
 			return err
 		}
 
-		output(map[string]interface{}{
+		output(map[string]any{
 			"destroyed":  true,
 			"sandbox_id": args[0],
 		})
@@ -477,7 +512,7 @@ var startCmd = &cobra.Command{
 			return err
 		}
 
-		result := map[string]interface{}{
+		result := map[string]any{
 			"started":    true,
 			"sandbox_id": args[0],
 		}
@@ -510,7 +545,7 @@ var stopCmd = &cobra.Command{
 			return err
 		}
 
-		output(map[string]interface{}{
+		output(map[string]any{
 			"stopped":    true,
 			"sandbox_id": args[0],
 		})
@@ -536,7 +571,7 @@ var ipCmd = &cobra.Command{
 			return err
 		}
 
-		output(map[string]interface{}{
+		output(map[string]any{
 			"sandbox_id": args[0],
 			"ip":         ip,
 		})
@@ -568,7 +603,7 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			// Still return partial result if available
 			if result != nil {
-				output(map[string]interface{}{
+				output(map[string]any{
 					"sandbox_id": sandboxID,
 					"exit_code":  result.ExitCode,
 					"stdout":     result.Stdout,
@@ -580,7 +615,7 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		output(map[string]interface{}{
+		output(map[string]any{
 			"sandbox_id": sandboxID,
 			"exit_code":  result.ExitCode,
 			"stdout":     result.Stdout,
@@ -621,7 +656,7 @@ var sshInjectCmd = &cobra.Command{
 			return err
 		}
 
-		output(map[string]interface{}{
+		output(map[string]any{
 			"sandbox_id": sandboxID,
 			"user":       user,
 			"injected":   true,
@@ -657,7 +692,7 @@ var snapshotCmd = &cobra.Command{
 			return err
 		}
 
-		output(map[string]interface{}{
+		output(map[string]any{
 			"snapshot_id": snap.ID,
 			"sandbox_id":  sandboxID,
 			"name":        snap.Name,
@@ -694,7 +729,7 @@ var diffCmd = &cobra.Command{
 			return err
 		}
 
-		output(map[string]interface{}{
+		output(map[string]any{
 			"diff_id":        diff.ID,
 			"sandbox_id":     sandboxID,
 			"from_snapshot":  diff.FromSnapshot,
@@ -1113,19 +1148,7 @@ func runTUI() error {
 
 	agent := tui.NewFluidAgent(cfg, dataStore, vmService, libvirtMgr, telemetryService)
 
-	// Ensure cleanup runs when the TUI exits (user quits or Ctrl+C)
-	defer func() {
-		if agent.CreatedSandboxCount() > 0 {
-			fmt.Printf("\nCleaning up %d session sandbox(es)...\n", agent.CreatedSandboxCount())
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			if err := agent.Cleanup(ctx); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: cleanup failed: %v\n", err)
-			} else {
-				fmt.Println("Cleanup complete.")
-			}
-		}
-	}()
+	// Cleanup now happens in the TUI cleanup page when user presses Ctrl+C twice
 
 	model := tui.NewModel("fluid", "local", "vm-agent", agent, cfg, configPath)
 	return tui.Run(model)

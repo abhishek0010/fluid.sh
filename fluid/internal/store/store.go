@@ -94,6 +94,11 @@ type Sandbox struct {
 	State       SandboxState `json:"state" db:"state"`
 	TTLSeconds  *int         `json:"ttl_seconds,omitempty" db:"ttl_seconds"` // optional TTL for auto GC
 
+	// Resource allocations for this sandbox
+	VCPUs     int   `json:"vcpus" db:"vcpus"`           // Number of vCPUs allocated
+	MemoryMB  int   `json:"memory_mb" db:"memory_mb"`   // RAM allocated in MB
+	StorageMB int64 `json:"storage_mb" db:"storage_mb"` // Storage used/allocated in MB (qcow2 overlay)
+
 	// Multi-host support: identifies which libvirt host this sandbox runs on
 	HostName    *string `json:"host_name,omitempty" db:"host_name"`       // display name of the host (e.g., "kvm-01")
 	HostAddress *string `json:"host_address,omitempty" db:"host_address"` // IP or hostname of the libvirt host
@@ -111,6 +116,20 @@ type SandboxFilter struct {
 	BaseImage *string
 	State     *SandboxState
 	VMName    *string
+}
+
+// HostResources tracks resource inventory and allocations for a libvirt host.
+type HostResources struct {
+	ID                string    `json:"id" db:"id"`                                   // Host identifier
+	Name              string    `json:"name" db:"name"`                               // Display name (e.g., "host-1")
+	Address           string    `json:"address" db:"address"`                         // IP or hostname
+	TotalCPUs         int       `json:"total_cpus" db:"total_cpus"`                   // Total physical CPUs
+	TotalMemoryMB     int64     `json:"total_memory_mb" db:"total_memory_mb"`         // Total RAM in MB
+	TotalStorageMB    int64     `json:"total_storage_mb" db:"total_storage_mb"`       // Total available storage in MB
+	ReservedCPUs      int       `json:"reserved_cpus" db:"reserved_cpus"`             // CPUs allocated to sandboxes
+	ReservedMemoryMB  int64     `json:"reserved_memory_mb" db:"reserved_memory_mb"`   // RAM allocated to sandboxes
+	ReservedStorageMB int64     `json:"reserved_storage_mb" db:"reserved_storage_mb"` // Storage allocated to sandboxes
+	UpdatedAt         time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // Snapshot represents a VM snapshot reference.

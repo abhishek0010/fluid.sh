@@ -71,9 +71,10 @@ class ThinkingIndicator(Static):
     }
     """
 
-    def __init__(self) -> None:
+    def __init__(self, message: str = "Thinking") -> None:
         super().__init__()
         self._dots = 0
+        self.message = message
 
     def on_mount(self) -> None:
         self.update_timer = self.set_interval(0.3, self._animate)
@@ -81,7 +82,7 @@ class ThinkingIndicator(Static):
     def _animate(self) -> None:
         self._dots = (self._dots + 1) % 4
         dots = "." * self._dots
-        self.update(f"Thinking{dots}")
+        self.update(f"{self.message}{dots}")
 
     def stop(self) -> None:
         if hasattr(self, "update_timer"):
@@ -139,9 +140,9 @@ class ConversationView(VerticalScroll):
         self.mount(tool_display)
         self.scroll_end(animate=False)
 
-    def show_thinking(self) -> ThinkingIndicator:
+    def show_thinking(self, message: str = "Thinking") -> ThinkingIndicator:
         """Show thinking indicator."""
-        indicator = ThinkingIndicator()
+        indicator = ThinkingIndicator(message)
         self.mount(indicator)
         self.scroll_end(animate=False)
         return indicator
@@ -457,12 +458,37 @@ class TerminalAgentApp(App):
             def check_settings(saved: bool) -> None:
                 if saved:
                     self.query_one("#conversation", ConversationView).add_message(
-                        "Settings saved. Please restart the agent to apply changes.", 
+                        "Settings saved. Please restart the agent to apply changes.",
                         role="assistant"
                     )
                 self.query_one("#user-input", Input).focus()
-            
+
             self.push_screen(SettingsScreen(), check_settings)
+            return
+
+        if user_input.lower() == "/compact":
+            conv = self.query_one("#conversation", ConversationView)
+            conv.add_message(user_input, role="user")
+            self._thinking_indicator = conv.show_thinking("Compacting")
+            self.run_compact()
+            return
+
+        if user_input.lower() == "/status":
+            conv = self.query_one("#conversation", ConversationView)
+            conv.add_message(user_input, role="user")
+            current, limit, usage = self.agent.get_token_usage()
+            status_msg = (
+                f"**Context Status**\n\n"
+                f"- Tokens: {current}/{limit} ({usage:.1%})\n"
+                f"- Messages: {len(self.agent.messages)}\n"
+                f"- Auto-compact: {'enabled' if self.agent.auto_compact else 'disabled'}\n"
+                f"- Threshold: {self.agent.compact_threshold:.0%}\n"
+                f"- Compactions: {self.agent._compaction_count}\n"
+            )
+            if self.agent.should_compact():
+                status_msg += "\n**Compaction recommended**"
+            conv.add_message(status_msg)
+            self.query_one("#user-input", Input).focus()
             return
 
         conv = self.query_one("#conversation", ConversationView)
@@ -470,8 +496,18 @@ class TerminalAgentApp(App):
         # Add user message
         conv.add_message(user_input, role="user")
 
+        # Determine thinking message
+        thinking_msg = "Thinking"
+        ui_lower = user_input.lower().strip()
+        if ui_lower == "/hosts":
+            thinking_msg = "Pulling hosts"
+        elif ui_lower == "/vms":
+            thinking_msg = "Pulling vms"
+        elif ui_lower == "/playbooks":
+            thinking_msg = "Pulling playbooks"
+
         # Show thinking indicator
-        self._thinking_indicator = conv.show_thinking()
+        self._thinking_indicator = conv.show_thinking(thinking_msg)
 
         # Run agent in background worker
         self.run_agent(user_input)

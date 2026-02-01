@@ -215,6 +215,9 @@ func (s *sqliteStore) UpdateSandbox(ctx context.Context, sb *store.Sandbox) erro
 			"ip":           model.IPAddress,
 			"state":        model.State,
 			"ttl_seconds":  model.TTLSeconds,
+			"vcpus":        model.VCPUs,
+			"memory_mb":    model.MemoryMB,
+			"storage_mb":   model.StorageMB,
 			"updated_at":   model.UpdatedAt,
 		})
 
@@ -794,6 +797,7 @@ func (s *sqliteStore) autoMigrate(ctx context.Context) error {
 		&PublicationModel{},
 		&PlaybookModel{},
 		&PlaybookTaskModel{},
+		&HostResourcesModel{},
 	); err != nil {
 		return err
 	}
@@ -822,6 +826,9 @@ type SandboxModel struct {
 	IPAddress   *string    `gorm:"column:ip"`
 	State       string     `gorm:"column:state;not null;index"`
 	TTLSeconds  *int       `gorm:"column:ttl_seconds"`
+	VCPUs       int        `gorm:"column:vcpus;not null;default:2"`
+	MemoryMB    int        `gorm:"column:memory_mb;not null;default:4096"`
+	StorageMB   int64      `gorm:"column:storage_mb;not null;default:0"`
 	HostName    *string    `gorm:"column:host_name"`
 	HostAddress *string    `gorm:"column:host_address"`
 	CreatedAt   time.Time  `gorm:"column:created_at;not null"`
@@ -920,6 +927,21 @@ type PlaybookTaskModel struct {
 
 func (PlaybookTaskModel) TableName() string { return "playbook_tasks" }
 
+type HostResourcesModel struct {
+	ID                string    `gorm:"primaryKey;column:id"`
+	Name              string    `gorm:"column:name;not null;uniqueIndex"`
+	Address           string    `gorm:"column:address;not null"`
+	TotalCPUs         int       `gorm:"column:total_cpus;not null"`
+	TotalMemoryMB     int64     `gorm:"column:total_memory_mb;not null"`
+	TotalStorageMB    int64     `gorm:"column:total_storage_mb;not null"`
+	ReservedCPUs      int       `gorm:"column:reserved_cpus;not null;default:0"`
+	ReservedMemoryMB  int64     `gorm:"column:reserved_memory_mb;not null;default:0"`
+	ReservedStorageMB int64     `gorm:"column:reserved_storage_mb;not null;default:0"`
+	UpdatedAt         time.Time `gorm:"column:updated_at;not null"`
+}
+
+func (HostResourcesModel) TableName() string { return "host_resources" }
+
 // --- Converters ---
 
 func sandboxToModel(sb *store.Sandbox) *SandboxModel {
@@ -933,6 +955,9 @@ func sandboxToModel(sb *store.Sandbox) *SandboxModel {
 		IPAddress:   copyString(sb.IPAddress),
 		State:       string(sb.State),
 		TTLSeconds:  copyInt(sb.TTLSeconds),
+		VCPUs:       sb.VCPUs,
+		MemoryMB:    sb.MemoryMB,
+		StorageMB:   sb.StorageMB,
 		HostName:    copyString(sb.HostName),
 		HostAddress: copyString(sb.HostAddress),
 		CreatedAt:   sb.CreatedAt,
@@ -952,6 +977,9 @@ func sandboxFromModel(m *SandboxModel) *store.Sandbox {
 		IPAddress:   copyString(m.IPAddress),
 		State:       store.SandboxState(m.State),
 		TTLSeconds:  copyInt(m.TTLSeconds),
+		VCPUs:       m.VCPUs,
+		MemoryMB:    m.MemoryMB,
+		StorageMB:   m.StorageMB,
 		HostName:    copyString(m.HostName),
 		HostAddress: copyString(m.HostAddress),
 		CreatedAt:   m.CreatedAt,

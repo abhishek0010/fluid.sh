@@ -81,9 +81,12 @@ type ResourceCheckResult struct {
 	AvailableMemoryMB int64    `json:"available_memory_mb"`
 	TotalMemoryMB     int64    `json:"total_memory_mb"`
 	AvailableCPUs     int      `json:"available_cpus"`
+	TotalCPUs         int      `json:"total_cpus"`
 	AvailableDiskMB   int64    `json:"available_disk_mb"`
 	RequiredMemoryMB  int      `json:"required_memory_mb"`
 	RequiredCPUs      int      `json:"required_cpus"`
+	NeedsCPUApproval  bool     `json:"needs_cpu_approval"`
+	NeedsMemoryApproval bool   `json:"needs_memory_approval"`
 	Warnings          []string `json:"warnings,omitempty"`
 	Errors            []string `json:"errors,omitempty"`
 }

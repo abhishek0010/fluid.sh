@@ -36,8 +36,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                             bash
                         </div>
                         <button
+                            id="copy-install-btn"
                             class="p-2 rounded transition-colors text-neutral-600 hover:text-neutral-300 hover:bg-neutral-800"
                             aria-label="Copy to clipboard"
+                            data-command="curl -fsSL https://fluid.sh/install.sh | bash"
                         >
                             <svg
                                 class="w-4 h-4"
@@ -58,6 +60,34 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                         <span class="select-none text-blue-400">$ </span>fluid
                     </div>
                 </div>
+                <script>
+                    const copyBtn = document.getElementById('copy-install-btn');
+
+                    if (copyBtn) {
+                        const originalIcon = copyBtn.innerHTML;
+                        let timeoutId = 0;
+
+                        copyBtn.addEventListener('click', async () => {
+                            const command = copyBtn.getAttribute('data-command');
+                            if (!command) return;
+
+                            try {
+                                await navigator.clipboard.writeText(command);
+
+                                if (timeoutId) window.clearTimeout(timeoutId);
+
+                                // Show checkmark
+                                copyBtn.innerHTML = `<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+
+                                timeoutId = window.setTimeout(() => {
+                                    copyBtn.innerHTML = originalIcon;
+                                }, 2000);
+                            } catch (err) {
+                                console.error('Failed to copy text: ', err);
+                            }
+                        });
+                    }
+                </script>
             </div>
         </header>
         <main class="px-6 pb-24">

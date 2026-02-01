@@ -14,7 +14,7 @@ func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 
 	assert.Equal(t, 2, cfg.VM.DefaultVCPUs)
-	assert.Equal(t, 2048, cfg.VM.DefaultMemoryMB)
+	assert.Equal(t, 4096, cfg.VM.DefaultMemoryMB)
 	assert.Equal(t, "qemu:///system", cfg.Libvirt.URI)
 	assert.Equal(t, "info", cfg.Logging.Level)
 }

@@ -406,6 +406,16 @@ func (m *mockSSHRunner) RunWithCert(ctx context.Context, addr, user, privateKeyP
 	return "", "", 0, nil
 }
 
+func (m *mockSSHRunner) RunStreaming(ctx context.Context, addr, user, privateKeyPath, command string, timeout time.Duration, env map[string]string, proxyJump string, outputChan chan<- OutputChunk) (string, string, int, error) {
+	// For tests, just delegate to Run and ignore the output channel
+	return m.Run(ctx, addr, user, privateKeyPath, command, timeout, env, proxyJump)
+}
+
+func (m *mockSSHRunner) RunWithCertStreaming(ctx context.Context, addr, user, privateKeyPath, certPath, command string, timeout time.Duration, env map[string]string, proxyJump string, outputChan chan<- OutputChunk) (string, string, int, error) {
+	// For tests, just delegate to RunWithCert and ignore the output channel
+	return m.RunWithCert(ctx, addr, user, privateKeyPath, certPath, command, timeout, env, proxyJump)
+}
+
 // mockManager is a mock implementation of libvirt.Manager for testing
 type mockManager struct {
 	getIPAddressFn func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error)

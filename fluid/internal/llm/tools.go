@@ -26,13 +26,17 @@ func GetTools() []Tool {
 							Type:        "string",
 							Description: "The name of the source VM to clone from (e.g., 'ubuntu-base').",
 						},
-						"name": {
-							Type:        "string",
-							Description: "Optional name for the sandbox. If not provided, one will be generated.",
-						},
 						"host": {
 							Type:        "string",
 							Description: "Optional target host name for multi-host setups.",
+						},
+						"cpu": {
+							Type:        "integer",
+							Description: "Number of vCPUs (default: 2).",
+						},
+						"memory_mb": {
+							Type:        "integer",
+							Description: "RAM in MB (default: 4096).",
 						},
 					},
 					Required: []string{"source_vm"},
@@ -211,6 +215,84 @@ func GetTools() []Tool {
 						},
 					},
 					Required: []string{"playbook_id", "name", "module"},
+				},
+			},
+		},
+		{
+			Type: "function",
+			Function: Function{
+				Name:        "edit_file",
+				Description: "Edit a file on a sandbox VM by replacing text or create a new file. This tool operates on files INSIDE the sandbox via SSH - not local files or playbooks. If old_str is empty, creates/overwrites the file with new_str. Otherwise replaces the first occurrence of old_str with new_str. For viewing playbook definitions, use get_playbook instead.",
+				Parameters: ParameterSchema{
+					Type: "object",
+					Properties: map[string]Property{
+						"sandbox_id": {
+							Type:        "string",
+							Description: "The ID of the sandbox containing the file.",
+						},
+						"path": {
+							Type:        "string",
+							Description: "The absolute path to the file inside the sandbox to edit or create.",
+						},
+						"old_str": {
+							Type:        "string",
+							Description: "The string to find and replace. If empty, the file will be created/overwritten with new_str.",
+						},
+						"new_str": {
+							Type:        "string",
+							Description: "The string to replace old_str with, or the content for a new file.",
+						},
+					},
+					Required: []string{"sandbox_id", "path", "new_str"},
+				},
+			},
+		},
+		{
+			Type: "function",
+			Function: Function{
+				Name:        "read_file",
+				Description: "Read the contents of a file on a sandbox VM. This tool operates on files INSIDE the sandbox via SSH - not local files or playbooks. For viewing playbook definitions, use get_playbook instead.",
+				Parameters: ParameterSchema{
+					Type: "object",
+					Properties: map[string]Property{
+						"sandbox_id": {
+							Type:        "string",
+							Description: "The ID of the sandbox containing the file.",
+						},
+						"path": {
+							Type:        "string",
+							Description: "The absolute path to the file inside the sandbox to read.",
+						},
+					},
+					Required: []string{"sandbox_id", "path"},
+				},
+			},
+		},
+		{
+			Type: "function",
+			Function: Function{
+				Name:        "list_playbooks",
+				Description: "List all Ansible playbooks that have been created. Returns playbook IDs, names, and file paths. Use get_playbook to retrieve the full contents of a specific playbook.",
+				Parameters: ParameterSchema{
+					Type:       "object",
+					Properties: map[string]Property{},
+				},
+			},
+		},
+		{
+			Type: "function",
+			Function: Function{
+				Name:        "get_playbook",
+				Description: "Get the full definition of an Ansible playbook including its YAML content and all tasks. Use this to view playbook contents - do NOT use read_file for playbooks.",
+				Parameters: ParameterSchema{
+					Type: "object",
+					Properties: map[string]Property{
+						"playbook_id": {
+							Type:        "string",
+							Description: "The ID of the playbook to retrieve.",
+						},
+					},
+					Required: []string{"playbook_id"},
 				},
 			},
 		},

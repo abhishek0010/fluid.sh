@@ -31,6 +31,11 @@ type AIAgentConfig struct {
 	SiteURL       string `yaml:"site_url"`
 	SiteName      string `yaml:"site_name"`
 	DefaultSystem string `yaml:"default_system"`
+	// Context window management
+	TotalContextTokens int     `yaml:"max_context_tokens"` // Max tokens for context window (default: 200000)
+	CompactModel       string  `yaml:"compact_model"`      // Smaller model for compaction (default: Claude 4.5 Haiku)
+	CompactThreshold   float64 `yaml:"compact_threshold"`  // Auto-compact at this % of context (default: 0.9)
+	TokensPerChar      float64 `yaml:"tokens_per_char"`    // Estimated tokens per character (default: 0.25)
 }
 
 // TelemetryConfig holds telemetry settings.
@@ -110,16 +115,16 @@ func DefaultConfig() *Config {
 		},
 		VM: VMConfig{
 			DefaultVCPUs:       2,
-			DefaultMemoryMB:    2048,
-			CommandTimeout:     10 * time.Minute,
+			DefaultMemoryMB:    4096,
+			CommandTimeout:     30 * time.Minute,
 			IPDiscoveryTimeout: 2 * time.Minute,
 		},
 		SSH: SSHConfig{
 			CAKeyPath:   filepath.Join(configDir, "ssh-ca", "ssh-ca"),
 			CAPubPath:   filepath.Join(configDir, "ssh-ca", "ssh-ca.pub"),
 			KeyDir:      filepath.Join(configDir, "sandbox-keys"),
-			CertTTL:     5 * time.Minute,
-			MaxTTL:      10 * time.Minute,
+			CertTTL:     30 * time.Minute,
+			MaxTTL:      60 * time.Minute,
 			WorkDir:     filepath.Join(configDir, "ssh-ca", "workdir"),
 			DefaultUser: "sandbox",
 		},
@@ -140,7 +145,12 @@ func DefaultConfig() *Config {
 				"- Test your updates by running relevant commands on the sandbox and then building out the playbook. Do not make assumptions on outputs." +
 				"- You MUST use the Ansible tools to create and manage the playbook." +
 				"- Do not add an extension to the playbook name like .yml or .yaml" +
-				"- Add any steps to the playbook that are necessary to fully recreate the intended output on the production system.",
+				"- Add any steps to the playbook that are necessary to fully recreate the intended output on the production system." +
+				"- You CANNOT UNDER ANY CIRCUMSTANCES make a sandbox from a VM if asked to work on a different VM. For example if asked to make a sandbox of VM-1, you CANNOT make a sandbox from VM-2 if the sandbox does not work. If that happens, please stop at once.",
+			TotalContextTokens: 200000,
+			CompactModel:       "anthropic/claude-haiku-4.5",
+			CompactThreshold:   0.90,
+			TokensPerChar:      0.25,
 		},
 	}
 }
@@ -232,8 +242,20 @@ func applyDefaults(cfg *Config) {
 	if cfg.AIAgent.Endpoint == "" {
 		cfg.AIAgent.Endpoint = defaults.AIAgent.Endpoint
 	}
-	if cfg.AIAgent.DefaultSystem == "" {
-		cfg.AIAgent.DefaultSystem = defaults.AIAgent.DefaultSystem
+	// if cfg.AIAgent.DefaultSystem == "" {
+	// 	cfg.AIAgent.DefaultSystem = defaults.AIAgent.DefaultSystem
+	// }
+	if cfg.AIAgent.TotalContextTokens == 0 {
+		cfg.AIAgent.TotalContextTokens = defaults.AIAgent.TotalContextTokens
+	}
+	if cfg.AIAgent.CompactModel == "" {
+		cfg.AIAgent.CompactModel = defaults.AIAgent.CompactModel
+	}
+	if cfg.AIAgent.CompactThreshold == 0 {
+		cfg.AIAgent.CompactThreshold = defaults.AIAgent.CompactThreshold
+	}
+	if cfg.AIAgent.TokensPerChar == 0 {
+		cfg.AIAgent.TokensPerChar = defaults.AIAgent.TokensPerChar
 	}
 }
 
@@ -254,91 +276,10 @@ func LoadWithEnvOverride(path string) (*Config, error) {
 // applyEnvOverrides applies environment variable overrides to config.
 // This allows backward compatibility with existing env var usage.
 func applyEnvOverrides(cfg *Config) {
-	// API
-	// if v := os.Getenv("API_HTTP_ADDR"); v != "" {
-	// 	cfg.API.Addr = v
-	// }
-	// if v := os.Getenv("API_SHUTDOWN_TIMEOUT_SEC"); v != "" {
-	// 	if d := parseDuration(v); d > 0 {
-	// 		cfg.API.ShutdownTimeout = d
-	// 	}
-	// }
 
 	// Telemetry
 	if v := os.Getenv("ENABLE_ANONYMOUS_USAGE"); v != "" {
 		cfg.Telemetry.EnableAnonymousUsage = v == "true"
-	}
-
-	// Libvirt
-	if v := os.Getenv("LIBVIRT_URI"); v != "" {
-		cfg.Libvirt.URI = v
-	}
-	if v := os.Getenv("LIBVIRT_NETWORK"); v != "" {
-		cfg.Libvirt.Network = v
-	}
-	if v := os.Getenv("BASE_IMAGE_DIR"); v != "" {
-		cfg.Libvirt.BaseImageDir = v
-	}
-	if v := os.Getenv("SANDBOX_WORKDIR"); v != "" {
-		cfg.Libvirt.WorkDir = v
-	}
-	if v := os.Getenv("SSH_KEY_INJECT_METHOD"); v != "" {
-		cfg.Libvirt.SSHKeyInjectMethod = v
-	}
-	if v := os.Getenv("SOCKET_VMNET_WRAPPER"); v != "" {
-		cfg.Libvirt.SocketVMNetWrapper = v
-	}
-
-	// VM
-	if v := os.Getenv("DEFAULT_VCPUS"); v != "" {
-		if i := atoi(v); i > 0 {
-			cfg.VM.DefaultVCPUs = i
-		}
-	}
-	if v := os.Getenv("DEFAULT_MEMORY_MB"); v != "" {
-		if i := atoi(v); i > 0 {
-			cfg.VM.DefaultMemoryMB = i
-		}
-	}
-	if v := os.Getenv("COMMAND_TIMEOUT_SEC"); v != "" {
-		if d := parseDuration(v); d > 0 {
-			cfg.VM.CommandTimeout = d
-		}
-	}
-	if v := os.Getenv("IP_DISCOVERY_TIMEOUT_SEC"); v != "" {
-		if d := parseDuration(v); d > 0 {
-			cfg.VM.IPDiscoveryTimeout = d
-		}
-	}
-
-	// SSH
-	if v := os.Getenv("SSH_PROXY_JUMP"); v != "" {
-		cfg.SSH.ProxyJump = v
-	}
-	if v := os.Getenv("SSH_CA_KEY_PATH"); v != "" {
-		cfg.SSH.CAKeyPath = v
-	}
-	if v := os.Getenv("SSH_CA_PUB_KEY_PATH"); v != "" {
-		cfg.SSH.CAPubPath = v
-	}
-	if v := os.Getenv("SSH_KEY_DIR"); v != "" {
-		cfg.SSH.KeyDir = v
-	}
-	if v := os.Getenv("SSH_CERT_TTL_SEC"); v != "" {
-		if d := parseDuration(v); d > 0 {
-			cfg.SSH.CertTTL = d
-		}
-	}
-
-	// Ansible
-	if v := os.Getenv("ANSIBLE_INVENTORY_PATH"); v != "" {
-		cfg.Ansible.InventoryPath = v
-	}
-	if v := os.Getenv("ANSIBLE_PLAYBOOKS_DIR"); v != "" {
-		cfg.Ansible.PlaybooksDir = v
-	}
-	if v := os.Getenv("ANSIBLE_IMAGE"); v != "" {
-		cfg.Ansible.Image = v
 	}
 
 	// Logging
@@ -349,31 +290,9 @@ func applyEnvOverrides(cfg *Config) {
 		cfg.Logging.Format = v
 	}
 
-	// AIAgent
-	if v := os.Getenv("LLM_PROVIDER"); v != "" {
-		cfg.AIAgent.Provider = v
-	}
-
 	// Prioritize environment variables for API Key
 	if v := os.Getenv("OPENROUTER_API_KEY"); v != "" {
 		cfg.AIAgent.APIKey = v
-	} else if v := os.Getenv("LLM_API_KEY"); v != "" {
-		cfg.AIAgent.APIKey = v
-	}
-
-	if v := os.Getenv("LLM_MODEL"); v != "" {
-		cfg.AIAgent.Model = v
-	}
-	if v := os.Getenv("LLM_BASE_URL"); v != "" {
-		cfg.AIAgent.Endpoint = v
-	} else if v := os.Getenv("LLM_ENDPOINT"); v != "" {
-		cfg.AIAgent.Endpoint = v
-	}
-	if v := os.Getenv("OPENROUTER_SITE_URL"); v != "" {
-		cfg.AIAgent.SiteURL = v
-	}
-	if v := os.Getenv("OPENROUTER_SITE_NAME"); v != "" {
-		cfg.AIAgent.SiteName = v
 	}
 }
 

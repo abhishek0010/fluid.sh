@@ -84,7 +84,7 @@ type OnboardingModel struct {
 	demoThinking     bool
 	demoThinkingDots int
 	demoCurrentTool  string
-	demoCurrentArgs  map[string]interface{}
+	demoCurrentArgs  map[string]any
 
 	// For async operations
 	testing bool
@@ -172,13 +172,20 @@ func (m OnboardingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// For host input step, only handle special keys - let character input pass through
+		// For input steps, only handle special keys - let character input and paste fall through
 		if m.step == StepAddHosts && len(m.hostInputs) > 0 {
 			switch msg.String() {
 			case "ctrl+c", "enter", "tab", "shift+tab", "ctrl+n", "esc":
 				return m.handleKeyPress(msg)
 			default:
-				// Let character input (including arrow keys for cursor movement) fall through
+				// Let character input (including arrow keys, paste) fall through
+			}
+		} else if m.step == StepAPIKey && !m.testing {
+			switch msg.String() {
+			case "ctrl+c", "enter", "q", "esc":
+				return m.handleKeyPress(msg)
+			default:
+				// Let character input (including paste with ctrl+v) fall through
 			}
 		} else {
 			return m.handleKeyPress(msg)
@@ -269,7 +276,20 @@ func (m OnboardingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m OnboardingModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "ctrl+c", "q":
+	case "ctrl+c":
+		if m.step == StepAPIKey && m.textInput.Value() != "" {
+			m.textInput.SetValue("")
+			return m, nil
+		}
+		if m.step == StepAddHosts && len(m.hostInputs) > 0 {
+			if m.hostInputs[m.hostInputFocus].Value() != "" {
+				m.hostInputs[m.hostInputFocus].SetValue("")
+				return m, nil
+			}
+		}
+		return m, tea.Quit
+
+	case "q":
 		return m, tea.Quit
 
 	case "enter":

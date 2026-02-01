@@ -12,6 +12,11 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from openai.types.chat import ChatCompletionMessageToolCall, ChatCompletionMessageParam
 
+from compact import (
+    estimate_conversation_tokens,
+    get_context_limit,
+    compact_conversation,
+)
 from middleware import MiddlewareChain, ToolExecutionContext
 from telemetry import get_telemetry
 

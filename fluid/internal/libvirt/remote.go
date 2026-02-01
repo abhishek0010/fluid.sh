@@ -509,11 +509,13 @@ func (m *RemoteVirshManager) CheckHostResources(ctx context.Context, requiredCPU
 				fields := strings.Fields(line)
 				if len(fields) >= 2 {
 					_, _ = fmt.Sscanf(fields[1], "%d", &result.AvailableCPUs)
+					result.TotalCPUs = result.AvailableCPUs // Total CPUs on the host
 				}
 			}
 		}
 		if requiredCPUs > result.AvailableCPUs {
 			result.Valid = false
+			result.NeedsCPUApproval = true
 			result.Errors = append(result.Errors,
 				fmt.Sprintf("Insufficient CPUs on %s: need %d but only %d available",
 					m.host.Name, requiredCPUs, result.AvailableCPUs))
@@ -551,10 +553,12 @@ func (m *RemoteVirshManager) CheckHostResources(ctx context.Context, requiredCPU
 		if result.TotalMemoryMB > 0 {
 			if int64(requiredMemoryMB) > result.AvailableMemoryMB {
 				result.Valid = false
+				result.NeedsMemoryApproval = true
 				result.Errors = append(result.Errors,
 					fmt.Sprintf("Insufficient memory on %s: need %d MB but only %d MB available",
 						m.host.Name, requiredMemoryMB, result.AvailableMemoryMB))
 			} else if float64(requiredMemoryMB) > float64(result.AvailableMemoryMB)*0.8 {
+				result.NeedsMemoryApproval = true
 				result.Warnings = append(result.Warnings,
 					fmt.Sprintf("Low memory warning on %s: requesting %d MB of %d MB available",
 						m.host.Name, requiredMemoryMB, result.AvailableMemoryMB))

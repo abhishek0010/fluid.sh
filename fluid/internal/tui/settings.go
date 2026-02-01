@@ -49,7 +49,6 @@ const (
 	// Ansible
 	FieldAnsibleInventoryPath
 	FieldAnsiblePlaybooksDir
-	FieldAnsibleImage
 
 	// Logging
 	FieldLoggingLevel
@@ -62,7 +61,9 @@ const (
 	FieldAIAgentEndpoint
 	FieldAIAgentSiteURL
 	FieldAIAgentSiteName
-	FieldAIAgentDefaultSystem
+	FieldAIAgentTotalContextTokens
+	FieldAIAgentCompactModel
+	FieldAIAgentCompactThreshold
 
 	StaticFieldCount
 )
@@ -120,7 +121,7 @@ func NewSettingsModel(cfg *config.Config, configPath string) SettingsModel {
 		// Logging
 		"Log Level:", "Log Format:",
 		// AI Agent
-		"Provider:", "API Key:", "Model:", "Endpoint:", "Site URL:", "Site Name:", "Default System:",
+		"Provider:", "API Key:", "Model:", "Endpoint:", "Site URL:", "Site Name:", "Total Context Tokens:", "Compact Model:", "Compact Threshold:",
 	}
 
 	staticSections := []string{
@@ -133,15 +134,15 @@ func NewSettingsModel(cfg *config.Config, configPath string) SettingsModel {
 		// SSH
 		"SSH", "SSH", "SSH", "SSH", "SSH", "SSH", "SSH", "SSH",
 		// Ansible
-		"Ansible", "Ansible", "Ansible",
+		"Ansible", "Ansible",
 		// Logging
 		"Logging", "Logging",
 		// AI Agent
-		"AI Agent", "AI Agent", "AI Agent", "AI Agent", "AI Agent", "AI Agent", "AI Agent",
+		"AI Agent", "AI Agent", "AI Agent", "AI Agent", "AI Agent", "AI Agent", "AI Agent", "AI Agent", "AI Agent",
 	}
 
 	// Create inputs for static fields
-	for i := 0; i < int(StaticFieldCount); i++ {
+	for i := range StaticFieldCount {
 		t := textinput.New()
 		t.Prompt = ""
 		t.CharLimit = 512
@@ -229,8 +230,6 @@ func (m SettingsModel) getStaticConfigValue(field StaticSettingsField) string {
 		return m.cfg.Ansible.InventoryPath
 	case FieldAnsiblePlaybooksDir:
 		return m.cfg.Ansible.PlaybooksDir
-	case FieldAnsibleImage:
-		return m.cfg.Ansible.Image
 
 	case FieldLoggingLevel:
 		return m.cfg.Logging.Level
@@ -249,8 +248,12 @@ func (m SettingsModel) getStaticConfigValue(field StaticSettingsField) string {
 		return m.cfg.AIAgent.SiteURL
 	case FieldAIAgentSiteName:
 		return m.cfg.AIAgent.SiteName
-	case FieldAIAgentDefaultSystem:
-		return m.cfg.AIAgent.DefaultSystem
+	case FieldAIAgentTotalContextTokens:
+		return strconv.Itoa(m.cfg.AIAgent.TotalContextTokens)
+	case FieldAIAgentCompactModel:
+		return m.cfg.AIAgent.CompactModel
+	case FieldAIAgentCompactThreshold:
+		return strconv.FormatFloat(m.cfg.AIAgent.CompactThreshold, 'f', 2, 64)
 	}
 	return ""
 }
@@ -307,7 +310,14 @@ func (m SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "esc":
+		case "ctrl+c":
+			if m.inputs[m.focused].Value() != "" {
+				m.inputs[m.focused].SetValue("")
+				return m, nil
+			}
+			return m, func() tea.Msg { return SettingsCloseMsg{Saved: false} }
+
+		case "esc":
 			return m, func() tea.Msg { return SettingsCloseMsg{Saved: false} }
 
 		case "tab", "down":
@@ -578,7 +588,6 @@ func (m *SettingsModel) saveConfig() error {
 
 	m.cfg.Ansible.InventoryPath = getStatic(FieldAnsibleInventoryPath)
 	m.cfg.Ansible.PlaybooksDir = getStatic(FieldAnsiblePlaybooksDir)
-	m.cfg.Ansible.Image = getStatic(FieldAnsibleImage)
 
 	m.cfg.Logging.Level = getStatic(FieldLoggingLevel)
 	m.cfg.Logging.Format = getStatic(FieldLoggingFormat)
@@ -589,7 +598,13 @@ func (m *SettingsModel) saveConfig() error {
 	m.cfg.AIAgent.Endpoint = getStatic(FieldAIAgentEndpoint)
 	m.cfg.AIAgent.SiteURL = getStatic(FieldAIAgentSiteURL)
 	m.cfg.AIAgent.SiteName = getStatic(FieldAIAgentSiteName)
-	m.cfg.AIAgent.DefaultSystem = getStatic(FieldAIAgentDefaultSystem)
+	if v, err := strconv.Atoi(getStatic(FieldAIAgentTotalContextTokens)); err == nil {
+		m.cfg.AIAgent.TotalContextTokens = v
+	}
+	m.cfg.AIAgent.CompactModel = getStatic(FieldAIAgentCompactModel)
+	if v, err := strconv.ParseFloat(getStatic(FieldAIAgentCompactThreshold), 64); err == nil {
+		m.cfg.AIAgent.CompactThreshold = v
+	}
 
 	// Ensure config directory exists
 	configDir := filepath.Dir(m.configPath)
