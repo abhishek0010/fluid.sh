@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_rest_run_command_request import (
-    FluidRemoteInternalRestRunCommandRequest,
-)
+from virsh_sandbox.models.fluid_remote_internal_rest_run_command_request import \
+    FluidRemoteInternalRestRunCommandRequest
 
 
 class TestFluidRemoteInternalRestRunCommandRequest(unittest.TestCase):

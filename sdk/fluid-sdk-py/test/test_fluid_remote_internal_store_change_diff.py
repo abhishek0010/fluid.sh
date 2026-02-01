@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_store_change_diff import (
-    FluidRemoteInternalStoreChangeDiff,
-)
+from virsh_sandbox.models.fluid_remote_internal_store_change_diff import \
+    FluidRemoteInternalStoreChangeDiff
 
 
 class TestFluidRemoteInternalStoreChangeDiff(unittest.TestCase):

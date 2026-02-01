@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_ansible_create_playbook_request import (
-    FluidRemoteInternalAnsibleCreatePlaybookRequest,
-)
+from virsh_sandbox.models.fluid_remote_internal_ansible_create_playbook_request import \
+    FluidRemoteInternalAnsibleCreatePlaybookRequest
 
 
 class TestFluidRemoteInternalAnsibleCreatePlaybookRequest(unittest.TestCase):

@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_rest_ca_public_key_response import (
-    FluidRemoteInternalRestCaPublicKeyResponse,
-)
+from virsh_sandbox.models.fluid_remote_internal_rest_ca_public_key_response import \
+    FluidRemoteInternalRestCaPublicKeyResponse
 
 
 class TestFluidRemoteInternalRestCaPublicKeyResponse(unittest.TestCase):

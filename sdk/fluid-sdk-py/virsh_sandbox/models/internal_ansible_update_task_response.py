@@ -22,9 +22,8 @@ from typing import Any, ClassVar, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Self
 
-from virsh_sandbox.models.fluid_remote_internal_store_playbook_task import (
-    FluidRemoteInternalStorePlaybookTask,
-)
+from virsh_sandbox.models.fluid_remote_internal_store_playbook_task import \
+    FluidRemoteInternalStorePlaybookTask
 
 
 class InternalAnsibleUpdateTaskResponse(BaseModel):

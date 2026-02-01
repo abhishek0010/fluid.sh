@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_ansible_job_status import (
-    FluidRemoteInternalAnsibleJobStatus,
-)
+from virsh_sandbox.models.fluid_remote_internal_ansible_job_status import \
+    FluidRemoteInternalAnsibleJobStatus
 
 
 class TestFluidRemoteInternalAnsibleJobStatus(unittest.TestCase):

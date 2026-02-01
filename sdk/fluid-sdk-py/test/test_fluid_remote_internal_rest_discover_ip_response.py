@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_rest_discover_ip_response import (
-    FluidRemoteInternalRestDiscoverIPResponse,
-)
+from virsh_sandbox.models.fluid_remote_internal_rest_discover_ip_response import \
+    FluidRemoteInternalRestDiscoverIPResponse
 
 
 class TestFluidRemoteInternalRestDiscoverIPResponse(unittest.TestCase):

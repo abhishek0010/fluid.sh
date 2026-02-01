@@ -14,7 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_sandbox_info import InternalRestSandboxInfo
+from virsh_sandbox.models.internal_rest_sandbox_info import \
+    InternalRestSandboxInfo
 
 
 class TestInternalRestSandboxInfo(unittest.TestCase):

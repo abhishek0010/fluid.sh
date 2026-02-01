@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_store_sandbox_state import (
-    FluidRemoteInternalStoreSandboxState,
-)
+from virsh_sandbox.models.fluid_remote_internal_store_sandbox_state import \
+    FluidRemoteInternalStoreSandboxState
 
 
 class TestFluidRemoteInternalStoreSandboxState(unittest.TestCase):

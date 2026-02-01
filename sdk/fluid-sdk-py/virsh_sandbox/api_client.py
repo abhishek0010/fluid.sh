@@ -32,15 +32,10 @@ from virsh_sandbox import rest
 from virsh_sandbox.api_response import ApiResponse
 from virsh_sandbox.api_response import T as ApiResponseT
 from virsh_sandbox.configuration import Configuration
-from virsh_sandbox.exceptions import (
-    ApiException,
-    ApiValueError,
-    BadRequestException,
-    ForbiddenException,
-    NotFoundException,
-    ServiceException,
-    UnauthorizedException,
-)
+from virsh_sandbox.exceptions import (ApiException, ApiValueError,
+                                      BadRequestException, ForbiddenException,
+                                      NotFoundException, ServiceException,
+                                      UnauthorizedException)
 
 RequestSerialized = Tuple[str, str, Dict[str, str], Optional[str], List[str]]
 

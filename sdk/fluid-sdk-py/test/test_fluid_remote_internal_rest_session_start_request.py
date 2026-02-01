@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_rest_session_start_request import (
-    FluidRemoteInternalRestSessionStartRequest,
-)
+from virsh_sandbox.models.fluid_remote_internal_rest_session_start_request import \
+    FluidRemoteInternalRestSessionStartRequest
 
 
 class TestFluidRemoteInternalRestSessionStartRequest(unittest.TestCase):

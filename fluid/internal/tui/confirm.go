@@ -27,21 +27,21 @@ type ResourceApprovalRequest struct {
 	HostName string
 
 	// CPU resources
-	RequestedCPUs  int
-	AvailableCPUs  int
-	TotalCPUs      int
+	RequestedCPUs    int
+	AvailableCPUs    int
+	TotalCPUs        int
 	NeedsCPUApproval bool
 
 	// Memory resources
-	RequestedMemoryMB  int
-	AvailableMemoryMB  int64
-	TotalMemoryMB      int64
+	RequestedMemoryMB   int
+	AvailableMemoryMB   int64
+	TotalMemoryMB       int64
 	NeedsMemoryApproval bool
 
 	// Storage resources
-	RequestedStorageMB  int64
-	AvailableStorageMB  int64
-	TotalStorageMB      int64
+	RequestedStorageMB   int64
+	AvailableStorageMB   int64
+	TotalStorageMB       int64
 	NeedsStorageApproval bool
 
 	Warnings []string

@@ -276,7 +276,6 @@ func LoadWithEnvOverride(path string) (*Config, error) {
 // applyEnvOverrides applies environment variable overrides to config.
 // This allows backward compatibility with existing env var usage.
 func applyEnvOverrides(cfg *Config) {
-
 	// Telemetry
 	if v := os.Getenv("ENABLE_ANONYMOUS_USAGE"); v != "" {
 		cfg.Telemetry.EnableAnonymousUsage = v == "true"

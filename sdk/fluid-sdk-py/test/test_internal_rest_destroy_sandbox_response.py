@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_destroy_sandbox_response import (
-    InternalRestDestroySandboxResponse,
-)
+from virsh_sandbox.models.internal_rest_destroy_sandbox_response import \
+    InternalRestDestroySandboxResponse
 
 
 class TestInternalRestDestroySandboxResponse(unittest.TestCase):

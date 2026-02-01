@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_rest_inject_ssh_key_request import (
-    FluidRemoteInternalRestInjectSSHKeyRequest,
-)
+from virsh_sandbox.models.fluid_remote_internal_rest_inject_ssh_key_request import \
+    FluidRemoteInternalRestInjectSSHKeyRequest
 
 
 class TestFluidRemoteInternalRestInjectSSHKeyRequest(unittest.TestCase):

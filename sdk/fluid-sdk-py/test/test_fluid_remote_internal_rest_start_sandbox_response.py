@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_rest_start_sandbox_response import (
-    FluidRemoteInternalRestStartSandboxResponse,
-)
+from virsh_sandbox.models.fluid_remote_internal_rest_start_sandbox_response import \
+    FluidRemoteInternalRestStartSandboxResponse
 
 
 class TestFluidRemoteInternalRestStartSandboxResponse(unittest.TestCase):

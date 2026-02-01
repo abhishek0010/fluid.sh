@@ -14,9 +14,8 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_store_snapshot import (
-    FluidRemoteInternalStoreSnapshot,
-)
+from virsh_sandbox.models.fluid_remote_internal_store_snapshot import \
+    FluidRemoteInternalStoreSnapshot
 
 
 class TestFluidRemoteInternalStoreSnapshot(unittest.TestCase):

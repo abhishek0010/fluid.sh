@@ -22,15 +22,12 @@ from typing import Any, ClassVar, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict, StrictStr
 from typing_extensions import Self
 
-from virsh_sandbox.models.fluid_remote_internal_store_command_summary import (
-    FluidRemoteInternalStoreCommandSummary,
-)
-from virsh_sandbox.models.fluid_remote_internal_store_package_info import (
-    FluidRemoteInternalStorePackageInfo,
-)
-from virsh_sandbox.models.fluid_remote_internal_store_service_change import (
-    FluidRemoteInternalStoreServiceChange,
-)
+from virsh_sandbox.models.fluid_remote_internal_store_command_summary import \
+    FluidRemoteInternalStoreCommandSummary
+from virsh_sandbox.models.fluid_remote_internal_store_package_info import \
+    FluidRemoteInternalStorePackageInfo
+from virsh_sandbox.models.fluid_remote_internal_store_service_change import \
+    FluidRemoteInternalStoreServiceChange
 
 
 class FluidRemoteInternalStoreChangeDiff(BaseModel):
