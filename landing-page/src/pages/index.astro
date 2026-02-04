@@ -21,14 +21,36 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                     Claude Code for infrastructure. Debug, act, and audit
                     everything Fluid does on your infrastructure.
                 </p>
-
+                <h2 class="mt-14 mb-4 text-xl text-neutral-200">What does that mean?</h2>
+            <p class="mt-4 text-neutral-400">
+                Fluid is a terminal agent that do work on production infrastructure like VMs/K8s cluster/etc. by making sandbox clones of the infrastructure for AI agents to work on, allowing the agents to run commands, test connections, edit files, and then generate Infra-as-code like an Ansible Playbook to be applied on production.
+            </p>
+            <h2 class="mt-14 mb-4 text-xl text-neutral-200">
+                Why not just use an LLM to generate Infrastructure-as-Code (IaC)?
+                </h2>
                 <p class="mt-4 text-neutral-400">
+                LLMs are great at generating Terraform, OpenTofu, Ansible, etc. but bad at guessing how production systems work. By giving access to a clone of the infrastructure, agents can explore, run commands, test things before writing the IaC, giving them better context and a place to test ideas and changes before deploying.
+
+                I got the idea after seeing how much Claude Code has helped me work on code, I thought "I wish there was something like that for infrastructure", and here we are.
+                </p>
+                <h2 class="mt-14 mb-4 text-xl text-neutral-200">
+                Why not just provide tools, skills, MCP server to Claude Code?
+                </h2>
+                <p class="mt-4 text-neutral-400">
+                Safety. I didn't want CC to SSH into a prod machine from where it is running locally (real problem!). I wanted to lock down the tools it can run to be only on sandboxes while also giving it autonomy to create sandboxes and not have access to anything else.
+
+                Fluid gives access to a live output of commands run (it's pretty cool) and does this by ephemeral SSH Certificates. Fluid gives tools for creating IaC and requires human approval for creating sandboxes on hosts with low memory/CPU and for accessing the internet or installing packages.
+                </p>
+
+
+                <!-- <p class="mt-4 text-neutral-400">
                     Create sandboxes from VMs, investigate, plan, execute,
                     generate Ansible playbooks, and audit everything.
-                </p>
+                </p> -->
                 <h2 class="mt-24 mb-4 text-xl text-neutral-200">
                     Installation
                 </h2>
+                <p class="my-4 text-neutral-400">Note: this is a terminal agent (like Claude Code) meant to be installed on your local laptop/workstation</p>
                 <div class="px-5 py-4 font-mono text-sm rounded-lg bg-neutral-900">
                     <div class="flex gap-4 justify-between items-center">
                         <div class="text-neutral-400">
