@@ -8,6 +8,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -372,9 +373,10 @@ func (m *DomainManager) BlockCommit(ctx context.Context, domainName, diskTarget 
 
 	m.mu.Unlock()
 
-	// Ignore error if job already completed or pivot not needed
-
-	_ = err
+	// Log error if pivot fails - job may have already completed or pivot not needed
+	if err != nil {
+		log.Printf("BlockJobAbort pivot failed (may be expected if job already completed): %v", err)
+	}
 
 	return nil
 }
