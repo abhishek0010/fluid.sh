@@ -398,8 +398,6 @@ class TerminalAgentApp(App):
     #input-container {
         dock: bottom;
         height: auto;
-        padding: 1;
-        background: $surface;
         padding: 1 2;
         background: $surface;
     }
