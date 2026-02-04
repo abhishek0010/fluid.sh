@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_store_service_change import \
-    FluidRemoteInternalStoreServiceChange
+from virsh_sandbox.models.fluid_remote_internal_store_service_change import (
+    FluidRemoteInternalStoreServiceChange,
+)
 
 
 class TestFluidRemoteInternalStoreServiceChange(unittest.TestCase):

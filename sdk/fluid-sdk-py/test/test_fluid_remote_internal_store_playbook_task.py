@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_store_playbook_task import \
-    FluidRemoteInternalStorePlaybookTask
+from virsh_sandbox.models.fluid_remote_internal_store_playbook_task import (
+    FluidRemoteInternalStorePlaybookTask,
+)
 
 
 class TestFluidRemoteInternalStorePlaybookTask(unittest.TestCase):

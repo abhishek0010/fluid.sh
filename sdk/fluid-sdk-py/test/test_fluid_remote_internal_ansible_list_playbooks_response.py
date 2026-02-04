@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_ansible_list_playbooks_response import \
-    FluidRemoteInternalAnsibleListPlaybooksResponse
+from virsh_sandbox.models.fluid_remote_internal_ansible_list_playbooks_response import (
+    FluidRemoteInternalAnsibleListPlaybooksResponse,
+)
 
 
 class TestFluidRemoteInternalAnsibleListPlaybooksResponse(unittest.TestCase):

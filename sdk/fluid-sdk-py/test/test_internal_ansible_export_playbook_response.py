@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_ansible_export_playbook_response import \
-    InternalAnsibleExportPlaybookResponse
+from virsh_sandbox.models.internal_ansible_export_playbook_response import (
+    InternalAnsibleExportPlaybookResponse,
+)
 
 
 class TestInternalAnsibleExportPlaybookResponse(unittest.TestCase):

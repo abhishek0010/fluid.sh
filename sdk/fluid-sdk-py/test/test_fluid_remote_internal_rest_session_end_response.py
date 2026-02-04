@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.fluid_remote_internal_rest_session_end_response import \
-    FluidRemoteInternalRestSessionEndResponse
+from virsh_sandbox.models.fluid_remote_internal_rest_session_end_response import (
+    FluidRemoteInternalRestSessionEndResponse,
+)
 
 
 class TestFluidRemoteInternalRestSessionEndResponse(unittest.TestCase):
