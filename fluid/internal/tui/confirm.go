@@ -314,16 +314,6 @@ func (m ConfirmModel) View() string {
 
 	// Center the dialog
 	if m.width > 0 && m.height > 0 {
-		contentWidth := lipgloss.Width(content)
-		contentHeight := lipgloss.Height(content)
-		padLeft := (m.width - contentWidth) / 2
-		padTop := (m.height - contentHeight) / 2
-		if padLeft < 0 {
-			padLeft = 0
-		}
-		if padTop < 0 {
-			padTop = 0
-		}
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 	}
 

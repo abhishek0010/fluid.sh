@@ -2155,7 +2155,7 @@ func (m *VirshManager) getHostInfo(ctx context.Context) (*hostInfo, error) {
 		pageSize := int64(4096)
 		// Try to get actual page size
 		if out, err := exec.Command("pagesize").Output(); err == nil {
-			fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &pageSize)
+			_, _ = fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &pageSize)
 		}
 
 		var free, inactive, speculative int64
@@ -2166,7 +2166,7 @@ func (m *VirshManager) getHostInfo(ctx context.Context) (*hostInfo, error) {
 				valStr := strings.TrimSpace(parts[1])
 				valStr = strings.TrimSuffix(valStr, ".")
 				var val int64
-				fmt.Sscanf(valStr, "%d", &val)
+				_, _ = fmt.Sscanf(valStr, "%d", &val)
 
 				switch key {
 				case "Pages free":
@@ -2184,7 +2184,7 @@ func (m *VirshManager) getHostInfo(ctx context.Context) (*hostInfo, error) {
 		// For total memory on macOS, use sysctl
 		if out, err := exec.Command("sysctl", "-n", "hw.memsize").Output(); err == nil {
 			var totalBytes int64
-			fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &totalBytes)
+			_, _ = fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &totalBytes)
 			info.totalMB = totalBytes / 1024 / 1024
 		}
 

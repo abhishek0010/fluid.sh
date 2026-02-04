@@ -97,65 +97,37 @@ func TestLoadWithEnvOverride(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	yaml := `
-api:
-  addr: ":8080"
+logging:
+  level: "info"
 `
 	err := os.WriteFile(configPath, []byte(yaml), 0o644)
 	require.NoError(t, err)
 
-	// Set env vars to override
-	t.Setenv("API_HTTP_ADDR", ":9999")
-	t.Setenv("DEFAULT_VCPUS", "8")
+	// Set env vars to override (only LOG_LEVEL is supported)
+	t.Setenv("LOG_LEVEL", "debug")
 
 	cfg, err := LoadWithEnvOverride(configPath)
 	require.NoError(t, err)
 
 	// Env vars should override YAML
-	assert.Equal(t, 8, cfg.VM.DefaultVCPUs)
+	assert.Equal(t, "debug", cfg.Logging.Level)
 }
 
 func TestApplyEnvOverrides_AllFields(t *testing.T) {
 	cfg := DefaultConfig()
 
-	t.Setenv("API_HTTP_ADDR", ":7777")
-	t.Setenv("API_SHUTDOWN_TIMEOUT_SEC", "30")
-	t.Setenv("LIBVIRT_URI", "qemu:///session")
-	t.Setenv("LIBVIRT_NETWORK", "custom-net")
-	t.Setenv("BASE_IMAGE_DIR", "/custom/base")
-	t.Setenv("SANDBOX_WORKDIR", "/custom/work")
-	t.Setenv("DEFAULT_VCPUS", "16")
-	t.Setenv("DEFAULT_MEMORY_MB", "8192")
-	t.Setenv("COMMAND_TIMEOUT_SEC", "300")
-	t.Setenv("IP_DISCOVERY_TIMEOUT_SEC", "60")
-	t.Setenv("SSH_PROXY_JUMP", "jump@host")
-	t.Setenv("SSH_CA_KEY_PATH", "/custom/ca")
-	t.Setenv("SSH_KEY_DIR", "/custom/keys")
-	t.Setenv("SSH_CERT_TTL_SEC", "600")
-	t.Setenv("ANSIBLE_INVENTORY_PATH", "/custom/inventory")
-	t.Setenv("ANSIBLE_PLAYBOOKS_DIR", "/custom/playbooks")
-	t.Setenv("ANSIBLE_IMAGE", "custom-ansible")
+	// Only these env vars are currently supported by applyEnvOverrides
+	t.Setenv("ENABLE_ANONYMOUS_USAGE", "false")
 	t.Setenv("LOG_LEVEL", "debug")
 	t.Setenv("LOG_FORMAT", "json")
+	t.Setenv("OPENROUTER_API_KEY", "test-api-key")
 
 	applyEnvOverrides(cfg)
 
-	assert.Equal(t, "qemu:///session", cfg.Libvirt.URI)
-	assert.Equal(t, "custom-net", cfg.Libvirt.Network)
-	assert.Equal(t, "/custom/base", cfg.Libvirt.BaseImageDir)
-	assert.Equal(t, "/custom/work", cfg.Libvirt.WorkDir)
-	assert.Equal(t, 16, cfg.VM.DefaultVCPUs)
-	assert.Equal(t, 8192, cfg.VM.DefaultMemoryMB)
-	assert.Equal(t, 5*time.Minute, cfg.VM.CommandTimeout)
-	assert.Equal(t, time.Minute, cfg.VM.IPDiscoveryTimeout)
-	assert.Equal(t, "jump@host", cfg.SSH.ProxyJump)
-	assert.Equal(t, "/custom/ca", cfg.SSH.CAKeyPath)
-	assert.Equal(t, "/custom/keys", cfg.SSH.KeyDir)
-	assert.Equal(t, 10*time.Minute, cfg.SSH.CertTTL)
-	assert.Equal(t, "/custom/inventory", cfg.Ansible.InventoryPath)
-	assert.Equal(t, "/custom/playbooks", cfg.Ansible.PlaybooksDir)
-	assert.Equal(t, "custom-ansible", cfg.Ansible.Image)
+	assert.Equal(t, false, cfg.Telemetry.EnableAnonymousUsage)
 	assert.Equal(t, "debug", cfg.Logging.Level)
 	assert.Equal(t, "json", cfg.Logging.Format)
+	assert.Equal(t, "test-api-key", cfg.AIAgent.APIKey)
 }
 
 func TestParseDuration(t *testing.T) {

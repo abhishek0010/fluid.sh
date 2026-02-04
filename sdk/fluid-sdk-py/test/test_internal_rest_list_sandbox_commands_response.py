@@ -14,8 +14,9 @@
 
 import unittest
 
-from virsh_sandbox.models.internal_rest_list_sandbox_commands_response import \
-    InternalRestListSandboxCommandsResponse
+from virsh_sandbox.models.internal_rest_list_sandbox_commands_response import (
+    InternalRestListSandboxCommandsResponse,
+)
 
 
 class TestInternalRestListSandboxCommandsResponse(unittest.TestCase):
