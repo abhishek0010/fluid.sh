@@ -117,7 +117,7 @@ func NewSettingsModel(cfg *config.Config, configPath string) SettingsModel {
 		// SSH
 		"Proxy Jump:", "CA Key Path:", "CA Pub Path:", "Key Dir:", "Cert TTL:", "Max TTL:", "Work Dir:", "Default User:",
 		// Ansible
-		"Inventory Path:", "Playbooks Dir:", "Image:",
+		"Inventory Path:", "Playbooks Dir:",
 		// Logging
 		"Log Level:", "Log Format:",
 		// AI Agent

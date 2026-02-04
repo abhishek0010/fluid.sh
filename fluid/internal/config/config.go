@@ -150,7 +150,7 @@ func DefaultConfig() *Config {
 			TotalContextTokens: 200000,
 			CompactModel:       "anthropic/claude-haiku-4.5",
 			CompactThreshold:   0.90,
-			TokensPerChar:      0.25,
+			TokensPerChar:      0.33,
 		},
 	}
 }

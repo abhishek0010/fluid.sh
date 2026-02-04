@@ -488,7 +488,7 @@ func (m OnboardingModel) viewWelcome() string {
 	tagline := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#9CA3AF")).
 		Italic(true).
-		Render("Make Infrastructure Safe for AI")
+		Render("Claude Code for Infrastructure")
 
 	b.WriteString(tagline)
 	b.WriteString("\n\n\n")

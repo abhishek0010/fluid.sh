@@ -936,10 +936,13 @@ func (m *VirshManager) DestroyVM(ctx context.Context, vmName string) error {
 	virsh := m.binPath("virsh", m.cfg.VirshPath)
 	// Best-effort destroy if running
 	_, _ = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "destroy", vmName)
-	// Undefine
-	if _, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "undefine", vmName); err != nil {
-		// continue to remove files even if undefine fails
-		_ = err
+	// Undefine with --remove-all-storage to force cleanup of associated volumes
+	if _, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "undefine", "--remove-all-storage", vmName); err != nil {
+		// If --remove-all-storage fails (e.g., old libvirt), try without it
+		if _, err2 := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "undefine", vmName); err2 != nil {
+			// continue to remove files even if undefine fails
+			_ = err2
+		}
 	}
 
 	// Release DHCP lease to prevent IP conflicts with future VMs

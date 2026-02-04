@@ -277,10 +277,13 @@ func (m *RemoteVirshManager) DestroyVM(ctx context.Context, vmName string) error
 	// Best-effort destroy if running
 	_, _ = m.runSSH(ctx, fmt.Sprintf("virsh destroy %s", escapedName))
 
-	// Undefine
-	if _, err := m.runSSH(ctx, fmt.Sprintf("virsh undefine %s", escapedName)); err != nil {
-		// Continue to remove files
-		_ = err
+	// Undefine with --remove-all-storage to force cleanup of associated volumes
+	if _, err := m.runSSH(ctx, fmt.Sprintf("virsh undefine --remove-all-storage %s", escapedName)); err != nil {
+		// If --remove-all-storage fails (e.g., old libvirt), try without it
+		if _, err2 := m.runSSH(ctx, fmt.Sprintf("virsh undefine %s", escapedName)); err2 != nil {
+			// Continue to remove files even if undefine fails
+			_ = err2
+		}
 	}
 
 	// Remove workspace

@@ -69,6 +69,9 @@ type Model struct {
 	cfg        *config.Config
 	configPath string
 
+	// Banner state
+	showBanner bool // Show startup banner (until first message)
+
 	// Settings screen
 	settingsModel SettingsModel
 	inSettings    bool
@@ -86,6 +89,10 @@ type Model struct {
 	// Agent
 	agentRunner AgentRunner
 
+	// Playbooks browser
+	playbooksModel PlaybooksModel
+	inPlaybooks    bool
+
 	// Autocomplete
 	suggestions     []commandSuggestion
 	suggestionIndex int
@@ -94,8 +101,12 @@ type Model struct {
 	historyList  []string
 	historyIndex int
 
+	// Escape sequence filtering state
+	lastEscapeTime time.Time
+
 	// Live command output (inline with conversation)
-	liveOutput        *strings.Builder
+	liveOutputLines   []string
+	liveOutputPending string
 	showingLiveOutput bool
 	liveOutputSandbox string
 	liveOutputIndex   int // Index in conversation where live output is displayed
@@ -161,37 +172,39 @@ func NewModel(title, provider, modelName string, runner AgentRunner, cfg *config
 	)
 
 	// Build startup message
-	startupMsg := "Welcome to fluid TUI! Type 'help' for commands."
+	startupMsg := "Welcome to Fluid! Type '/help' for commands."
 
-	if len(cfg.Hosts) > 0 {
-		hostNames := make([]string, len(cfg.Hosts))
-		for i, h := range cfg.Hosts {
-			hostNames[i] = h.Name
-		}
-		startupMsg = fmt.Sprintf("Connected with %d remote hosts: %s. Type '/hosts', '/vms', or '/clear' to query or reset.",
-			len(cfg.Hosts), strings.Join(hostNames, ", "))
-	}
+	// if len(cfg.Hosts) > 0 {
+	// 	hostNames := make([]string, len(cfg.Hosts))
+	// 	for i, h := range cfg.Hosts {
+	// 		hostNames[i] = h.Name
+	// 	}
+	// 	startupMsg = fmt.Sprintf("Connected with %d remote hosts: %s. Type '/hosts', '/vms', or '/clear' to query or reset.",
+	// 		len(cfg.Hosts), strings.Join(hostNames, ", "))
+	// }
 
-	// Create status channel for agent updates
-	statusChan := make(chan tea.Msg, 10)
+	// Create status channel for agent updates (larger buffer to prevent dropped messages)
+	statusChan := make(chan tea.Msg, 100)
 
 	m := Model{
-		textarea:     ta,
-		spinner:      s,
-		styles:       DefaultStyles(),
-		state:        StateIdle,
-		conversation: make([]ConversationEntry, 0),
-		title:        title,
-		provider:     provider,
-		model:        modelName,
-		cfg:          cfg,
-		configPath:   configPath,
-		agentRunner:  runner,
-		mdRenderer:   mdRenderer,
-		statusChan:   statusChan,
-		historyList:  make([]string, 0),
-		historyIndex: 0,
-		liveOutput:   &strings.Builder{},
+		textarea:          ta,
+		spinner:           s,
+		styles:            DefaultStyles(),
+		state:             StateIdle,
+		conversation:      make([]ConversationEntry, 0),
+		title:             title,
+		provider:          provider,
+		model:             modelName,
+		cfg:               cfg,
+		configPath:        configPath,
+		agentRunner:       runner,
+		mdRenderer:        mdRenderer,
+		statusChan:        statusChan,
+		historyList:       make([]string, 0),
+		historyIndex:      0,
+		liveOutputLines:   make([]string, 0),
+		liveOutputPending: "",
+		showBanner:        true, // Show banner until first user message
 	}
 
 	// Set up status callback for the agent
@@ -246,6 +259,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateViewportContent(false)
 		m.textarea.Focus()
 		return m, nil
+	}
+
+	// Handle PlaybooksCloseMsg
+	if _, ok := msg.(PlaybooksCloseMsg); ok {
+		m.inPlaybooks = false
+		m.state = StateIdle
+		m.updateViewportContent(false)
+		m.textarea.Focus()
+		return m, nil
+	}
+
+	// If in playbooks mode, delegate to playbooks model
+	if m.inPlaybooks {
+		var cmd tea.Cmd
+		playbooksModel, cmd := m.playbooksModel.Update(msg)
+		m.playbooksModel = playbooksModel.(PlaybooksModel)
+		return m, cmd
 	}
 
 	// If in settings mode, delegate to settings model
@@ -320,13 +350,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.quitting && msg.String() != "ctrl+c" {
+		// Filter out escape sequences that might be from unrecognized mouse events
+		// These can appear as raw text when terminal sends mouse sequences that
+		// Bubble Tea doesn't recognize (e.g., legacy mouse encoding, scroll events)
+		keyStr := msg.String()
+		if len(keyStr) > 0 {
+			firstChar := keyStr[0]
+			// Filter escape sequences and control characters (except common ones)
+			if firstChar == '\x1b' || firstChar == '\x9b' {
+				// This is an escape sequence - don't pass to textarea
+				m.lastEscapeTime = time.Now()
+				return m, nil
+			}
+			// Filter other control characters that might slip through
+			if firstChar < 32 && firstChar != '\n' && firstChar != '\r' && firstChar != '\t' {
+				return m, nil
+			}
+			// Filter characters that commonly follow ESC in escape sequences
+			// Only filter if we recently saw an escape character (within 100ms)
+			// This catches sequences that get split into multiple KeyMsg events
+			if time.Since(m.lastEscapeTime) < 100*time.Millisecond {
+				// CSI introducer, SS3 introducer, numbers, semicolon, and common sequence terminators
+				if firstChar == '[' || firstChar == 'O' || firstChar == ';' ||
+					firstChar == '<' || firstChar == 'M' || firstChar == 'm' ||
+					(firstChar >= '0' && firstChar <= '9') ||
+					(len(keyStr) == 1 && firstChar >= 'A' && firstChar <= 'Z') {
+					// Extend the escape window for multi-character sequences
+					m.lastEscapeTime = time.Now()
+					return m, nil
+				}
+			}
+		}
+
+		if m.quitting && keyStr != "ctrl+c" {
 			m.quitting = false
 		}
 
 		// Handle autocomplete navigation if suggestions are visible
 		if len(m.suggestions) > 0 {
-			switch msg.String() {
+			switch keyStr {
 			case "tab":
 				m.textarea.SetValue(m.suggestions[m.suggestionIndex].name + " ")
 				m.textarea.SetCursor(len(m.textarea.Value()))
@@ -350,7 +412,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else {
 			// Handle command history navigation
-			switch msg.String() {
+			switch keyStr {
 			case "up":
 				if len(m.historyList) > 0 && m.historyIndex > 0 {
 					m.historyIndex--
@@ -372,7 +434,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		switch msg.String() {
+		switch keyStr {
 		case "ctrl+c":
 			// If already in cleanup, allow force quit
 			if m.inCleanup {
@@ -443,6 +505,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 
+				// Handle /playbooks command - open playbooks browser
+				if input == "/playbooks" || input == "playbooks" {
+					if agent, ok := m.agentRunner.(*FluidAgent); ok {
+						m.inPlaybooks = true
+						m.playbooksModel = NewPlaybooksModel(agent.playbookService)
+						if err := m.playbooksModel.LoadPlaybooks(); err != nil {
+							m.inPlaybooks = false
+							m.addSystemMessage(fmt.Sprintf("Failed to load playbooks: %v", err))
+							m.updateViewportContent(true)
+							return m, nil
+						}
+						// Send window size to playbooks model
+						if m.width > 0 && m.height > 0 {
+							playbooksModel, _ := m.playbooksModel.Update(tea.WindowSizeMsg{
+								Width:  m.width,
+								Height: m.height,
+							})
+							m.playbooksModel = playbooksModel.(PlaybooksModel)
+						}
+						return m, nil
+					}
+					m.addSystemMessage("Playbooks browser not available.")
+					m.updateViewportContent(true)
+					return m, nil
+				}
+
 				// Add user message
 				m.addUserMessage(input)
 
@@ -485,15 +573,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-		headerHeight := 1
+		// Calculate banner height if shown
+		bannerHeight := 0
+		if m.showBanner && m.state == StateIdle {
+			bannerHeight = GetBannerLogoHeight() + 2 // Logo lines + spacing
+		}
+
+		// Calculate suggestion height if shown
+		suggestionHeight := 0
+		if len(m.suggestions) > 0 {
+			suggestionHeight = len(m.suggestions)
+			if suggestionHeight > 5 {
+				suggestionHeight = 6 // 5 items + "... more" line
+			}
+			suggestionHeight += 2 // border
+		}
+
 		// inputHeight depends on content, but initially or on resize we use current textarea height
+		// +2 accounts for the border (top and bottom)
 		inputHeight := m.textarea.Height() + 2
-		helpHeight := 1
-		conversationHeight := m.height - headerHeight - inputHeight - helpHeight - 2
+		statusBarHeight := 1 // Bottom status bar
+		conversationHeight := m.height - bannerHeight - inputHeight - statusBarHeight - suggestionHeight
 
 		if !m.ready {
 			m.viewport = viewport.New(m.width, conversationHeight)
-			m.viewport.YPosition = headerHeight + 1
+			m.viewport.YPosition = bannerHeight
 			m.ready = true
 		} else {
 			m.viewport.Width = m.width
@@ -519,7 +623,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentToolName = msg.ToolName
 		m.currentToolArgs = msg.Args
 		m.updateViewportContent(false)
-		return m, m.listenForStatus()
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case ToolCompleteMsg:
 		// Add tool result to conversation
@@ -538,53 +642,88 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentToolName = ""
 		m.currentToolArgs = nil
 		m.updateViewportContent(false)
-		return m, m.listenForStatus()
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case CommandOutputResetMsg:
 		// Reset live output (e.g., on retry)
 		if m.showingLiveOutput && m.liveOutputSandbox == msg.SandboxID {
-			m.liveOutput.Reset()
+			m.liveOutputLines = nil
+			m.liveOutputPending = ""
 			if m.liveOutputIndex < len(m.conversation) {
 				m.conversation[m.liveOutputIndex].Content = "(retrying...)"
 			}
 			m.updateViewportContent(false)
 		}
-		return m, m.listenForStatus()
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case RetryAttemptMsg:
 		m.currentRetry = &msg
 		m.updateViewportContent(false)
-		return m, m.listenForStatus()
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case CommandOutputChunkMsg:
 		// Clear retry when output arrives
 		m.currentRetry = nil
+
+		// Filter SSH warning from chunk
+		chunk := filterSSHWarning(msg.Chunk)
+		if chunk == "" {
+			// Nothing left after filtering, just continue listening
+			return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
+		}
+
 		if !m.showingLiveOutput {
 			// Add a new conversation entry for live output
 			m.showingLiveOutput = true
 			m.liveOutputSandbox = msg.SandboxID
-			m.liveOutput.Reset()
+			m.liveOutputLines = nil
+			m.liveOutputPending = ""
 			m.liveOutputIndex = len(m.conversation)
 			m.conversation = append(m.conversation, ConversationEntry{
 				Role:    "live_output",
 				Content: "",
 			})
 		}
-		m.liveOutput.WriteString(msg.Chunk)
+
+		// Append chunk to pending
+		m.liveOutputPending += chunk
+
+		// Process complete lines
+		if strings.Contains(m.liveOutputPending, "\n") {
+			lines := strings.Split(m.liveOutputPending, "\n")
+			// The last element is the new pending buffer (after the last \n)
+			if len(lines) > 0 {
+				complete := lines[:len(lines)-1]
+				// Filter SSH warnings from completed lines
+				for _, line := range complete {
+					if !isSSHWarningLine(line) {
+						m.liveOutputLines = append(m.liveOutputLines, line)
+					}
+				}
+				m.liveOutputPending = lines[len(lines)-1]
+
+				// Keep buffer size manageable (last 100 lines is plenty since we only show 20)
+				if len(m.liveOutputLines) > 100 {
+					m.liveOutputLines = m.liveOutputLines[len(m.liveOutputLines)-100:]
+				}
+			}
+		}
+
 		// Update the live output entry in place
 		if m.liveOutputIndex < len(m.conversation) {
 			m.conversation[m.liveOutputIndex].Content = m.formatLiveOutput()
 		}
 		m.updateViewportContent(false)
 		m.viewport.GotoBottom() // Auto-scroll
-		return m, m.listenForStatus()
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case CommandOutputDoneMsg:
 		m.showingLiveOutput = false
 		m.currentRetry = nil
-		// Keep the final output in conversation (will be replaced by tool result)
-		m.liveOutput.Reset()
-		return m, m.listenForStatus()
+		// Clear output buffer as it's no longer needed (result will be shown via ToolCompleteMsg)
+		m.liveOutputLines = nil
+		m.liveOutputPending = ""
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case AgentResponseMsg:
 		// Add assistant message (tool results were already sent via ToolCompleteMsg)
@@ -594,7 +733,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if !msg.Response.Done {
 			m.updateViewportContent(true)
-			return m, m.listenForStatus()
+			return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 		}
 
 		m.thinking = false
@@ -623,19 +762,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CompactStartMsg:
 		m.addSystemMessage("Compacting conversation context...")
 		m.updateViewportContent(false)
-		return m, m.listenForStatus()
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case CompactCompleteMsg:
 		m.addSystemMessage(fmt.Sprintf("Context compacted: %d -> %d tokens (%.1f%% reduction)",
 			msg.PreviousTokens, msg.NewTokens,
 			100*(1-float64(msg.NewTokens)/float64(msg.PreviousTokens))))
 		m.updateViewportContent(false)
-		return m, m.listenForStatus()
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case CompactErrorMsg:
 		m.addSystemMessage(fmt.Sprintf("Compaction warning: %v", msg.Err))
 		m.updateViewportContent(false)
-		return m, m.listenForStatus()
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case ReviewResponseMsg:
 		m.state = StateIdle
@@ -704,6 +843,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
 
 	case CleanupProgressMsg:
 		m.cleanupStatuses[msg.SandboxID] = msg.Status
@@ -773,10 +913,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if lineCount != m.textarea.Height() || len(m.suggestions) > 0 {
 		m.textarea.SetHeight(lineCount)
 
-		// Recalculate viewport height
-		headerHeight := 1
-		inputHeight := lineCount + 2
-		helpHeight := 1
+		// Recalculate viewport height to match View() calculation
+		bannerHeight := 0
+		if m.showBanner && m.state == StateIdle {
+			bannerHeight = GetBannerLogoHeight() + 2
+		}
+		inputHeight := lineCount + 2 // textarea lines + border
+		statusBarHeight := 1
 		suggestionHeight := 0
 		if len(m.suggestions) > 0 {
 			suggestionHeight = len(m.suggestions)
@@ -785,7 +928,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			suggestionHeight += 2 // border
 		}
-		conversationHeight := m.height - headerHeight - inputHeight - helpHeight - suggestionHeight - 2
+		conversationHeight := m.height - bannerHeight - inputHeight - statusBarHeight - suggestionHeight
 
 		if conversationHeight > 0 {
 			m.viewport.Height = conversationHeight
@@ -822,36 +965,41 @@ func (m Model) View() string {
 		return m.settingsModel.View()
 	}
 
+	// Show playbooks browser if in playbooks mode
+	if m.inPlaybooks {
+		return m.playbooksModel.View()
+	}
+
 	if !m.ready {
 		return "Initializing..."
 	}
 
-	var b strings.Builder
-
-	// Status bar
-	statusBar := m.styles.StatusBar.Width(m.width).Render(
-		fmt.Sprintf(" %s - %s: %s", m.title, m.provider, m.model),
-	)
-	b.WriteString(statusBar)
-	b.WriteString("\n")
-
-	// Conversation viewport
-	if m.quitting {
-		warnStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#EAB308")).
-			Width(m.width).
-			Height(m.viewport.Height).
-			Align(lipgloss.Right).
-			AlignVertical(lipgloss.Bottom)
-
-		b.WriteString(warnStyle.Render("Press Ctrl+C again to close fluid and destroy all sandboxes created during this session."))
-		b.WriteString("\n")
-	} else {
-		b.WriteString(m.viewport.View())
-		b.WriteString("\n")
+	// Build banner (if shown)
+	var banner string
+	bannerHeight := 0
+	if m.showBanner && m.state == StateIdle && !m.quitting {
+		modelName := m.model
+		if m.cfg != nil && m.cfg.AIAgent.Model != "" {
+			modelName = m.cfg.AIAgent.Model
+		}
+		hostsString := "No Hosts Configured"
+		if m.cfg != nil && len(m.cfg.Hosts) > 0 {
+			hosts := make([]string, 0, len(m.cfg.Hosts))
+			for _, h := range m.cfg.Hosts {
+				hosts = append(hosts, h.Name)
+			}
+			if len(hosts) > 3 {
+				hosts = append(hosts[:3], "...")
+			}
+			hostsString = strings.Join(hosts, ", ")
+		}
+		banner = RenderBanner(modelName, hostsString, m.provider, m.width)
+		bannerHeight = lipgloss.Height(banner)
 	}
 
-	// Suggestions menu
+	// Build suggestions menu (if any)
+	var suggestions string
+	suggestionHeight := 0
 	if len(m.suggestions) > 0 {
 		suggestionStyle := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -863,7 +1011,6 @@ func (m Model) View() string {
 		displayCount := 0
 		maxDisplay := 5
 
-		// Calculate start index to keep selected item visible
 		startIdx := 0
 		if m.suggestionIndex >= maxDisplay {
 			startIdx = m.suggestionIndex - maxDisplay + 1
@@ -887,32 +1034,110 @@ func (m Model) View() string {
 			}
 		}
 
-		b.WriteString(suggestionStyle.Render(strings.TrimSpace(sb.String())))
-		b.WriteString("\n")
+		suggestions = suggestionStyle.Render(strings.TrimSpace(sb.String()))
+		suggestionHeight = lipgloss.Height(suggestions)
 	}
 
-	// Input area
+	// Build input area
 	inputBox := m.styles.Border.Width(m.width - 2).Render(
 		m.styles.InputPrompt.Render("$ ") + m.textarea.View(),
 	)
-	b.WriteString(inputBox)
-	b.WriteString("\n")
+	inputHeight := lipgloss.Height(inputBox)
 
-	// Help line
-	helpStyle := m.styles.Help
-	help := helpStyle.Render(
-		m.styles.HelpKey.Render("enter") + m.styles.HelpDesc.Render(" send") + "  " +
-			m.styles.HelpKey.Render("/compact") + m.styles.HelpDesc.Render(" compact") + "  " +
-			m.styles.HelpKey.Render("/context") + m.styles.HelpDesc.Render(" usage") + "  " +
-			m.styles.HelpKey.Render("/clear") + m.styles.HelpDesc.Render(" clear") + "  " +
-			m.styles.HelpKey.Render("ctrl+c") + m.styles.HelpDesc.Render(" quit"),
-	)
-	b.WriteString(help)
+	// Build status bar
+	sandboxID, sandboxHost := m.getCurrentSandbox()
+	contextUsage := m.getContextUsage()
+	modelName := m.model
+	if m.cfg != nil && m.cfg.AIAgent.Model != "" {
+		modelName = m.cfg.AIAgent.Model
+	}
+	statusBar := RenderStatusBarBottom(modelName, sandboxID, sandboxHost, contextUsage, m.width)
+	statusHeight := lipgloss.Height(statusBar)
 
-	return b.String()
+	// Calculate viewport height to fill remaining space
+	viewportHeight := m.height - bannerHeight - suggestionHeight - inputHeight - statusHeight
+	if viewportHeight < 1 {
+		viewportHeight = 1
+	}
+
+	// Build viewport content
+	var viewportContent string
+	if m.quitting {
+		warnStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#EAB308")).
+			Width(m.width).
+			Height(viewportHeight).
+			Align(lipgloss.Right).
+			AlignVertical(lipgloss.Bottom)
+		viewportContent = warnStyle.Render("Press Ctrl+C again to close fluid and destroy all sandboxes created during this session.")
+	} else {
+		// Ensure viewport fills its allocated height
+		viewportContent = lipgloss.NewStyle().
+			Height(viewportHeight).
+			Width(m.width).
+			Render(m.viewport.View())
+	}
+
+	// Join all components vertically
+	var parts []string
+	if banner != "" {
+		parts = append(parts, banner)
+	}
+	parts = append(parts, viewportContent)
+	if suggestions != "" {
+		parts = append(parts, suggestions)
+	}
+	parts = append(parts, inputBox)
+	parts = append(parts, statusBar)
+
+	return lipgloss.JoinVertical(lipgloss.Left, parts...)
 }
 
 // Helper methods
+
+// getContextUsage returns the current context usage as a percentage (0.0 to 1.0)
+// This includes any live output that's being streamed but not yet added to agent history
+func (m *Model) getContextUsage() float64 {
+	if agent, ok := m.agentRunner.(*FluidAgent); ok {
+		baseUsage := agent.GetContextUsage()
+
+		// Add estimate for live output not yet in history
+		if m.showingLiveOutput {
+			// Estimate tokens for live output: chars * tokensPerChar
+			tokensPerChar := 0.25 // default
+			if m.cfg != nil && m.cfg.AIAgent.TokensPerChar > 0 {
+				tokensPerChar = m.cfg.AIAgent.TokensPerChar
+			}
+
+			liveChars := 0
+			for _, line := range m.liveOutputLines {
+				liveChars += len(line)
+			}
+			liveChars += len(m.liveOutputPending)
+
+			maxTokens := 64000
+			if m.cfg != nil && m.cfg.AIAgent.TotalContextTokens > 0 {
+				maxTokens = m.cfg.AIAgent.TotalContextTokens
+			}
+
+			liveTokens := float64(liveChars) * tokensPerChar
+			liveUsage := liveTokens / float64(maxTokens)
+
+			return baseUsage + liveUsage
+		}
+
+		return baseUsage
+	}
+	return 0
+}
+
+// getCurrentSandbox returns the currently active sandbox ID and host
+func (m *Model) getCurrentSandbox() (id string, host string) {
+	if agent, ok := m.agentRunner.(*FluidAgent); ok {
+		return agent.GetCurrentSandbox()
+	}
+	return "", ""
+}
 
 func (m *Model) updateSuggestions() {
 	val := m.textarea.Value()
@@ -939,6 +1164,8 @@ func (m *Model) addUserMessage(content string) {
 		Role:    "user",
 		Content: content,
 	})
+	// Hide banner after first user message
+	m.showBanner = false
 }
 
 func (m *Model) addAssistantMessage(content string) {
@@ -964,15 +1191,99 @@ func (m *Model) addToolResult(tr ToolResult) {
 
 // formatLiveOutput formats the live output for display, truncating to last N lines
 func (m *Model) formatLiveOutput() string {
-	output := m.liveOutput.String()
-	lines := strings.Split(output, "\n")
+	var lines []string
+	if len(m.liveOutputLines) > 0 {
+		lines = append(lines, m.liveOutputLines...)
+	}
+	// Add pending content if it's not empty, or if we have no lines yet (so we show something)
+	if m.liveOutputPending != "" || len(lines) == 0 {
+		lines = append(lines, m.liveOutputPending)
+	}
 
 	// Show last 20 lines to keep viewport manageable
 	if len(lines) > 20 {
 		lines = append([]string{"... (truncated)"}, lines[len(lines)-20:]...)
 	}
 
-	return strings.Join(lines, "\n")
+	// Word wrap each line to fit the box width (box is m.width - 6 with padding)
+	maxLineWidth := m.width - 10
+	if maxLineWidth < 20 {
+		maxLineWidth = 20
+	}
+	var wrappedLines []string
+	for _, line := range lines {
+		wrapped := wrapText(line, maxLineWidth)
+		wrappedLines = append(wrappedLines, wrapped...)
+	}
+
+	return strings.Join(wrappedLines, "\n")
+}
+
+// wrapText wraps text to a maximum width, breaking on word boundaries where possible
+func wrapText(text string, maxWidth int) []string {
+	if maxWidth <= 0 || len(text) <= maxWidth {
+		return []string{text}
+	}
+
+	var lines []string
+	remaining := text
+
+	for len(remaining) > maxWidth {
+		// Find last space within maxWidth
+		breakPoint := maxWidth
+		for i := maxWidth; i >= 0; i-- {
+			if i < len(remaining) && remaining[i] == ' ' {
+				breakPoint = i
+				break
+			}
+		}
+		// If no space found, break at maxWidth
+		if breakPoint == 0 {
+			breakPoint = maxWidth
+		}
+
+		lines = append(lines, remaining[:breakPoint])
+		remaining = strings.TrimLeft(remaining[breakPoint:], " ")
+	}
+
+	if len(remaining) > 0 {
+		lines = append(lines, remaining)
+	}
+
+	return lines
+}
+
+// isSSHWarningLine checks if a line is the common SSH known hosts warning
+func isSSHWarningLine(line string) bool {
+	// Common SSH warning patterns to filter
+	patterns := []string{
+		"Warning: Permanently added",
+		"to the list of known hosts",
+	}
+	for _, p := range patterns {
+		if strings.Contains(line, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// filterSSHWarning removes SSH known hosts warnings from a chunk of text
+func filterSSHWarning(chunk string) string {
+	// If the chunk contains a warning, filter it out
+	if !strings.Contains(chunk, "Warning:") && !strings.Contains(chunk, "known hosts") {
+		return chunk
+	}
+
+	// Split by lines and filter
+	lines := strings.Split(chunk, "\n")
+	var filtered []string
+	for _, line := range lines {
+		if !isSSHWarningLine(line) {
+			filtered = append(filtered, line)
+		}
+	}
+	return strings.Join(filtered, "\n")
 }
 
 func (m *Model) updateViewportContent(forceScroll bool) {
@@ -1011,19 +1322,26 @@ func (m *Model) updateViewportContent(forceScroll bool) {
 			}
 		case "live_output":
 			// Styled box for live command output
+			boxWidth := m.width - 6
+			if boxWidth < 30 {
+				boxWidth = 30
+			}
+
 			style := lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color("#3B82F6")).
 				Padding(0, 1).
-				Width(m.width - 6)
+				Width(boxWidth)
 
 			header := lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#3B82F6")).
 				Bold(true).
 				Render(fmt.Sprintf("$ Live output (%s):", m.liveOutputSandbox))
 
+			// Content is already word-wrapped by formatLiveOutput
 			content := lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#94A3B8")).
+				Width(boxWidth - 4). // Account for padding and border
 				Render(entry.Content)
 
 			b.WriteString(style.Render(header + "\n" + content))
@@ -1161,19 +1479,23 @@ func (m *Model) formatToolOutput(toolName string, args, result map[string]any) s
 		// Show stderr if present
 		if stderr, ok := result["stderr"].(string); ok && stderr != "" {
 			stderr = strings.TrimSpace(stderr)
-			// Skip the common SSH warning
-			if !strings.HasPrefix(stderr, "Warning: Permanently added") {
-				lines := strings.Split(stderr, "\n")
-				if len(lines) > 3 {
-					lines = append(lines[:3], "...")
+			// Filter out SSH warnings
+			lines := strings.Split(stderr, "\n")
+			var filteredLines []string
+			for _, line := range lines {
+				if !isSSHWarningLine(line) && strings.TrimSpace(line) != "" {
+					filteredLines = append(filteredLines, line)
 				}
-				for _, line := range lines {
-					if len(line) > 100 {
-						line = line[:97] + "..."
-					}
-					b.WriteString(m.styles.ToolDetailsError.Render(fmt.Sprintf("      stderr: %s", line)))
-					b.WriteString("\n")
+			}
+			if len(filteredLines) > 3 {
+				filteredLines = append(filteredLines[:3], "...")
+			}
+			for _, line := range filteredLines {
+				if len(line) > 100 {
+					line = line[:97] + "..."
 				}
+				b.WriteString(m.styles.ToolDetailsError.Render(fmt.Sprintf("      stderr: %s", line)))
+				b.WriteString("\n")
 			}
 		}
 

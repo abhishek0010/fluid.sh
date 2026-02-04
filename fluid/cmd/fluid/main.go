@@ -1019,7 +1019,7 @@ var versionCmd = &cobra.Command{
 	Short: "Print version information",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		output(map[string]any{
-			"version": "0.1.0",
+			"version": tui.Version,
 			"name":    "fluid",
 		})
 		return nil

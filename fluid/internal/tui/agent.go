@@ -3,6 +3,7 @@ package tui
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -53,6 +54,10 @@ type FluidAgent struct {
 
 	// Track sandboxes created during this session for cleanup on exit
 	createdSandboxes []string
+
+	// Currently active sandbox (for status bar display)
+	currentSandboxID   string
+	currentSandboxHost string
 
 	// Pending approval for memory-constrained sandbox creation
 	pendingApproval *PendingApproval
@@ -725,6 +730,10 @@ func (a *FluidAgent) createSandbox(ctx context.Context, sourceVM, hostName strin
 		// Track the created sandbox for cleanup on exit
 		a.createdSandboxes = append(a.createdSandboxes, sb.ID)
 
+		// Set as current sandbox for status bar display
+		a.currentSandboxID = sb.ID
+		a.currentSandboxHost = host.Name
+
 		result := map[string]any{
 			"sandbox_id": sb.ID,
 			"name":       sb.SandboxName,
@@ -745,6 +754,10 @@ func (a *FluidAgent) createSandbox(ctx context.Context, sourceVM, hostName strin
 
 	// Track the created sandbox for cleanup on exit
 	a.createdSandboxes = append(a.createdSandboxes, sb.ID)
+
+	// Set as current sandbox for status bar display
+	a.currentSandboxID = sb.ID
+	a.currentSandboxHost = "local"
 
 	result := map[string]any{
 		"sandbox_id": sb.ID,
@@ -807,6 +820,12 @@ func (a *FluidAgent) destroySandbox(ctx context.Context, id string) (map[string]
 		return nil, err
 	}
 
+	// Clear current sandbox if this was the one being destroyed
+	if id == a.currentSandboxID {
+		a.currentSandboxID = ""
+		a.currentSandboxHost = ""
+	}
+
 	return map[string]any{
 		"destroyed":  true,
 		"sandbox_id": id,
@@ -814,6 +833,17 @@ func (a *FluidAgent) destroySandbox(ctx context.Context, id string) (map[string]
 }
 
 func (a *FluidAgent) runCommand(ctx context.Context, sandboxID, command string) (map[string]any, error) {
+	// Update current sandbox if different (user is working with this sandbox)
+	if sandboxID != "" && sandboxID != a.currentSandboxID {
+		a.currentSandboxID = sandboxID
+		// Try to get host info from sandbox
+		if sb, err := a.vmService.GetSandbox(ctx, sandboxID); err == nil && sb.HostName != nil {
+			a.currentSandboxHost = *sb.HostName
+		} else {
+			a.currentSandboxHost = "local"
+		}
+	}
+
 	// Check if command requires network access and request approval
 	networkTool, urls := detectNetworkAccess(command)
 	if networkTool != "" {
@@ -974,10 +1004,10 @@ func (a *FluidAgent) editFile(ctx context.Context, sandboxID, path, oldStr, newS
 
 	// If old_str is empty, create/overwrite the file
 	if oldStr == "" {
-		// Use cat with heredoc to write file content
-		// Escape single quotes in the content
-		escapedContent := strings.ReplaceAll(newStr, "'", "'\"'\"'")
-		cmd := fmt.Sprintf("cat > '%s' << 'FLUID_EOF'\n%s\nFLUID_EOF", path, escapedContent)
+		// Use base64 encoding to safely transfer content over SSH
+		// This avoids issues with heredocs, special characters, and shell escaping
+		encoded := base64.StdEncoding.EncodeToString([]byte(newStr))
+		cmd := fmt.Sprintf("echo '%s' | base64 -d > '%s'", encoded, path)
 
 		result, err := a.vmService.RunCommand(ctx, sandboxID, user, "", cmd, 0, nil)
 		if err != nil {
@@ -993,8 +1023,8 @@ func (a *FluidAgent) editFile(ctx context.Context, sandboxID, path, oldStr, newS
 		}, nil
 	}
 
-	// Read the original file
-	readResult, err := a.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("cat '%s'", path), 0, nil)
+	// Read the original file using base64 to handle binary/special chars
+	readResult, err := a.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 '%s'", path), 0, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
@@ -1002,7 +1032,12 @@ func (a *FluidAgent) editFile(ctx context.Context, sandboxID, path, oldStr, newS
 		return nil, fmt.Errorf("failed to read file: %s", readResult.Stderr)
 	}
 
-	original := readResult.Stdout
+	// Decode the base64 content
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(readResult.Stdout))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode file content: %w", err)
+	}
+	original := string(decoded)
 
 	// Check if old_str exists
 	if !strings.Contains(original, oldStr) {
@@ -1016,9 +1051,9 @@ func (a *FluidAgent) editFile(ctx context.Context, sandboxID, path, oldStr, newS
 	// Replace first occurrence only
 	edited := strings.Replace(original, oldStr, newStr, 1)
 
-	// Write the edited content back
-	escapedContent := strings.ReplaceAll(edited, "'", "'\"'\"'")
-	writeCmd := fmt.Sprintf("cat > '%s' << 'FLUID_EOF'\n%s\nFLUID_EOF", path, escapedContent)
+	// Write the edited content back using base64
+	encoded := base64.StdEncoding.EncodeToString([]byte(edited))
+	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > '%s'", encoded, path)
 
 	writeResult, err := a.vmService.RunCommand(ctx, sandboxID, user, "", writeCmd, 0, nil)
 	if err != nil {
@@ -1048,7 +1083,8 @@ func (a *FluidAgent) readFile(ctx context.Context, sandboxID, path string) (map[
 	}
 
 	user := a.cfg.SSH.DefaultUser
-	result, err := a.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("cat '%s'", path), 0, nil)
+	// Use base64 to safely transfer content that may contain special characters
+	result, err := a.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 '%s'", path), 0, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
@@ -1056,10 +1092,16 @@ func (a *FluidAgent) readFile(ctx context.Context, sandboxID, path string) (map[
 		return nil, fmt.Errorf("failed to read file: %s", result.Stderr)
 	}
 
+	// Decode the base64 content
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(result.Stdout))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode file content: %w", err)
+	}
+
 	return map[string]any{
 		"sandbox_id": sandboxID,
 		"path":       path,
-		"content":    result.Stdout,
+		"content":    string(decoded),
 	}, nil
 }
 
@@ -1663,14 +1705,15 @@ func (a *FluidAgent) ClearCreatedSandboxes() {
 }
 
 // CleanupWithProgress destroys all sandboxes, sending progress updates through the status callback.
+// Each sandbox gets its own 60-second timeout to avoid one slow destroy blocking others.
 func (a *FluidAgent) CleanupWithProgress(sandboxIDs []string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
 	total := len(sandboxIDs)
 	destroyed := 0
 	failed := 0
 	skipped := 0
+
+	// Per-sandbox timeout - 60s should be enough for remote hosts
+	const perSandboxTimeout = 60 * time.Second
 
 	for _, id := range sandboxIDs {
 		// Send progress: destroying
@@ -1682,9 +1725,13 @@ func (a *FluidAgent) CleanupWithProgress(sandboxIDs []string) {
 		// Small delay to let the UI update
 		time.Sleep(50 * time.Millisecond)
 
+		// Create a fresh context for each sandbox destruction
+		ctx, cancel := context.WithTimeout(context.Background(), perSandboxTimeout)
+
 		// Check if sandbox still exists
 		if _, err := a.vmService.GetSandbox(ctx, id); err != nil {
 			// Already destroyed
+			cancel()
 			skipped++
 			a.sendStatus(CleanupProgressMsg{
 				SandboxID: id,
@@ -1708,6 +1755,7 @@ func (a *FluidAgent) CleanupWithProgress(sandboxIDs []string) {
 				Status:    CleanupStatusDestroyed,
 			})
 		}
+		cancel()
 	}
 
 	// Clear the created sandboxes list
@@ -1720,4 +1768,15 @@ func (a *FluidAgent) CleanupWithProgress(sandboxIDs []string) {
 		Failed:    failed,
 		Skipped:   skipped,
 	})
+}
+
+// GetCurrentSandbox returns the currently active sandbox ID and host
+func (a *FluidAgent) GetCurrentSandbox() (id string, host string) {
+	return a.currentSandboxID, a.currentSandboxHost
+}
+
+// SetCurrentSandbox sets the currently active sandbox
+func (a *FluidAgent) SetCurrentSandbox(id string, host string) {
+	a.currentSandboxID = id
+	a.currentSandboxHost = host
 }
