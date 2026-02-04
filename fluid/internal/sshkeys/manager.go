@@ -77,7 +77,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		KeyDir:          "/tmp/sandbox-keys",
-		CertificateTTL:  5 * time.Minute,
+		CertificateTTL:  30 * time.Minute,
 		RefreshMargin:   30 * time.Second,
 		DefaultUsername: "sandbox",
 	}

@@ -77,15 +77,18 @@ type VMValidationResult struct {
 
 // ResourceCheckResult contains the results of checking host resources.
 type ResourceCheckResult struct {
-	Valid             bool     `json:"valid"`
-	AvailableMemoryMB int64    `json:"available_memory_mb"`
-	TotalMemoryMB     int64    `json:"total_memory_mb"`
-	AvailableCPUs     int      `json:"available_cpus"`
-	AvailableDiskMB   int64    `json:"available_disk_mb"`
-	RequiredMemoryMB  int      `json:"required_memory_mb"`
-	RequiredCPUs      int      `json:"required_cpus"`
-	Warnings          []string `json:"warnings,omitempty"`
-	Errors            []string `json:"errors,omitempty"`
+	Valid               bool     `json:"valid"`
+	AvailableMemoryMB   int64    `json:"available_memory_mb"`
+	TotalMemoryMB       int64    `json:"total_memory_mb"`
+	AvailableCPUs       int      `json:"available_cpus"`
+	TotalCPUs           int      `json:"total_cpus"`
+	AvailableDiskMB     int64    `json:"available_disk_mb"`
+	RequiredMemoryMB    int      `json:"required_memory_mb"`
+	RequiredCPUs        int      `json:"required_cpus"`
+	NeedsCPUApproval    bool     `json:"needs_cpu_approval"`
+	NeedsMemoryApproval bool     `json:"needs_memory_approval"`
+	Warnings            []string `json:"warnings,omitempty"`
+	Errors              []string `json:"errors,omitempty"`
 }
 
 // VMState represents possible VM states from virsh domstate.

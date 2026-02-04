@@ -277,10 +277,13 @@ func (m *RemoteVirshManager) DestroyVM(ctx context.Context, vmName string) error
 	// Best-effort destroy if running
 	_, _ = m.runSSH(ctx, fmt.Sprintf("virsh destroy %s", escapedName))
 
-	// Undefine
-	if _, err := m.runSSH(ctx, fmt.Sprintf("virsh undefine %s", escapedName)); err != nil {
-		// Continue to remove files
-		_ = err
+	// Undefine with --remove-all-storage to force cleanup of associated volumes
+	if _, err := m.runSSH(ctx, fmt.Sprintf("virsh undefine --remove-all-storage %s", escapedName)); err != nil {
+		// If --remove-all-storage fails (e.g., old libvirt), try without it
+		if _, err2 := m.runSSH(ctx, fmt.Sprintf("virsh undefine %s", escapedName)); err2 != nil {
+			// Continue to remove files even if undefine fails
+			_ = err2
+		}
 	}
 
 	// Remove workspace
@@ -509,11 +512,13 @@ func (m *RemoteVirshManager) CheckHostResources(ctx context.Context, requiredCPU
 				fields := strings.Fields(line)
 				if len(fields) >= 2 {
 					_, _ = fmt.Sscanf(fields[1], "%d", &result.AvailableCPUs)
+					result.TotalCPUs = result.AvailableCPUs // Total CPUs on the host
 				}
 			}
 		}
 		if requiredCPUs > result.AvailableCPUs {
 			result.Valid = false
+			result.NeedsCPUApproval = true
 			result.Errors = append(result.Errors,
 				fmt.Sprintf("Insufficient CPUs on %s: need %d but only %d available",
 					m.host.Name, requiredCPUs, result.AvailableCPUs))
@@ -526,6 +531,7 @@ func (m *RemoteVirshManager) CheckHostResources(ctx context.Context, requiredCPU
 	// Check memory using virsh nodememstats
 	out, err = m.runSSH(ctx, "virsh nodememstats")
 	if err == nil {
+		var free, buffers, cached int64
 		for _, line := range strings.Split(out, "\n") {
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
@@ -535,18 +541,27 @@ func (m *RemoteVirshManager) CheckHostResources(ctx context.Context, requiredCPU
 				case strings.Contains(fields[0], "total"):
 					result.TotalMemoryMB = val / 1024
 				case strings.Contains(fields[0], "free"):
-					result.AvailableMemoryMB = val / 1024
+					free = val
+				case strings.Contains(fields[0], "buffers"):
+					buffers = val
+				case strings.Contains(fields[0], "cached"):
+					cached = val
 				}
 			}
 		}
+		// Calculate available as free + buffers + cached
+		// This is more accurate than just free, as buffers/cached can be reclaimed
+		result.AvailableMemoryMB = (free + buffers + cached) / 1024
 
 		if result.TotalMemoryMB > 0 {
 			if int64(requiredMemoryMB) > result.AvailableMemoryMB {
 				result.Valid = false
+				result.NeedsMemoryApproval = true
 				result.Errors = append(result.Errors,
 					fmt.Sprintf("Insufficient memory on %s: need %d MB but only %d MB available",
 						m.host.Name, requiredMemoryMB, result.AvailableMemoryMB))
 			} else if float64(requiredMemoryMB) > float64(result.AvailableMemoryMB)*0.8 {
+				result.NeedsMemoryApproval = true
 				result.Warnings = append(result.Warnings,
 					fmt.Sprintf("Low memory warning on %s: requesting %d MB of %d MB available",
 						m.host.Name, requiredMemoryMB, result.AvailableMemoryMB))

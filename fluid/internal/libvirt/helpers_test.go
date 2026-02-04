@@ -174,6 +174,104 @@ func TestModifyClonedXMLHelper_NoCloudInitISO(t *testing.T) {
 	}
 }
 
+func TestModifyClonedXMLHelper_UpdatesEmptyCDROM(t *testing.T) {
+	// Test that modifyClonedXMLHelper updates existing CDROM even when it has no source file (empty drive)
+	// This is the bug fix: source VMs may have a CDROM with sda but no source file
+	sourceXML := `<domain type='kvm'>
+  <name>test-vm</name>
+  <uuid>12345678-1234-1234-1234-123456789012</uuid>
+  <memory unit='KiB'>2097152</memory>
+  <vcpu placement='static'>2</vcpu>
+  <devices>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/var/lib/libvirt/images/base.qcow2'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <target dev='sda' bus='sata'/>
+      <readonly/>
+    </disk>
+    <interface type='network'>
+      <mac address='52:54:00:11:22:33'/>
+      <source network='default'/>
+    </interface>
+  </devices>
+</domain>`
+
+	newXML, err := modifyClonedXMLHelper(sourceXML, "sbx-test",
+		"/images/sbx-test/disk.qcow2",
+		"/images/sbx-test/cloud-init.iso",
+		2, 2048, "default")
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+
+	// Should NOT have duplicate sda - this was the bug
+	count := strings.Count(newXML, `dev="sda"`)
+	if count != 1 {
+		t.Errorf("expected 1 sda device, got %d:\n%s", count, newXML)
+	}
+
+	// Should have cloud-init ISO path
+	if !strings.Contains(newXML, "/images/sbx-test/cloud-init.iso") {
+		t.Errorf("missing cloud-init ISO path:\n%s", newXML)
+	}
+
+	// Should only have one CDROM device
+	cdromCount := strings.Count(newXML, `device="cdrom"`)
+	if cdromCount != 1 {
+		t.Errorf("expected 1 cdrom device, got %d:\n%s", cdromCount, newXML)
+	}
+}
+
+func TestModifyClonedXMLHelper_UpdatesCDROMWithEmptySourceElement(t *testing.T) {
+	// Test CDROM with empty <source/> element (no file attribute)
+	sourceXML := `<domain type='kvm'>
+  <name>test-vm</name>
+  <uuid>12345678-1234-1234-1234-123456789012</uuid>
+  <memory unit='KiB'>2097152</memory>
+  <vcpu placement='static'>2</vcpu>
+  <devices>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/var/lib/libvirt/images/base.qcow2'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source/>
+      <target dev='sda' bus='sata'/>
+      <readonly/>
+    </disk>
+    <interface type='network'>
+      <mac address='52:54:00:11:22:33'/>
+      <source network='default'/>
+    </interface>
+  </devices>
+</domain>`
+
+	newXML, err := modifyClonedXMLHelper(sourceXML, "sbx-test2",
+		"/images/sbx-test2/disk.qcow2",
+		"/images/sbx-test2/cloud-init.iso",
+		2, 2048, "default")
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+
+	// Should NOT have duplicate sda
+	count := strings.Count(newXML, `dev="sda"`)
+	if count != 1 {
+		t.Errorf("expected 1 sda device, got %d:\n%s", count, newXML)
+	}
+
+	// Should have cloud-init ISO path
+	if !strings.Contains(newXML, "/images/sbx-test2/cloud-init.iso") {
+		t.Errorf("missing cloud-init ISO path:\n%s", newXML)
+	}
+}
+
 func TestGenerateMACAddressHelper(t *testing.T) {
 	mac := generateMACAddressHelper()
 

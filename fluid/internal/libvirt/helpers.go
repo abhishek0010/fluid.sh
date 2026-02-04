@@ -88,21 +88,26 @@ func modifyClonedXMLHelper(sourceXML, newName, newDiskPath, cloudInitISO string,
 			return "", fmt.Errorf("invalid XML: missing <devices> element")
 		}
 
-		// Look for existing CDROM device to update
-		var cdromUpdated bool
-		for _, disk := range root.FindElements("./devices/disk[@device='cdrom']") {
-			if source := disk.SelectElement("source"); source != nil {
+		// Find any existing CDROM device (not just ones with source files)
+		existingCDROMs := root.FindElements("./devices/disk[@device='cdrom']")
+
+		if len(existingCDROMs) > 0 {
+			// Update first existing CDROM
+			cdrom := existingCDROMs[0]
+			if source := cdrom.SelectElement("source"); source != nil {
+				// Update existing source element
 				if fileAttr := source.SelectAttr("file"); fileAttr != nil {
 					fileAttr.Value = cloudInitISO
-					cdromUpdated = true
-					break
+				} else {
+					source.CreateAttr("file", cloudInitISO)
 				}
+			} else {
+				// Create source element if missing
+				source = cdrom.CreateElement("source")
+				source.CreateAttr("file", cloudInitISO)
 			}
-		}
-
-		// If no existing CDROM, add one with SCSI controller
-		if !cdromUpdated {
-			// Add SCSI controller if not present
+		} else {
+			// No existing CDROM - add new one with SCSI controller
 			hasScsiController := false
 			for _, ctrl := range root.FindElements("./devices/controller[@type='scsi']") {
 				if model := ctrl.SelectAttr("model"); model != nil && model.Value == "virtio-scsi" {
@@ -116,7 +121,6 @@ func modifyClonedXMLHelper(sourceXML, newName, newDiskPath, cloudInitISO string,
 				scsiCtrl.CreateAttr("model", "virtio-scsi")
 			}
 
-			// Add CDROM device
 			cdrom := devices.CreateElement("disk")
 			cdrom.CreateAttr("type", "file")
 			cdrom.CreateAttr("device", "cdrom")

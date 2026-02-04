@@ -334,5 +334,5 @@ type AuditEntry struct {
 	SourceIP string `json:"source_ip,omitempty"`
 
 	// Details contains additional event-specific information.
-	Details map[string]interface{} `json:"details,omitempty"`
+	Details map[string]any `json:"details,omitempty"`
 }

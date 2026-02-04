@@ -29,7 +29,7 @@ import (
 var (
 	ErrCANotInitialized   = errors.New("sshca: CA not initialized")
 	ErrInvalidPublicKey   = errors.New("sshca: invalid public key")
-	ErrInvalidTTL         = errors.New("sshca: TTL must be between 1 and 10 minutes")
+	ErrInvalidTTL         = errors.New("sshca: TTL must be between 1 and 60 minutes")
 	ErrCertGenFailed      = errors.New("sshca: certificate generation failed")
 	ErrCAKeyNotFound      = errors.New("sshca: CA private key not found")
 	ErrCAKeyPermissions   = errors.New("sshca: CA private key has insecure permissions")
@@ -78,8 +78,8 @@ func DefaultConfig() Config {
 		CAKeyPath:             "/etc/virsh-sandbox/ssh_ca",
 		CAPubKeyPath:          "/etc/virsh-sandbox/ssh_ca.pub",
 		WorkDir:               "/tmp/sshca",
-		DefaultTTL:            5 * time.Minute,
-		MaxTTL:                10 * time.Minute,
+		DefaultTTL:            30 * time.Minute,
+		MaxTTL:                60 * time.Minute,
 		DefaultPrincipals:     []string{"sandbox"},
 		SSHKeygenPath:         "",
 		EnforceKeyPermissions: true,

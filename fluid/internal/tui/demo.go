@@ -9,8 +9,8 @@ type DemoStep struct {
 	Type       DemoStepType
 	Content    string // For messages
 	ToolName   string // For tool calls
-	ToolArgs   map[string]interface{}
-	ToolResult map[string]interface{}
+	ToolArgs   map[string]any
+	ToolResult map[string]any
 	ToolError  bool
 	Delay      time.Duration // Delay before this step
 }
@@ -46,7 +46,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "create_sandbox",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"source_vm_name": "test-vm-3",
 			},
 			Delay: 500 * time.Millisecond,
@@ -54,7 +54,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "create_sandbox",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"sandbox_id": "SBX-demo1234",
 				"name":       "sbx-demo",
 				"state":      "RUNNING",
@@ -67,7 +67,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "run_command",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"sandbox_id": "SBX-demo1234",
 				"command":    "cat /etc/os-release | head -2",
 			},
@@ -76,7 +76,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "run_command",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"exit_code": 0,
 				"stdout":    "NAME=\"Ubuntu\"\nVERSION=\"22.04.3 LTS (Jammy Jellyfish)\"",
 				"stderr":    "",
@@ -88,7 +88,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "run_command",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"sandbox_id": "SBX-demo1234",
 				"command":    "apt update",
 			},
@@ -97,7 +97,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "run_command",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"exit_code": 0,
 				"stdout":    "Hit:1 http://archive.ubuntu.com/ubuntu jammy InRelease\nGet:2 http://archive.ubuntu.com/ubuntu jammy-updates InRelease [119 kB]\nReading package lists... Done\nBuilding dependency tree... Done\n45 packages can be upgraded.",
 				"stderr":    "",
@@ -109,7 +109,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "run_command",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"sandbox_id": "SBX-demo1234",
 				"command":    "apt install -y apache2",
 			},
@@ -118,7 +118,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "run_command",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"exit_code": 0,
 				"stdout":    "Reading package lists... Done\nBuilding dependency tree... Done\nThe following NEW packages will be installed:\n  apache2 apache2-bin apache2-data apache2-utils\n0 upgraded, 4 newly installed, 0 to remove.\nSetting up apache2 (2.4.52-1ubuntu4.6) ...\nEnabling module mpm_event.\nEnabling module authz_core.\nEnabling site 000-default.\nCreated symlink /etc/systemd/system/multi-user.target.wants/apache2.service",
 				"stderr":    "",
@@ -130,7 +130,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "run_command",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"sandbox_id": "SBX-demo1234",
 				"command":    "echo '<!DOCTYPE html><html><head><title>Fluid Demo</title></head><body><h1>Hello from Fluid!</h1><p>This page was set up automatically.</p></body></html>' > /var/www/html/index.html",
 			},
@@ -139,7 +139,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "run_command",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"exit_code": 0,
 				"stdout":    "",
 				"stderr":    "",
@@ -151,7 +151,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "run_command",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"sandbox_id": "SBX-demo1234",
 				"command":    "systemctl start apache2 && systemctl status apache2 | head -3",
 			},
@@ -160,7 +160,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "run_command",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"exit_code": 0,
 				"stdout":    "● apache2.service - The Apache HTTP Server\n     Loaded: loaded (/lib/systemd/system/apache2.service; enabled)\n     Active: active (running) since Sat 2026-01-25 12:00:00 UTC",
 				"stderr":    "",
@@ -172,7 +172,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "run_command",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"sandbox_id": "SBX-demo1234",
 				"command":    "curl -s localhost",
 			},
@@ -181,7 +181,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "run_command",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"exit_code": 0,
 				"stdout":    "<!DOCTYPE html><html><head><title>Fluid Demo</title></head><body><h1>Hello from Fluid!</h1><p>This page was set up automatically.</p></body></html>",
 				"stderr":    "",
@@ -193,7 +193,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "create_playbook",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"name":        "httpd-setup",
 				"description": "Install and configure Apache HTTP server with custom page",
 			},
@@ -202,7 +202,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "create_playbook",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"id":   "PB-demo5678",
 				"name": "httpd-setup",
 			},
@@ -213,7 +213,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "add_playbook_task",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"playbook_name": "httpd-setup",
 				"task_name":     "Update apt cache",
 				"module":        "apt",
@@ -223,7 +223,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "add_playbook_task",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"task_id": "TASK-001",
 				"name":    "httpd-setup",
 			},
@@ -233,7 +233,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "add_playbook_task",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"playbook_name": "httpd-setup",
 				"task_name":     "Install Apache",
 				"module":        "apt",
@@ -243,7 +243,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "add_playbook_task",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"task_id": "TASK-002",
 				"name":    "httpd-setup",
 			},
@@ -253,7 +253,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "add_playbook_task",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"playbook_name": "httpd-setup",
 				"task_name":     "Create index.html",
 				"module":        "copy",
@@ -263,7 +263,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "add_playbook_task",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"task_id": "TASK-003",
 				"name":    "httpd-setup",
 			},
@@ -273,7 +273,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolStart,
 			ToolName: "add_playbook_task",
-			ToolArgs: map[string]interface{}{
+			ToolArgs: map[string]any{
 				"playbook_name": "httpd-setup",
 				"task_name":     "Start and enable Apache",
 				"module":        "systemd",
@@ -283,7 +283,7 @@ func GetDemoScript() []DemoStep {
 		{
 			Type:     DemoStepToolComplete,
 			ToolName: "add_playbook_task",
-			ToolResult: map[string]interface{}{
+			ToolResult: map[string]any{
 				"task_id": "TASK-004",
 				"name":    "httpd-setup",
 			},

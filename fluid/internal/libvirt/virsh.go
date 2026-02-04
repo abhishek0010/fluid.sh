@@ -90,15 +90,18 @@ type VMValidationResult struct {
 
 // ResourceCheckResult contains the results of checking host resources.
 type ResourceCheckResult struct {
-	Valid             bool     `json:"valid"`
-	AvailableMemoryMB int64    `json:"available_memory_mb"`
-	TotalMemoryMB     int64    `json:"total_memory_mb"`
-	AvailableCPUs     int      `json:"available_cpus"`
-	AvailableDiskMB   int64    `json:"available_disk_mb"`
-	RequiredMemoryMB  int      `json:"required_memory_mb"`
-	RequiredCPUs      int      `json:"required_cpus"`
-	Warnings          []string `json:"warnings,omitempty"`
-	Errors            []string `json:"errors,omitempty"`
+	Valid               bool     `json:"valid"`
+	AvailableMemoryMB   int64    `json:"available_memory_mb"`
+	TotalMemoryMB       int64    `json:"total_memory_mb"`
+	AvailableCPUs       int      `json:"available_cpus"`
+	TotalCPUs           int      `json:"total_cpus"`
+	AvailableDiskMB     int64    `json:"available_disk_mb"`
+	RequiredMemoryMB    int      `json:"required_memory_mb"`
+	RequiredCPUs        int      `json:"required_cpus"`
+	NeedsCPUApproval    bool     `json:"needs_cpu_approval"`
+	NeedsMemoryApproval bool     `json:"needs_memory_approval"`
+	Warnings            []string `json:"warnings,omitempty"`
+	Errors              []string `json:"errors,omitempty"`
 }
 
 // VMState represents possible VM states from virsh domstate.
@@ -466,21 +469,26 @@ func modifyClonedXML(sourceXML, newName, newDiskPath, cloudInitISO string) (stri
 			return "", fmt.Errorf("invalid XML: missing <devices> element")
 		}
 
-		// Look for existing CDROM device to update
-		var cdromUpdated bool
-		for _, disk := range root.FindElements("./devices/disk[@device='cdrom']") {
-			if source := disk.SelectElement("source"); source != nil {
+		// Find any existing CDROM device (not just ones with source files)
+		existingCDROMs := root.FindElements("./devices/disk[@device='cdrom']")
+
+		if len(existingCDROMs) > 0 {
+			// Update first existing CDROM
+			cdrom := existingCDROMs[0]
+			if source := cdrom.SelectElement("source"); source != nil {
+				// Update existing source element
 				if fileAttr := source.SelectAttr("file"); fileAttr != nil {
 					fileAttr.Value = cloudInitISO
-					cdromUpdated = true
-					break
+				} else {
+					source.CreateAttr("file", cloudInitISO)
 				}
+			} else {
+				// Create source element if missing
+				source = cdrom.CreateElement("source")
+				source.CreateAttr("file", cloudInitISO)
 			}
-		}
-
-		// If no existing CDROM, add one with SCSI controller
-		if !cdromUpdated {
-			// Add SCSI controller if not present
+		} else {
+			// No existing CDROM - add new one with SCSI controller
 			hasScsiController := false
 			for _, ctrl := range root.FindElements("./devices/controller[@type='scsi']") {
 				if model := ctrl.SelectAttr("model"); model != nil && model.Value == "virtio-scsi" {
@@ -494,7 +502,6 @@ func modifyClonedXML(sourceXML, newName, newDiskPath, cloudInitISO string) (stri
 				scsiCtrl.CreateAttr("model", "virtio-scsi")
 			}
 
-			// Add CDROM device
 			cdrom := devices.CreateElement("disk")
 			cdrom.CreateAttr("type", "file")
 			cdrom.CreateAttr("device", "cdrom")
@@ -929,10 +936,13 @@ func (m *VirshManager) DestroyVM(ctx context.Context, vmName string) error {
 	virsh := m.binPath("virsh", m.cfg.VirshPath)
 	// Best-effort destroy if running
 	_, _ = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "destroy", vmName)
-	// Undefine
-	if _, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "undefine", vmName); err != nil {
-		// continue to remove files even if undefine fails
-		_ = err
+	// Undefine with --remove-all-storage to force cleanup of associated volumes
+	if _, err := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "undefine", "--remove-all-storage", vmName); err != nil {
+		// If --remove-all-storage fails (e.g., old libvirt), try without it
+		if _, err2 := m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "undefine", vmName); err2 != nil {
+			// continue to remove files even if undefine fails
+			_ = err2
+		}
 	}
 
 	// Release DHCP lease to prevent IP conflicts with future VMs
@@ -1514,7 +1524,7 @@ func renderDomainXML(p domainXMLParams) (string, error) {
     <emulator>{{ .Emulator }}</emulator>
 {{- end }}
     <disk type="file" device="disk">
-      <driver name="qemu" type="qcow2" cache="none"/>
+      <driver name="qemu" type="qcow2" cache="writeback" io="threads"/>
       <source file="{{ .DiskPath }}"/>
       <target dev="vda" bus="virtio"/>
     </disk>
@@ -1969,17 +1979,20 @@ func (m *VirshManager) CheckHostResources(ctx context.Context, requiredCPUs, req
 		result.TotalMemoryMB = info.totalMB
 		result.AvailableMemoryMB = info.availableMB
 		result.AvailableCPUs = info.cpus
+		result.TotalCPUs = info.cpus // Total CPUs on the host
 
 		// Check if we have enough memory
 		if int64(requiredMemoryMB) > info.availableMB {
 			result.Valid = false
+			result.NeedsMemoryApproval = true
 			result.Errors = append(result.Errors,
-				fmt.Sprintf("Insufficient memory: need %d MB but only %d MB available",
+				fmt.Sprintf("Insufficient Host memory: need %d MB but only %d MB available",
 					requiredMemoryMB, info.availableMB))
 		} else if float64(requiredMemoryMB) > float64(info.availableMB)*0.8 {
 			// Warn if using more than 80% of available memory
+			result.NeedsMemoryApproval = true
 			result.Warnings = append(result.Warnings,
-				fmt.Sprintf("Low memory warning: requesting %d MB of %d MB available (%.1f%%)",
+				fmt.Sprintf("Low Host memory warning: requesting %d MB of %d MB available (%.1f%%)",
 					requiredMemoryMB, info.availableMB,
 					float64(requiredMemoryMB)/float64(info.availableMB)*100))
 		}
@@ -1987,6 +2000,7 @@ func (m *VirshManager) CheckHostResources(ctx context.Context, requiredCPUs, req
 		// Check if we have enough CPUs
 		if requiredCPUs > info.cpus {
 			result.Valid = false
+			result.NeedsCPUApproval = true
 			result.Errors = append(result.Errors,
 				fmt.Sprintf("Insufficient CPUs: need %d but only %d available",
 					requiredCPUs, info.cpus))
@@ -2057,15 +2071,27 @@ func (m *VirshManager) getHostInfo(ctx context.Context) (*hostInfo, error) {
 	// Try virsh nodememstats for more accurate available memory
 	out, err = m.run(ctx, virsh, "--connect", m.cfg.LibvirtURI, "nodememstats")
 	if err == nil {
+		var free, buffers, cached int64
+		foundFree := false
 		for _, line := range strings.Split(out, "\n") {
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
 				var val int64
 				_, _ = fmt.Sscanf(fields[len(fields)-2], "%d", &val)
 				if strings.Contains(fields[0], "free") {
-					info.availableMB = val / 1024
+					free = val
+					foundFree = true
+				} else if strings.Contains(fields[0], "buffers") {
+					buffers = val
+				} else if strings.Contains(fields[0], "cached") {
+					cached = val
 				}
 			}
+		}
+		if foundFree {
+			// Available memory is roughly free + buffers + cached
+			// This is more accurate than just free, as buffers/cached can be reclaimed
+			info.availableMB = (free + buffers + cached) / 1024
 		}
 	}
 
@@ -2090,6 +2116,80 @@ func (m *VirshManager) getHostInfo(ctx context.Context) (*hostInfo, error) {
 					return info, nil
 				}
 			}
+		}
+	}
+
+	// Fallback: use vm_stat command (macOS)
+	stdout.Reset()
+	cmd = exec.CommandContext(ctx, "vm_stat")
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err == nil {
+		// Parse vm_stat output
+		// Pages free:                               246026.
+		// Pages active:                            2124707.
+		// Pages inactive:                          2087528.
+		// Pages speculative:                         33285.
+		// Pages throttled:                               0.
+		// Pages wired down:                         847372.
+		// Pages purgeable:                           12668.
+		// "Translation faults":                  329598642.
+		// Pages copy-on-write:                    15888258.
+		// Pages zero filled:                     204860799.
+		// Pages reactivated:                       2094207.
+		// Pages purged:                            3571658.
+		// File-backed pages:                       1318625.
+		// Anonymous pages:                         2893610.
+		// Pages stored in compressor:              2339580.
+		// Pages occupied by compressor:             922112.
+		// Decompressions:                         10777592.
+		// Compressions:                           14932378.
+		// Pageins:                                 5954753.
+		// Pageouts:                                 166129.
+		// Swapins:                                 2266008.
+		// Swapouts:                                2724816.
+
+		// Page size is typically 4096 bytes (4KB)
+		// Available = (Pages free + Pages inactive + Pages speculative) * 4096 / 1024 / 1024
+		// We can get page size from sysctl hw.pagesize, but assuming 16KB for Apple Silicon or 4KB for Intel
+		// Safer to just assume 4KB or query it. Let's assume standard 4096 first.
+		pageSize := int64(4096)
+		// Try to get actual page size
+		if out, err := exec.Command("pagesize").Output(); err == nil {
+			_, _ = fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &pageSize)
+		}
+
+		var free, inactive, speculative int64
+		for _, line := range strings.Split(stdout.String(), "\n") {
+			parts := strings.Split(line, ":")
+			if len(parts) >= 2 {
+				key := strings.TrimSpace(parts[0])
+				valStr := strings.TrimSpace(parts[1])
+				valStr = strings.TrimSuffix(valStr, ".")
+				var val int64
+				_, _ = fmt.Sscanf(valStr, "%d", &val)
+
+				switch key {
+				case "Pages free":
+					free = val
+				case "Pages inactive":
+					inactive = val
+				case "Pages speculative":
+					speculative = val
+				}
+			}
+		}
+		// Calculate available in MB
+		info.availableMB = (free + inactive + speculative) * pageSize / 1024 / 1024
+
+		// For total memory on macOS, use sysctl
+		if out, err := exec.Command("sysctl", "-n", "hw.memsize").Output(); err == nil {
+			var totalBytes int64
+			_, _ = fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &totalBytes)
+			info.totalMB = totalBytes / 1024 / 1024
+		}
+
+		if info.totalMB > 0 {
+			return info, nil
 		}
 	}
 

@@ -5,16 +5,14 @@ go 1.24.0
 toolchain go1.24.4
 
 require (
-	github.com/MarceloPetrucio/go-scalar-api-reference v0.0.0-20240521013641-ce5d2efe0e06
+	github.com/alecthomas/chroma/v2 v2.14.0
 	github.com/beevik/etree v1.4.0
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
 	github.com/glebarez/sqlite v1.11.0
-	github.com/go-chi/chi/v5 v5.2.4
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.3
 	github.com/posthog/posthog-go v1.9.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
@@ -24,7 +22,6 @@ require (
 )
 
 require (
-	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect

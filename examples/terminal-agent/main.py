@@ -48,13 +48,18 @@ Guidelines:
 """
 
 
-def create_tool_registry(session_state: SessionState, sandbox_client: Any = None) -> ToolRegistry:
+def create_tool_registry(
+    session_state: SessionState,
+    sandbox_client: Any = None,
+    agent: Any = None,
+) -> ToolRegistry:
     """
     Create and configure the tool registry with available tools.
 
     Args:
         session_state: SessionState instance
         sandbox_client: VirshSandbox client instance (optional)
+        agent: AgentLoop instance for compact tools (optional, can be set later)
     """
     registry = ToolRegistry()
 
