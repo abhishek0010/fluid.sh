@@ -22,8 +22,9 @@ from typing import Any, ClassVar, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing_extensions import Self
 
-from virsh_sandbox.models.fluid_remote_internal_store_sandbox import \
-    FluidRemoteInternalStoreSandbox
+from virsh_sandbox.models.fluid_remote_internal_store_sandbox import (
+    FluidRemoteInternalStoreSandbox,
+)
 
 
 class InternalRestCreateSandboxResponse(BaseModel):
