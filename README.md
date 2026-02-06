@@ -2,14 +2,18 @@
 
 # 🌊 fluid.sh 
 
-### Autonomous AI Agents for Infrastructure
+### Claude Code for Infrastructure
 
-**Make Infrastructure Safe for AI**
+[![Commit Activity](https://img.shields.io/github/commit-activity/m/aspectrr/fluid.sh?color=blue)](https://github.com/aspectrr/fluid.sh/commits/main)
+[![License](https://img.shields.io/github/license/aspectrr/fluid.sh?color=blue)](https://github.com/aspectrr/fluid.sh/blob/main/LICENSE)
+[![Discord](https://img.shields.io/discord/1465124928650215710?label=discord)](https://discord.gg/4WGGXJWm8J)
+[![GitHub stars](https://img.shields.io/github/stars/aspectrr/fluid.sh)](https://github.com/aspectrr/fluid.sh)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://go.dev)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
-[![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black)](https://react.dev)
+Fluid comes in two flavors:
+- A local [CLI Agent](#-fluid-cli) (like Claude Code) that can connect to remote KVM hosts from your local host
+- An [Agent API](#-fluid-remote) that connects to KVM hosts and can handle tens to thousands of concurrent agent sessions.
+
+Choose your own adventure 🧙‍♂️
 
 [Features](#-features) • [Quick Start](#-quick-start) • [Demo](#-demo) • [Documentation](#-documentation)
 
@@ -17,19 +21,13 @@
 
 ---
 
-## Demo
-
-<a href="https://www.youtube.com/watch?v=nAlqRMhZxP0">
-  <img src="https://img.youtube.com/vi/nAlqRMhZxP0/maxresdefault.jpg" alt="Fluid.sh Demo" width="600">
-</a>
-
 ## Problem
 
 AI agents are ready to do infrastructure work, but they can't touch prod:
 
 - Agents can install packages, configure services, write scripts—autonomously
 - But one mistake on production and you're getting paged at 3 AM to fix it
-- So we limit agents to chatbots instead of letting them *do the work*
+- So we limit agents to chatbots instead of letting them manage and debug on their won
 
 ## Solution
 
@@ -37,7 +35,7 @@ AI agents are ready to do infrastructure work, but they can't touch prod:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    Autonomous AI Sysadmin Workflow                      │
+│                           Fluid Workflow                                │
 │                                                                         │
 │  ┌─────────┐     ┌─────────────────┐     ┌──────────┐     ┌──────────┐  │
 │  │  Agent  │────►│  Sandbox VM     │────►│  Human   │────►│Production│  │
@@ -52,25 +50,150 @@ AI agents are ready to do infrastructure work, but they can't touch prod:
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
+## Fluid CLI
+
+### Demo of CLI Agent
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/ZSUBGXNTz34?si=HK4zbcu4njys7ETE" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## Features
 
 | Feature | Description |
 |---------|-------------|
 |  **Autonomous Execution** | Agents run commands, install packages, edit configs—no hand-holding |
 |  **Full VM Isolation** | Each agent gets a dedicated KVM virtual machine with root access |
-|  **Snapshot & Restore** | Checkpoint progress, rollback mistakes, branch experiments |
 |  **Human-in-the-Loop** | Blocking approval workflow before any production changes |
-|  **Diff & Audit Trail** | See exactly what changed, every action logged |
 |  **Ansible Export** | Auto-generate playbooks from agent work for production apply |
-|  **Tmux Integration** | Watch agent work in real-time, intervene if needed |
 |  **Python SDK** | First-class SDK for building autonomous agents |
+
+## 🏄 Quick Start
+
+### Prerequisites
+
+- Must have Go 1.24+ installed.
+- Access to Remote Libvirt Host via SSH
+  - If you are able to access a Libvirt host via SSH then this will work.
+
+### Onboarding
+
+To install you can either
+```bash
+curl -fsSL https://fluid.sh/install.sh | bash
+```
+or 
+```bash
+go install github.com/aspectrr/fluid.sh/fluid/cmd/fluid@latest
+```
+
+They do the same thing.
+
+Next you can run
+
+```bash
+fluid
+```
+
+to start onboarding.
+
+Onboarding will take you through adding remote hosts, generating SSH CAs for the agent to access sandboxes, and getting your LLM API key setup.
+
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/wbevPJGmukw?si=sDNcmu0VsMosVnVH" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### Sandbox Creation Limits
+
+When a Libvirt host does not have enough memory available to create a sandbox, the sandbox creation event will cause an approval screen to prompting the user for approval. This is used to track memory and CPU, and useful for not straining your existing hardware. These limits can be configured with `/settings`.
+
+### Internet Access
+
+All internet connections are blocked by default. Any command that reaches out of the sandbox require human approval first.
+
+### Context Compaction
+
+Context limits are set in `/settings` and used to configure when compaction takes place. Context is calculated with a rough heuristic of `0.33 tokens per char`. This is meant as a rough estimate but this is likely to be fixed and updated in further iterations.
+
+
+### Safety and Potentially Destructive Actions
+
+The agent has access to the following tools during execution:
+
+### Sandboxes
+
+| Tool | Only Usable in Sandbox | Only Can Act on Sandboxes | Potentially Destructive|Description |
+|--------|----------|------|----|---|
+| `list_sandboxes` | `No` | `No` |`No`|List sandboxes with IP addresses |
+| `create_sandbox` | `No` | `No, acts on libvirt host`|`Yes` |Create new sandbox VM by cloning from source VM |
+| `destroy_sandbox` | `No` | `Yes` |`Yes`|Destroy sandbox and storage |
+| `start_sandbox` | `No` | `Yes` |`Yes`|Start a stopped sandbox VM |
+| `stop_sandbox` | `No` | `Yes` |`Yes`|Stop a started sandbox VM |
+
+### Commands
+
+| Tool | Only Usable in Sandbox | Only can act on Sandboxes | Potentially Destructive | Description |
+|--------|----------|-------|-|------|
+| `run_command` | `Yes` | `Yes` | `Yes` | Execute a command inside a sandbox via SSH |
+| `edit_file` | `Yes` | `Yes` | `Yes` | Edit file on sandbox |
+| `read_file` | `Yes` | `Yes` | `No` | Read file on sandbox |
+
+## Ansible
+| Tool | Only Usable in Sandbox | Only can act on Sandboxes| Potentially Destructive | Description |
+|--------|----------|-------|-|------|
+| `create_playbook` | `No` | `No` | `No` | Create Ansible Playbook |
+| `add_playbook_task` | `No` | `No` |`No` | Add Ansible task to playbook |
+| `list_playbooks` | `No` |`No`| `No`| List Ansible playbooks |
+| `get_playbook` | `No` | `No` | `No`| Get playbook contents |
+
+
+## Read-Only Mode
+
+You can cycle between `EDIT` and `READ-ONLY` mode in the CLI via `Shift-Tab`. 
+
+![Edit Mode](./edit_mode.png)
+![Read Only Mode](./read_only_mode.png)
+
+Read only mode will give access to the model to only tools that are not potentially destructive:
+
+### Sandboxes
+
+| Tool | Only Usable in Sandbox | Only Can Act on Sandboxes | Potentially Destructive|Description |
+|--------|----------|------|----|---|
+| `list_sandboxes` | `No` | `No` |`No`|List sandboxes with IP addresses |
+
+### Commands
+
+| Tool | Only Usable in Sandbox | Only can act on Sandboxes | Potentially Destructive | Description |
+|--------|----------|-------|-|------|
+| `read_file` | `Yes` | `Yes` | `No` | Read file on sandbox |
+
+## Ansible
+| Tool | Only Usable in Sandbox | Only can act on Sandboxes| Potentially Destructive | Description |
+|--------|----------|-------|-|------|
+| `create_playbook` | `No` | `No` | `No` | Create Ansible Playbook |
+| `add_playbook_task` | `No` | `No` |`No` | Add Ansible task to playbook |
+| `list_playbooks` | `No` |`No`| `No`| List Ansible playbooks |
+| `get_playbook` | `No` | `No` | `No`| Get playbook contents |
+
+
+## Issues
+
+Please reach out on Discord with any problems or questions you encounter!
+ [Discord](https://discord.gg/4WGGXJWm8J)
+
+
+## Fluid Remote (⚠️WIP Not Production Ready⚠️)
+
+Fluid-Remote is the API version of Fluid. Allowing you to run agents autonomously on your infrastructure from the UI or API calls. Instead of just one agent in your terminal, control hundreds. Talk to Fluid in your favorite apps and spawn tasks to run async, getting your approval before continuining. Run Ansible playbooks from anywhere.
+
+### Demo of Fluid Remote
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/nAlqRMhZxP0?si=JgujotIWGAD7NCrf" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## SDK Example
 
 ```python
-from virsh_sandbox import VirshSandbox
+from fluid import Fluid
 
-client = VirshSandbox("http://localhost:8080")
+client = Fluid("http://localhost:8080")
 sandbox = None
 
 try:
@@ -100,13 +223,13 @@ finally:
 
 ### Prerequisites
 
-`virsh-sandbox` is setup to be ran on a control plane on the same network as the VM hosts it needs to connect with. It will also need a postgres instance running on the control plan to keep tack of commands run, sandboxes, and other auditting.
+`fluid-remote` is setup to be ran on a control plane on the same network as the VM hosts it needs to connect with. It will also need a postgres instance running on the control plan to keep tack of commands run, sandboxes, and other auditting.
 
 If you need another way of accessing VMs, open an issue and we will get back to you.
 
 ### Installation
 
-The recommended deployment model is a **single control node** running the `virsh-sandbox` API and PostgreSQL, with SSH access to one or more libvirt/KVM hosts.
+The recommended deployment model is a **single control node** running the `fluid-remote` API and PostgreSQL, with SSH access to one or more libvirt/KVM hosts.
 
 ---
 
@@ -116,14 +239,14 @@ The recommended deployment model is a **single control node** running the `virsh
 +--------------------+        SSH        +------------------+
 | Control Node       |----------------->| KVM / libvirt    |
 |                    |                  | Hosts            |
-| - virsh-sandbox    |                  |                  |
+| - fluid-remote    |                  |                  |
 | - PostgreSQL       |                  | - libvirtd       |
 +--------------------+                  +------------------+
 ```
 
 The control node:
 
-* Runs the `virsh-sandbox` API
+* Runs the `fluid-remote` API
 * Stores audit logs and metadata in PostgreSQL
 * Connects to hosts over SSH to execute libvirt operations
 
@@ -173,7 +296,7 @@ curl https://raw.githubusercontent.com/aspectrr/fluid.sh/main/public-key.asc | g
 ### 2. Download release assets
 ```bash
 VERSION=0.0.4-beta
-wget https://github.com/aspectrr/fluid.sh/releases/download/v${VERSION}/virsh-sandbox_${VERSION}_linux_amd64.tar.gz
+wget https://github.com/aspectrr/fluid.sh/releases/download/v${VERSION}/fluid-remote_${VERSION}_linux_amd64.tar.gz
 wget https://github.com/aspectrr/fluid.sh/releases/download/v${VERSION}/checksums.txt
 wget https://github.com/aspectrr/fluid.sh/releases/download/v${VERSION}/checksums.txt.sig
 ```
@@ -189,8 +312,8 @@ sha256sum -c checksums.txt --ignore-missing
 
 ### 4. Extract and install
 ```bash
-tar -xzf virsh-sandbox_${VERSION}_linux_amd64.tar.gz
-sudo install -m 755 virsh-sandbox /usr/local/bin/
+tar -xzf fluid-remote_${VERSION}_linux_amd64.tar.gz
+sudo install -m 755 fluid-remote /usr/local/bin/
 ```
 
 ## System User and Directories
@@ -198,24 +321,24 @@ sudo install -m 755 virsh-sandbox /usr/local/bin/
 Create a dedicated system user and required directories:
 
 ```bash
-useradd --system --home /var/lib/virsh-sandbox --shell /usr/sbin/nologin virsh-sandbox
+useradd --system --home /var/lib/fluid-remote --shell /usr/sbin/nologin fluid-remote
 
-mkdir -p /etc/virsh-sandbox \
-         /var/lib/virsh-sandbox \
-         /var/log/virsh-sandbox
+mkdir -p /etc/fluid-remote \
+         /var/lib/fluid-remote \
+         /var/log/fluid-remote
 
-chown -R virsh-sandbox:virsh-sandbox \
-  /var/lib/virsh-sandbox \
-  /var/log/virsh-sandbox
+chown -R fluid-remote:fluid-remote \
+  /var/lib/fluid-remote \
+  /var/log/fluid-remote
 ```
 
 Filesystem layout:
 
 ```
-/usr/local/bin/virsh-sandbox
-/etc/virsh-sandbox/config.yaml
-/var/lib/virsh-sandbox/
-/var/log/virsh-sandbox/
+/usr/local/bin/fluid-remote
+/etc/fluid-remote/config.yaml
+/var/lib/fluid-remote/
+/var/log/fluid-remote/
 ```
 
 ---
@@ -228,12 +351,14 @@ PostgreSQL runs **locally on the control node** and is bound to localhost only.
 
 ```bash
 sudo -u postgres psql
+# Generate strong password
+openssl rand -base64 16
 ```
 
 ```sql
-CREATE DATABASE virsh_sandbox;
-CREATE USER virsh_sandbox WITH PASSWORD 'strong-password';
-GRANT ALL PRIVILEGES ON DATABASE virsh_sandbox TO virsh_sandbox;
+CREATE DATABASE fluid;
+CREATE USER fluid WITH PASSWORD 'strong-password';
+GRANT ALL PRIVILEGES ON DATABASE fluid TO fluid;
 ```
 
 Ensure PostgreSQL is listening only on localhost:
@@ -249,7 +374,7 @@ listen_addresses = '127.0.0.1'
 Create the main configuration file:
 
 ```bash
-vim /etc/virsh-sandbox/config.yaml
+vim /etc/fluid/config.yaml
 ```
 
 Example:
@@ -280,11 +405,11 @@ The control node requires SSH access to each libvirt host.
 
 Recommended approach:
 
-* Generate a dedicated SSH key for `virsh-sandbox`
+* Generate a dedicated SSH key for `fluid`
 * Grant limited sudo or libvirt access on hosts
 
 ```bash
-sudo -u virsh-sandbox ssh-keygen -t ed25519
+sudo -u fluid ssh-keygen -t ed25519
 ```
 
 On each host, allow execution of `virsh` via sudo or libvirt permissions.
@@ -296,19 +421,19 @@ On each host, allow execution of `virsh` via sudo or libvirt permissions.
 Create the service unit:
 
 ```bash
-vim /etc/systemd/system/virsh-sandbox.service
+vim /etc/systemd/system/fluid-remote.service
 ```
 
 ```ini
 [Unit]
-Description=virsh-sandbox control plane
+Description=fluid-remote control plane
 After=network.target postgresql.service
 
 [Service]
-User=virsh-sandbox
-Group=virsh-sandbox
-ExecStart=/usr/local/bin/virsh-sandbox \
-  --config /etc/virsh-sandbox/config.yaml
+User=fluid-remote
+Group=fluid-remote
+ExecStart=/usr/local/bin/fluid-remote \
+  --config /etc/fluid-remote/config.yaml
 Restart=on-failure
 RestartSec=5
 LimitNOFILE=65536
@@ -321,8 +446,8 @@ Enable and start:
 
 ```bash
 systemctl daemon-reload
-systemctl enable virsh-sandbox
-systemctl start virsh-sandbox
+systemctl enable fluid-remote
+systemctl start fluid-remote
 ```
 
 ---
@@ -332,14 +457,14 @@ systemctl start virsh-sandbox
 Check service status:
 
 ```bash
-systemctl status virsh-sandbox
+systemctl status fluid-remote
 ```
 
 Basic health checks:
 
 ```bash
-virsh-sandbox status
-virsh-sandbox hosts list
+curl http://localhost:8080/health
+curl http://localhost:8080/v1/hosts
 ```
 
 ---
@@ -348,7 +473,7 @@ virsh-sandbox hosts list
 
 * Download the new binary
 * Verify checksum
-* Replace `/usr/local/bin/virsh-sandbox`
+* Replace `/usr/local/bin/fluid-remote`
 * Restart the systemd service
 
 PostgreSQL migrations are handled automatically on startup.
@@ -358,17 +483,17 @@ PostgreSQL migrations are handled automatically on startup.
 ## Uninstallation
 
 ```bash
-systemctl stop virsh-sandbox
-systemctl disable virsh-sandbox
-rm /usr/local/bin/virsh-sandbox
-rm /etc/systemd/system/virsh-sandbox.service
+systemctl stop fluid-remote
+systemctl disable fluid-remote
+rm /usr/local/bin/fluid-remote
+rm /etc/systemd/system/fluid-remote.service
 ```
 
 (Optional) Remove data and user:
 
 ```bash
-userdel virsh-sandbox
-rm -rf /etc/virsh-sandbox /var/lib/virsh-sandbox /var/log/virsh-sandbox
+userdel fluid-remote
+rm -rf /etc/fluid-remote /var/lib/fluid-remote /var/log/fluid-remote
 ```
 
 ## ⛵ Contributing Quickstart
@@ -376,7 +501,6 @@ rm -rf /etc/virsh-sandbox /var/lib/virsh-sandbox /var/log/virsh-sandbox
 ### Prerequisites
 
 - **mprocs** - For local dev
-- **Docker & Docker Compose** - For containerized deployment in production
 - **libvirt/KVM** - For virtual machine management
 - **macOS**:
   - **libvirt** - `brew install libvirt`
@@ -410,11 +534,11 @@ brew install libvirt socket_vmnet
 
 # Set up SSH CA (Needed for Sanbox VMs)
 cd fluid.sh
-./virsh-sandbox/scripts/setup-ssh-ca.sh --dir .ssh-ca
+./fluid-remote/scripts/setup-ssh-ca.sh --dir .ssh-ca
 
 # Set up libvirt VM (ARM64 Ubuntu)
 cd fluid.sh
-./virsh-sandbox/scripts/reset-libvirt-macos.sh
+./fluid-remote/scripts/reset-libvirt-macos.sh
 
 # Verify connection
 virsh -c "$LIBVIRT_URI" list --all
@@ -425,7 +549,7 @@ mprocs
 
 **What happens:**
 1. A SSH CA is generated and then is used to build the golden VM
-2. libvirt runs on the machine and is queried by the virsh-sandbox API
+2. libvirt runs on the machine and is queried by the fluid-remote API
 4. Test VMs run on your root machine
 
 **Architecture:**
@@ -433,7 +557,7 @@ mprocs
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     Apple Silicon Mac                               │
 │  ┌─────────────────┐                                                │
-│  │ virsh-sandbox   │                                                │
+│  │ fluid-remote   │                                                │
 │  │ API + Web UI    │────►  ┌──────────────────────────────────┐     │
 │  │                 │       │     libvirt/QEMU (ARM64)         │     │
 │  │ LIBVIRT_URI=    │       │  ┌──────────┐  ┌──────────┐      │     │
@@ -447,7 +571,7 @@ mprocs
 
 **Create ARM64 test VMs:**
 ```bash
-./virsh-sandbox/scripts/reset-libvirt-macos.sh
+./fluid-remote/scripts/reset-libvirt-macos.sh
 ```
 
 **Default test VM credentials:**
@@ -514,7 +638,7 @@ docker-compose up --build
 │                    Linux x86_64 Host                                │
 │                                                                     │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────┐  │
-│  │ virsh-sandbox   │  │   PostgreSQL    │  │    Web UI           │  │
+│  │ fluid-remote   │  │   PostgreSQL    │  │    Web UI           │  │
 │  │ API (Go)        │  │   (Docker)      │  │    (React)          │  │
 │  │ :8080           │  │   :5432         │  │    :5173            │  │
 │  └────────┬────────┘  └─────────────────┘  └─────────────────────┘  │
@@ -539,8 +663,8 @@ cd /var/lib/libvirt/images/base
 sudo wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
 
 # Create test VM using the provided script
-./virsh-sandbox/scripts/setup-ssh-ca.sh --dir [ssh-ca-dir]
-./virsh-sandbox/scripts/reset-libvirt-macos.sh [vm-name] [ca-pub-path] [ca-key-path]
+./fluid-remote/scripts/setup-ssh-ca.sh --dir [ssh-ca-dir]
+./fluid-remote/scripts/reset-libvirt-macos.sh [vm-name] [ca-pub-path] [ca-key-path]
 ```
 
 **Default test VM credentials:**
@@ -644,26 +768,7 @@ sudo usermod -aG libvirt remote-user
 </details>
 
 ---
-
-## Project Structure
-
-```
-virsh-sandbox/
-├── virsh-sandbox/          #    Main API server (Go)
-│   ├── cmd/api/            #    Entry point
-│   ├── internal/           #    Business logic
-│   └── scripts/            #    Setup scripts
-├── web/                    #    React frontend
-│   └── src/                #    Components, hooks, routes
-├── sdk/                    #    Python SDK
-│   └── virsh-sandbox-py/   #    Auto-generated client
-├── examples/               #    Example implementations
-│   └── agent-example/      #    AI agent with OpenAI
-└── docker-compose.yml      #    Container orchestration
-```
-
 ## API Reference
-
 
 ### Sandbox Lifecycle
 
@@ -722,7 +827,7 @@ The control node connects to hypervisor hosts via SSH. You **must** configure pr
 **Required: Configure `~/.ssh/config` on the control node:**
 
 ```ssh-config
-# /home/virsh-sandbox/.ssh/config (for the virsh-sandbox user)
+# /home/fluid-remote/.ssh/config (for the fluid-remote user)
 
 # Global defaults - strict verification
 Host *
@@ -744,12 +849,12 @@ Host kvm-02
 **Pre-populate known_hosts before first use:**
 
 ```bash
-# As the virsh-sandbox user, add each host's key
-sudo -u virsh-sandbox ssh-keyscan -H 10.0.0.11 >> /home/virsh-sandbox/.ssh/known_hosts
-sudo -u virsh-sandbox ssh-keyscan -H 10.0.0.12 >> /home/virsh-sandbox/.ssh/known_hosts
+# As the fluid-remote user, add each host's key
+sudo -u fluid-remote ssh-keyscan -H 10.0.0.11 >> /home/fluid-remote/.ssh/known_hosts
+sudo -u fluid-remote ssh-keyscan -H 10.0.0.12 >> /home/fluid-remote/.ssh/known_hosts
 
 # Verify the fingerprints match your hosts
-sudo -u virsh-sandbox ssh-keygen -lf /home/virsh-sandbox/.ssh/known_hosts
+sudo -u fluid-remote ssh-keygen -lf /home/fluid-remote/.ssh/known_hosts
 ```
 
 **Warning:** Never use `StrictHostKeyChecking=no` in production. This disables host verification and exposes you to MITM attacks.
@@ -757,18 +862,18 @@ sudo -u virsh-sandbox ssh-keygen -lf /home/virsh-sandbox/.ssh/known_hosts
 ##  Documentation
 
 - [Docs from Previous Issues](./docs/) - Documentation on common issues working with the project
-- [Scripts Reference](./virsh-sandbox/scripts/README.md) - Setup and utility scripts
-- [SSH Certificates](./virsh-sandbox/scripts/README.md#ssh-certificate-based-access) - Ephemeral credential system
+- [Scripts Reference](./scripts/README.md) - Setup and utility scripts
+- [SSH Certificates](.scripts/README.md#ssh-certificate-based-access) - Ephemeral credential system
 - [Agent Connection Flow](./docs/agent-connection-flow.md) - How agents connect to sandboxes
 - [Examples](./examples/) - Working examples
 
 ## Development
 
-To run the API locally, first build the `virsh-sandbox` binary:
+To run the API locally, first build the `fluid-remote` binary:
 
 ```bash
 # Build the API binary
-cd virsh-sandbox && make build
+cd fluid-remote && make build
 ```
 
 Then, use `mprocs` to run all the services together for local development.
@@ -782,7 +887,7 @@ cargo install mprocs # Linux
 mprocs
 
 # Or run individual services
-cd virsh-sandbox && make run
+cd fluid-remote && make run
 cd web && bun run dev
 ```
 
@@ -790,13 +895,13 @@ cd web && bun run dev
 
 ```bash
 # Go services
-(cd virsh-sandbox && make test)
+(cd fluid-remote && make test)
 
 # Python SDK
-(cd sdk/virsh-sandbox-py && pytest)
+(cd sdk/fluid-remote-py && pytest)
 
 # All checks
-(cd virsh-sandbox && make check)
+(cd fluid-remote && make check)
 ```
 
 ##  Contributing
@@ -813,9 +918,13 @@ All contributions must maintain the security model and include appropriate tests
 
 MIT License - see [LICENSE](LICENSE) for details.
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=aspectrr/fluid.sh&type=date&legend=top-left)](https://www.star-history.com/#aspectrr/fluid.sh&type=date&legend=top-left)
+
 
 <div align="center">
 
-Made with ❤️
+Made with ❤️ by Collin
 
 </div>

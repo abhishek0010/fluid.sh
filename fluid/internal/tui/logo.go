@@ -106,8 +106,8 @@ func RenderBanner(modelName string, hosts string, provider string, width int) st
 	return result.String()
 }
 
-// RenderStatusBarBottom renders the bottom status bar with model, sandbox, and context usage
-func RenderStatusBarBottom(modelName string, sandboxID string, sandboxHost string, contextUsage float64, width int) string {
+// RenderStatusBarBottom renders the bottom status bar with model, sandbox, mode, and context usage
+func RenderStatusBarBottom(modelName string, sandboxID string, sandboxHost string, contextUsage float64, readOnly bool, width int) string {
 	// Styles
 	dividerStyle := lipgloss.NewStyle().Foreground(mutedColor)
 	modelStyle := lipgloss.NewStyle().Foreground(textColor)
@@ -118,6 +118,14 @@ func RenderStatusBarBottom(modelName string, sandboxID string, sandboxHost strin
 
 	// Model
 	modelPart := modelStyle.Render(modelName)
+
+	// Mode badge
+	var modePart string
+	if readOnly {
+		modePart = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#EAB308")).Render("READ-ONLY")
+	} else {
+		modePart = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#10B981")).Render("EDIT")
+	}
 
 	// Sandbox
 	var sandboxPart string
@@ -145,7 +153,7 @@ func RenderStatusBarBottom(modelName string, sandboxID string, sandboxHost strin
 	contextPart := progressStyle.Render(bar) + " " + dividerStyle.Render(fmt.Sprintf("%d%%", percentage))
 
 	// Combine all parts
-	fullBar := modelPart + divider + sandboxPart + divider + contextPart
+	fullBar := modelPart + divider + modePart + divider + sandboxPart + divider + contextPart
 
 	// Render with full width
 	barStyle := lipgloss.NewStyle().

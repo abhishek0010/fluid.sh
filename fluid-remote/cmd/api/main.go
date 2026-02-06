@@ -25,8 +25,8 @@ import (
 )
 
 // @title fluid-remote API
-// @version 0.0.1-beta
-// @description API for managing virtual machine sandboxes using libvirt
+// @version 0.1.0
+// @description API for managing AI Agent VM sandboxes using libvirt
 // @BasePath /
 
 // @tag.name Sandbox
@@ -60,7 +60,7 @@ func main() {
 	logger := setupLogger(cfg.Logging.Level, cfg.Logging.Format)
 	slog.SetDefault(logger)
 
-	logger.Info("starting virsh-sandbox API",
+	logger.Info("starting fluid-remote API 🌊",
 		"config", *configPath,
 		"addr", cfg.API.Addr,
 		"db", cfg.Database.URL,

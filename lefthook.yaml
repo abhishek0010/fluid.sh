@@ -1,5 +1,5 @@
 pre-commit:
-  parallel: true
+  parallel: false
   commands:
     # Go - fluid CLI
     fmt-fluid:
@@ -7,18 +7,6 @@ pre-commit:
       root: "fluid"
       run: make fmt
       stage_fixed: true
-    vet-fluid:
-      glob: "*.go"
-      root: "fluid"
-      run: make vet
-    test-fluid:
-      glob: "*.go"
-      root: "fluid"
-      run: make test
-    lint-fluid:
-      glob: "*.go"
-      root: "fluid"
-      run: make lint
 
     # Go - fluid-remote API
     fmt-fluid-remote:
@@ -26,39 +14,19 @@ pre-commit:
       root: "fluid-remote"
       run: make fmt
       stage_fixed: true
-    vet-fluid-remote:
-      glob: "*.go"
-      root: "fluid-remote"
-      run: make vet
-    test-fluid-remote:
-      glob: "*.go"
-      root: "fluid-remote"
-      run: make test
-    lint-fluid-remote:
-      glob: "*.go"
-      root: "fluid-remote"
-      run: make lint
 
     # Python SDK
     fmt-sdk-black:
       glob: "*.py"
-      root: "sdk/fluid-sdk-py"
+      root: "sdk/fluid-py"
       run: black .
       stage_fixed: true
+
     fmt-sdk-isort:
       glob: "*.py"
-      root: "sdk/fluid-sdk-py"
+      root: "sdk/fluid-py"
       run: isort .
       stage_fixed: true
-    # lint-sdk:
-    #   glob: "*.py"
-    #   root: "sdk/fluid-sdk-py"
-    #   run: ruff check . --fix
-    #   stage_fixed: true
-    test-sdk:
-      glob: "*.py"
-      root: "sdk/fluid-sdk-py"
-      run: python3 -m pytest test/ -v --tb=short
 
     # Web
     fmt-web:
@@ -66,14 +34,6 @@ pre-commit:
       root: "web"
       run: bun format
       stage_fixed: true
-    lint-web:
-      glob: "*.ts"
-      root: "web"
-      run: bun lint
-    typecheck-web:
-      glob: "*.ts"
-      root: "web"
-      run: "bun typecheck"
 
     # Landing Page
     fmt-landing-page:
@@ -81,15 +41,71 @@ pre-commit:
       root: "landing-page"
       run: bun format
       stage_fixed: true
+
+pre-push:
+  parallel: true
+  commands:
+    # Go - fluid CLI
+    vet-fluid:
+      glob: "*.go"
+      root: "fluid"
+      run: make vet
+
+    test-fluid:
+      glob: "*.go"
+      root: "fluid"
+      run: make test
+
+    lint-fluid:
+      glob: "*.go"
+      root: "fluid"
+      run: make lint
+
+    # Go - fluid-remote API
+    vet-fluid-remote:
+      glob: "*.go"
+      root: "fluid-remote"
+      run: make vet
+
+    test-fluid-remote:
+      glob: "*.go"
+      root: "fluid-remote"
+      run: make test
+
+    lint-fluid-remote:
+      glob: "*.go"
+      root: "fluid-remote"
+      run: make lint
+
+    # Python SDK
+    test-sdk:
+      glob: "*.py"
+      root: "sdk/fluid-sdk-py"
+      run: python3 -m pytest test/ -v --tb=short
+
+    # Web
+    lint-web:
+      glob: "*.ts"
+      root: "web"
+      run: bun lint
+
+    typecheck-web:
+      glob: "*.ts"
+      root: "web"
+      run: bun typecheck
+
+    # Landing Page
     lint-landing-page:
       glob: "*.{ts,tsx,js,jsx,css,astro}"
       root: "landing-page"
       run: bun lint
+
     typecheck-landing-page:
       glob: "*.{ts,tsx,js,jsx,css,astro}"
       root: "landing-page"
-      run: "bun typecheck"
+      run: bun typecheck
+
     check-landing-page:
       glob: "*.{ts,tsx,js,jsx,css,astro}"
       root: "landing-page"
-      run: "bun check"
+      run: bun check

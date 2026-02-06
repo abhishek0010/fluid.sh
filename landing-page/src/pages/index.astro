@@ -1,5 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import FeatureCard from '../components/FeatureCard.astro'
+import { YouTube } from "astro-embed";
 ---
 
 <BaseLayout title="fluid.sh">
@@ -23,7 +25,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 </p>
                 <h2 class="mt-14 mb-4 text-xl text-neutral-200">What does that mean?</h2>
             <p class="mt-4 text-neutral-400">
-                Fluid is a terminal agent that do work on production infrastructure like VMs/K8s cluster/etc. by making sandbox clones of the infrastructure for AI agents to work on, allowing the agents to run commands, test connections, edit files, and then generate Infra-as-code like an Ansible Playbook to be applied on production.
+                Fluid is a terminal agent that helps manage and debug production infrastructure like VMs/K8s cluster by making sandbox clones of the infrastructure for AI agents to work on, allowing the agents to run commands, test connections, edit files, and then generate Infra-as-code like an Ansible Playbook to be applied osn production.
             </p>
             <h2 class="mt-14 mb-4 text-xl text-neutral-200">
                 Why not just use an LLM to generate Infrastructure-as-Code (IaC)?
@@ -37,10 +39,18 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 Why not just provide tools, skills, MCP server to Claude Code?
                 </h2>
                 <p class="mt-4 text-neutral-400">
-                Safety. I didn't want CC to SSH into a prod machine from where it is running locally (real problem!). I wanted to lock down the tools it can run to be only on sandboxes while also giving it autonomy to create sandboxes and not have access to anything else.
+                Safety and observability. I didn't want Claude Code to SSH into a production machine and run bash commands with limited observability/control. Restricting Fluid's tools to only run on sanboxes gives it autonomy to execute commands, write and edit files safely without having to watch every second of it (ofc still good to keep a close eye).
+                It allows agents to spin up sandboxes when needed to debug, make changes etc. that actually can scale to a full worker, not just a sidekick companion.
+                In the future, where you are managing ten agents at a time, this does not make any sense and doesn't scale.
 
-                Fluid gives access to a live output of commands run (it's pretty cool) and does this by ephemeral SSH Certificates. Fluid gives tools for creating IaC and requires human approval for creating sandboxes on hosts with low memory/CPU and for accessing the internet or installing packages.
+                To enhance observability, Fluid gives access to a live output of commands run (it's pretty cool) and secures sandbox connections by ephemeral SSH Certificates. Fluid gives tools for creating IaC and requires human approval for creating sandboxes on hosts with low memory/CPU and for accessing the internet or installing packages.
                 </p>
+
+
+                <h2 class="mt-14 mb-4 text-xl text-neutral-200">Demo</h2>
+                <YouTube id="ZSUBGXNTz34" />
+
+
 
 
                 <!-- <p class="mt-4 text-neutral-400">
@@ -120,51 +130,28 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                     </h2>
 
                     <!-- Feature Cards Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-12">
-                        <!-- Card 1: Sandbox -->
-                        <div class="group p-4 rounded-lg bg-neutral-900/50 border border-neutral-800 hover:border-blue-500/30 transition-all duration-300">
-                            <div class="flex items-start gap-3">
-                                <div class="text-blue-400 font-mono text-lg">[~]</div>
-                                <div>
-                                    <h3 class="text-neutral-200 font-medium mb-1">Sandbox Isolation</h3>
-                                    <p class="text-neutral-500 text-sm">Clone VMs instantly. Test changes in isolation before touching production.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Card 2: Explore -->
-                        <div class="group p-4 rounded-lg bg-neutral-900/50 border border-neutral-800 hover:border-blue-500/30 transition-all duration-300">
-                            <div class="flex items-start gap-3">
-                                <div class="text-blue-400 font-mono text-lg">ls</div>
-                                <div>
-                                    <h3 class="text-neutral-200 font-medium mb-1">Context-Aware</h3>
-                                    <p class="text-neutral-500 text-sm">Fluid explores your host first - OS, packages, CLI tools - then adapts.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Card 3: Audit -->
-                        <div class="group p-4 rounded-lg bg-neutral-900/50 border border-neutral-800 hover:border-blue-500/30 transition-all duration-300">
-                            <div class="flex items-start gap-3">
-                                <div class="text-blue-400 font-mono text-lg">&gt;&gt;&gt;</div>
-                                <div>
-                                    <h3 class="text-neutral-200 font-medium mb-1">Full Audit Trail</h3>
-                                    <p class="text-neutral-500 text-sm">Every command logged. Every change tracked. Review before production.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Card 4: Ansible -->
-                        <div class="group p-4 rounded-lg bg-neutral-900/50 border border-neutral-800 hover:border-blue-500/30 transition-all duration-300">
-                            <div class="flex items-start gap-3">
-                                <div class="text-blue-400 font-mono text-lg">.yaml</div>
-                                <div>
-                                    <h3 class="text-neutral-200 font-medium mb-1">Ansible Playbooks</h3>
-                                    <p class="text-neutral-500 text-sm">Auto-generates playbooks from sandbox work. Reproducible infrastructure.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-12">
+                                            <FeatureCard
+                                                iconString="[~]"
+                                                title={'Sandbox Isolation'}
+                                                description={`Clone VMs instantly. Test changes in isolation before touching production.`}
+                                            />
+                                            <FeatureCard
+                                                iconString="ls"
+                                                title={'Context-Aware'}
+                                                description={`Fluid explores your host first - OS, packages, CLI tools - then adapts.`}
+                                            />
+                                            <FeatureCard
+                                                iconString=">>>"
+                                                title={'Full Audit Trail'}
+                                                description={`Every command logged. Every change tracked. Review before production.`}
+                                            />
+                                            <FeatureCard
+                                                iconString=".yaml"
+                                                title={'Ansible Playbooks'}
+                                                description={`Auto-generates playbooks from sandbox work. Reproducible infrastructure.`}
+                                            />
+                                        </div>
 
                     <!-- Workflow Steps -->
                     <!-- <div class="relative">

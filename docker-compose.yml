@@ -1,22 +1,18 @@
 # Docker Compose for:
 # - API (Go REST service orchestrating KVM/libvirt)
-# - MCP (Go MCP server exposing tools for agents)
-# - Optional Nginx reverse proxy fronting API and MCP
 #
 # Usage:
 #   docker compose up --build
 #
 # Notes:
 # - The API connects to libvirt via SSH (qemu+ssh://user@host/session)
-# - For macOS: requires "Remote Login" enabled in System Settings > Sharing
-# - Base golden images and job overlays are bind-mounted from host directories
 # - SSH key is mounted for libvirt authentication
 
 services:
-  virsh-sandbox:
-    container_name: virsh-sandbox-api
+  fluid-remote:
+    container_name: fluid-remote
     build:
-      context: ./virsh-sandbox
+      context: ./fluid-remote
       dockerfile: Dockerfile
     restart: unless-stopped
     extra_hosts:
@@ -85,19 +81,19 @@ services:
 
   postgres:
     image: postgres:18
-    container_name: virsh-sandbox-postgres
+    container_name: fluid-postgres
     environment:
-      POSTGRES_USER: virsh_sandbox
-      POSTGRES_PASSWORD: virsh_sandbox
-      POSTGRES_DB: virsh_sandbox
+      POSTGRES_USER: fluid
+      POSTGRES_PASSWORD: fluid
+      POSTGRES_DB: fluid
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - virsh-sandbox-postgres-data:/var/lib/postgresql/data
+      - fluid-postgres-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U virsh_sandbox"]
+      test: ["CMD-SHELL", "pg_isready -U fluid"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -106,64 +102,12 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-    container_name: virsh-sandbox-frontend
+    container_name: fluid-web
     restart: unless-stopped
     depends_on:
-      - virsh-sandbox
+      - fluid-remote
     ports:
       - "5173:5173"
 
-  # mcp:
-  #   container_name: virsh-sandbox-mcp
-  #   build:
-  #     context: ../..
-  #     dockerfile: deploy/docker/Dockerfile.mcp
-  #   restart: unless-stopped
-  #   environment:
-  #     - LOG_FORMAT=${LOG_FORMAT:-text}
-  #     - LOG_LEVEL=${LOG_LEVEL:-info}
-  #     - MCP_HTTP_ADDR=${MCP_HTTP_ADDR:-:8090}
-  #   ports:
-  #     - "8090:8090"
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-fsSL", "http://127.0.0.1:8090/healthz"]
-  #     interval: 30s
-  #     timeout: 5s
-  #     retries: 5
-
-  # Optional reverse proxy fronting API (/api) and MCP (/mcp)
-  # Create an nginx.conf next to this compose file or update the volume path.
-  # nginx:
-  #   container_name: virsh-sandbox-nginx
-  #   image: nginx:stable
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - api
-  #     - mcp
-  #   ports:
-  #     - "80:80"
-  #     # - "443:443" # If you add TLS
-  #   volumes:
-  #     # Provide an nginx.conf that routes to:
-  #     #   location /api/ -> http://api:8080/
-  #     #   location /mcp/ -> http://mcp:8090/
-  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
-
 volumes:
-  virsh-sandbox-postgres-data:
-
-# Suggested .env variables (create a .env in this directory to customize):
-#
-# --- SSH-based connection (recommended) ---
-# LIBVIRT_URI=qemu+ssh://username@host.docker.internal/session  # macOS
-# LIBVIRT_URI=qemu+ssh://username@baremetal-host/system         # production
-#
-# --- Linux with local socket (no Docker support) ---
-# LIBVIRT_URI=qemu:///system
-#
-# Common settings:
-# LIBVIRT_NETWORK=default
-# BASE_IMAGES_DIR=/var/lib/libvirt/images/base
-# JOBS_DIR=/var/lib/libvirt/images/jobs
-# LOG_FORMAT=text
-# LOG_LEVEL=info
+  fluid-postgres-data:
