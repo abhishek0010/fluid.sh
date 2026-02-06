@@ -27,7 +27,11 @@ AI agents are ready to do infrastructure work, but they can't touch prod:
 
 - Agents can install packages, configure services, write scripts--autonomously
 - But one mistake on production and you're getting paged at 3 AM to fix it
+<<<<<<< HEAD
 - So we limit agents to chatbots instead of letting them manage and debug on their won
+=======
+- So we limit agents to chatbots instead of letting them manage and debug on their own
+>>>>>>> refs/remotes/origin/main
 
 ## Solution
 
@@ -230,6 +234,13 @@ If you need another way of accessing VMs, open an issue and we will get back to 
 ### Installation
 
 The recommended deployment model is a **single control node** running the `fluid-remote` API and PostgreSQL, with SSH access to one or more libvirt/KVM hosts.
+<<<<<<< HEAD
+=======
+
+### **Warning: It is reccomended to NOT use Docker**
+There is a Docker container and a `docker-compose.yml` file in this repo for `fluid-remote`, purely in the off-chance that you would prefer to host in a container VS install a system process.
+The reason not to use docker is due to the networking issues that arise. `fluid-remote` uses SSH to connect to libvirt and in testing, containers can interfere with connections to hosts. If you must use Docker, please use host-mode for the network, vs Docker's internal network. Please reach out in the [Discord](https://discord.gg/4WGGXJWm8J) if you want support implimenting this.
+>>>>>>> refs/remotes/origin/main
 
 ---
 
@@ -497,6 +508,8 @@ rm -rf /etc/fluid-remote /var/lib/fluid-remote /var/log/fluid-remote
 ```
 
 ## Contributing Quickstart
+
+### **Note: As the lovely contributors that you are, I host two Ubuntu VMs with libvirt installed for testing in the cloud for fluid-remote/fluid. If you would like access to these rather than the Mac workaround, please reach out in [Discord](https://discord.gg/4WGGXJWm8J) and I will add your public keys to them. They reset every hour to prevent long-running malicious processes from staying put.**
 
 ### Prerequisites
 
@@ -907,7 +920,11 @@ cd web && bun run dev
 (cd fluid-remote && make test)
 
 # Python SDK
+<<<<<<< HEAD
 (cd sdk/fluid-remote-py && pytest)
+=======
+(cd sdk/fluid-py && pytest)
+>>>>>>> refs/remotes/origin/main
 
 # All checks
 (cd fluid-remote && make check)
@@ -934,6 +951,10 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
+<<<<<<< HEAD
 Made with ❤️ by Collin
+=======
+Made with ❤️ by Collin & [Contributors](https://github.com/aspectrr/fluid.sh/graphs/contributors)
+>>>>>>> refs/remotes/origin/main
 
 </div>

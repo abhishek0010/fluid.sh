@@ -350,7 +350,11 @@ class Configuration:
             f"Python SDK Debug Report:\n"
             f"OS: {sys.platform}\n"
             f"Python Version: {sys.version}\n"
+<<<<<<< HEAD
             f"Version of the API: 0.0.1-beta\n"
+=======
+            f"Version of the API: 0.1.0\n"
+>>>>>>> refs/remotes/origin/main
             f"SDK Package Version: 0.1.0"
         )
 

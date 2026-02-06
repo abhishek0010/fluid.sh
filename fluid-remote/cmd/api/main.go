@@ -60,7 +60,11 @@ func main() {
 	logger := setupLogger(cfg.Logging.Level, cfg.Logging.Format)
 	slog.SetDefault(logger)
 
+<<<<<<< HEAD
 	logger.Info("starting fluid-remote API 🌊",
+=======
+	logger.Info("starting fluid-remote API",
+>>>>>>> refs/remotes/origin/main
 		"config", *configPath,
 		"addr", cfg.API.Addr,
 		"db", cfg.Database.URL,
