@@ -2,6 +2,3 @@
 root@46.225.62.106
 # Host 2
 root@188.245.154.221
-
-
-# Hey can create a sandbox from test-vm-3 and install an httpd server, make sure it runs and serve a simple HTML page from it and create an Ansible playbook to reproduce it.

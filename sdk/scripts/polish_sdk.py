@@ -22,8 +22,8 @@ def simplify_type_name(verbose_name: str) -> str:
     """Convert verbose TypedDict names to user-friendly aliases.
 
     Examples:
-        VirshSandboxInternalRestCreateSandboxResponseDict -> CreateSandboxResponse
-        VirshSandboxInternalStoreSandboxDict -> Sandbox
+        FluidInternalRestCreateSandboxResponseDict -> CreateSandboxResponse
+        FluidInternalStoreSandboxDict -> Sandbox
         InternalAnsibleJobDict -> AnsibleJob
     """
     name = verbose_name
@@ -34,10 +34,10 @@ def simplify_type_name(verbose_name: str) -> str:
 
     # Remove common prefixes in order of specificity
     prefixes_to_remove = [
-        "VirshSandboxInternalRest",
-        "VirshSandboxInternalStore",
-        "VirshSandboxInternal",
-        "VirshSandbox",
+        "FluidInternalRest",
+        "FluidInternalStore",
+        "FluidInternal",
+        "Fluid",
         "InternalRest",
         "InternalApi",
         "InternalStore",
@@ -81,7 +81,7 @@ def generate_simplified_aliases(models: dict) -> dict[str, str]:
     simple_to_verbose: dict[str, str] = {}  # Track collisions
 
     # Sort by length descending, then alphabetically
-    # This ensures longer/more specific names (like VirshSandbox... or TmuxClient...)
+    # This ensures longer/more specific names (like Fluid... or TmuxClient...)
     # get priority over shorter duplicates
     sorted_names = sorted(filtered_models.keys(), key=lambda x: (-len(x), x))
 
@@ -766,8 +766,8 @@ def generate_wrapper_method(
     return "\n".join(lines)
 
 
-def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
-    """Generate the unified VirshSandbox client wrapper with flattened parameters."""
+def generate_unified_client(sdk_dir: Path, package_name: str = "fluid"):
+    """Generate the unified Fluid client wrapper with flattened parameters."""
 
     use_async = is_async_enabled()
     print(f"Generating {'async' if use_async else 'sync'} client...")
@@ -873,21 +873,21 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     output_lines.append("from __future__ import annotations")
     output_lines.append("")
     output_lines.append('"""')
-    output_lines.append("Unified VirshSandbox Client")
+    output_lines.append("Unified Fluid Client")
     output_lines.append("")
     output_lines.append(
-        "This module provides a unified client wrapper for the virsh-sandbox SDK,"
+        "This module provides a unified client wrapper for the Fluid SDK,"
     )
     output_lines.append(
         "offering a cleaner interface with flattened parameters instead of request objects."
     )
     output_lines.append("")
     output_lines.append("Example:")
-    output_lines.append(f"    from {package_name} import VirshSandbox")
+    output_lines.append(f"    from {package_name} import Fluid")
     output_lines.append("")
     if use_async:
         output_lines.append(
-            '    async with VirshSandbox(host="http://localhost:8080") as client:'
+            '    async with Fluid(host="http://localhost:8080") as client:'
         )
         output_lines.append("        # Create a sandbox with simple parameters")
         output_lines.append(
@@ -898,7 +898,7 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
             '        await client.command.run_command(command="ls", args=["-la"])'
         )
     else:
-        output_lines.append('    client = VirshSandbox(host="http://localhost:8080")')
+        output_lines.append('    client = Fluid(host="http://localhost:8080")')
         output_lines.append("    # Create a sandbox with simple parameters")
         output_lines.append(
             '    client.sandbox.create_sandbox(source_vm_name="ubuntu-base")'
@@ -930,30 +930,30 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
 
     # Main client class
     output_lines.append("")
-    output_lines.append("class VirshSandbox:")
-    output_lines.append('    """Unified client for the virsh-sandbox API.')
+    output_lines.append("class Fluid:")
+    output_lines.append('    """Unified client for the Fluid API.')
     output_lines.append("")
     output_lines.append(
-        "    This class provides a single entry point for all virsh-sandbox API operations."
+        "    This class provides a single entry point for all Fluid API operations."
     )
     output_lines.append(
         "    All methods use flattened parameters instead of request objects."
     )
     output_lines.append("")
     output_lines.append("    Args:")
-    output_lines.append("        host: Base URL for the main virsh-sandbox API")
+    output_lines.append("        host: Base URL for the main Fluid API")
     output_lines.append("        api_key: Optional API key for authentication")
     output_lines.append("        verify_ssl: Whether to verify SSL certificates")
     output_lines.append("")
     output_lines.append("    Example:")
-    output_lines.append(f"        >>> from {package_name} import VirshSandbox")
+    output_lines.append(f"        >>> from {package_name} import Fluid")
     if use_async:
-        output_lines.append("        >>> async with VirshSandbox() as client:")
+        output_lines.append("        >>> async with Fluid(host='http://localhost:8080') as client:")
         output_lines.append(
             '        ...     await client.sandbox.create_sandbox(source_vm_name="base-vm")'
         )
     else:
-        output_lines.append("        >>> client = VirshSandbox()")
+        output_lines.append("        >>> client = Fluid()")
         output_lines.append(
             '        >>> client.sandbox.create_sandbox(source_vm_name="base-vm")'
         )
@@ -970,7 +970,7 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     output_lines.append("        ssl_ca_cert: Optional[str] = None,")
     output_lines.append("        retries: Optional[int] = None,")
     output_lines.append("    ) -> None:")
-    output_lines.append('        """Initialize the VirshSandbox client."""')
+    output_lines.append('        """Initialize the Fluid client."""')
     output_lines.append("        self._main_config = Configuration(")
     output_lines.append("            host=host,")
     output_lines.append(
@@ -1033,7 +1033,7 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
             "            await self._main_api_client.rest_client.close()"
         )
         output_lines.append("")
-        output_lines.append('    async def __aenter__(self) -> "VirshSandbox":')
+        output_lines.append('    async def __aenter__(self) -> "Fluid":')
         output_lines.append('        """Async context manager entry."""')
         output_lines.append("        return self")
         output_lines.append("")
@@ -1050,7 +1050,7 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
         )
         output_lines.append("            self._main_api_client.rest_client.close()")
         output_lines.append("")
-        output_lines.append('    def __enter__(self) -> "VirshSandbox":')
+        output_lines.append('    def __enter__(self) -> "Fluid":')
         output_lines.append('        """Context manager entry."""')
         output_lines.append("        return self")
         output_lines.append("")
@@ -1066,27 +1066,27 @@ def generate_unified_client(sdk_dir: Path, package_name: str = "virsh_sandbox"):
     print(f"Generated unified client: {client_path}")
 
 
-def update_init_file(sdk_dir: Path, package_name: str = "virsh_sandbox"):
-    """Update __init__.py to export VirshSandbox."""
+def update_init_file(sdk_dir: Path, package_name: str = "fluid"):
+    """Update __init__.py to export Fluid."""
     init_path = sdk_dir / "__init__.py"
     content = init_path.read_text()
 
-    if f"from {package_name}.client import VirshSandbox" in content:
-        print("VirshSandbox already exported in __init__.py")
+    if f"from {package_name}.client import Fluid" in content:
+        print("Fluid already exported in __init__.py")
         return
 
-    content = content.replace("__all__ = [", '__all__ = [\n    "VirshSandbox",')
+    content = content.replace("__all__ = [", '__all__ = [\n    "Fluid",')
 
     if "# import apis into sdk package" in content:
         content = content.replace(
             "# import apis into sdk package",
-            f"# import unified client\nfrom {package_name}.client import VirshSandbox as VirshSandbox\n\n# import apis into sdk package",
+            f"# import unified client\nfrom {package_name}.client import Fluid as Fluid\n\n# import apis into sdk package",
         )
     else:
-        content += f"\n# import unified client\nfrom {package_name}.client import VirshSandbox as VirshSandbox\n"
+        content += f"\n# import unified client\nfrom {package_name}.client import Fluid as Fluid\n"
 
     init_path.write_text(content)
-    print("Updated __init__.py to export VirshSandbox")
+    print("Updated __init__.py to export Fluid")
 
 
 def remove_unused_imports(sdk_dir: Path):
@@ -1181,8 +1181,8 @@ def patch_api_client(sdk_dir: Path):
 
 
 def main():
-    sdk_dir = Path("fluid-sdk-py/virsh_sandbox")
-    package_name = "virsh_sandbox"
+    sdk_dir = Path("fluid-py/fluid")
+    package_name = "fluid"
 
     if not sdk_dir.exists():
         print(f"SDK directory not found: {sdk_dir}")

@@ -1,9 +1,9 @@
 openapi: 3.0.1
 info:
   contact: {}
-  description: API for managing virtual machine sandboxes using libvirt
+  description: API for managing AI Agent VM sandboxes using libvirt
   title: fluid-remote API
-  version: 0.0.1-beta
+  version: 0.1.0
 servers:
   - url: /
 tags:
@@ -337,7 +337,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/fluid-remote_internal_ansible.JobRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.JobRequest"
         description: Job creation parameters
         required: true
       responses:
@@ -345,13 +345,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_ansible.JobResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.JobResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Bad Request
       summary: Create Ansible job
       tags:
@@ -373,13 +373,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_ansible.Job"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.Job"
           description: OK
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Get Ansible job
       tags:
@@ -426,7 +426,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.listPlaybooksResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.listPlaybooksResponse"
           description: OK
       summary: List playbooks
       tags:
@@ -438,7 +438,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_ansible.createPlaybookRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.createPlaybookRequest"
         description: Playbook creation parameters
         required: true
       responses:
@@ -446,19 +446,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.createPlaybookResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.createPlaybookResponse"
           description: Created
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Bad Request
         "409":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Conflict
       summary: Create playbook
       tags:
@@ -483,7 +483,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Delete playbook
       tags:
@@ -503,13 +503,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.getPlaybookResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.getPlaybookResponse"
           description: OK
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Get playbook
       tags:
@@ -530,13 +530,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.exportPlaybookResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.exportPlaybookResponse"
           description: OK
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Export playbook
       tags:
@@ -556,7 +556,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_ansible.addTaskRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.addTaskRequest"
         description: Task parameters
         required: true
       responses:
@@ -564,19 +564,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.addTaskResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.addTaskResponse"
           description: Created
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Add task to playbook
       tags:
@@ -607,7 +607,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Delete task
       tags:
@@ -632,7 +632,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_ansible.updateTaskRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.updateTaskRequest"
         description: Task update parameters
         required: true
       responses:
@@ -640,19 +640,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/internal_ansible.updateTaskResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.updateTaskResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Update task
       tags:
@@ -673,7 +673,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/internal_ansible.reorderTasksRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.reorderTasksRequest"
         description: New task order
         required: true
       responses:
@@ -684,13 +684,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_error.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse"
           description: Not Found
       summary: Reorder tasks
       tags:
@@ -705,7 +705,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.healthResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.healthResponse"
           description: OK
       summary: Health check
       tags:
@@ -759,27 +759,28 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.listSandboxesResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.listSandboxesResponse"
           description: OK
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: List sandboxes
       tags:
         - Sandbox
     post:
       description:
-        Creates a new virtual machine sandbox by cloning from an existing
-        VM
+        "Creates a new virtual machine sandbox by cloning from an existing\
+        \ VM. When multi-host is configured, automatically routes to the host containing\
+        \ the source VM."
       operationId: createSandbox
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/fluid-remote_internal_rest.createSandboxRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.createSandboxRequest"
         description: Sandbox creation parameters
         required: true
       responses:
@@ -787,19 +788,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.createSandboxResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.createSandboxResponse"
           description: Created
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Create a new sandbox
       tags:
@@ -821,25 +822,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.destroySandboxResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.destroySandboxResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Destroy sandbox
       tags:
@@ -866,25 +867,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.getSandboxResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.getSandboxResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Get sandbox details
       tags:
@@ -915,25 +916,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.listSandboxCommandsResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.listSandboxCommandsResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: List sandbox commands
       tags:
@@ -953,7 +954,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/fluid-remote_internal_rest.diffRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.diffRequest"
         description: Diff parameters
         required: true
       responses:
@@ -961,19 +962,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.diffResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.diffResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Diff snapshots
       tags:
@@ -1001,13 +1002,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "501":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.generateResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.generateResponse"
           description: Not Implemented
       summary: Generate configuration
       tags:
@@ -1030,25 +1031,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.discoverIPResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.discoverIPResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "404":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Not Found
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Discover sandbox IP
       tags:
@@ -1068,7 +1069,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/fluid-remote_internal_rest.publishRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.publishRequest"
         description: Publish parameters
         required: true
       responses:
@@ -1076,13 +1077,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "501":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.publishResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.publishResponse"
           description: Not Implemented
       summary: Publish changes
       tags:
@@ -1105,7 +1106,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/fluid-remote_internal_rest.runCommandRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.runCommandRequest"
         description: Command execution parameters
         required: true
       responses:
@@ -1113,19 +1114,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.runCommandResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.runCommandResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Run command in sandbox
       tags:
@@ -1146,7 +1147,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/fluid-remote_internal_rest.snapshotRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.snapshotRequest"
         description: Snapshot parameters
         required: true
       responses:
@@ -1154,19 +1155,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.snapshotResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.snapshotResponse"
           description: Created
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Create snapshot
       tags:
@@ -1187,7 +1188,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/fluid-remote_internal_rest.injectSSHKeyRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.injectSSHKeyRequest"
         description: SSH key injection parameters
         required: true
       responses:
@@ -1198,13 +1199,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Inject SSH key into sandbox
       tags:
@@ -1225,7 +1226,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/fluid-remote_internal_rest.startSandboxRequest"
+              $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.startSandboxRequest"
         description: Start parameters
         required: false
       responses:
@@ -1233,19 +1234,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.startSandboxResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.startSandboxResponse"
           description: OK
         "400":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Bad Request
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
       summary: Start sandbox
       tags:
@@ -1288,26 +1289,1205 @@ paths:
         - Sandbox
   /v1/vms:
     get:
-      description: Returns a list of all virtual machines from the libvirt instance
+      description:
+        "Returns a list of host virtual machines from libvirt (excludes\
+        \ sandboxes). When multi-host is configured, aggregates VMs from all hosts."
       operationId: listVirtualMachines
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.listVMsResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.listVMsResponse"
           description: OK
         "500":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/fluid-remote_internal_rest.ErrorResponse"
+                $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse"
           description: Internal Server Error
-      summary: List all VMs
+      summary: List all host VMs
       tags:
         - VMs
 components:
   schemas:
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.Job:
+      example:
+        check: true
+        id: id
+        vm_name: vm_name
+        playbook: playbook
+        status: pending
+      properties:
+        check:
+          type: boolean
+        id:
+          type: string
+        playbook:
+          type: string
+        status:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.JobStatus"
+        vm_name:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.JobRequest:
+      properties:
+        check:
+          type: boolean
+        playbook:
+          type: string
+        vm_name:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.JobResponse:
+      example:
+        job_id: job_id
+        ws_url: ws_url
+      properties:
+        job_id:
+          type: string
+        ws_url:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.JobStatus:
+      enum:
+        - pending
+        - running
+        - finished
+        - failed
+      type: string
+      x-enum-varnames:
+        - JobStatusPending
+        - JobStatusRunning
+        - JobStatusFinished
+        - JobStatusFailed
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.addTaskRequest:
+      properties:
+        module:
+          type: string
+        name:
+          type: string
+        params:
+          properties: {}
+          type: object
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.addTaskResponse:
+      example:
+        task:
+          module: module
+          name: name
+          created_at: created_at
+          id: id
+          position: 0
+          params: "{}"
+          playbook_id: playbook_id
+      properties:
+        task:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.PlaybookTask"
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.createPlaybookRequest:
+      properties:
+        become:
+          type: boolean
+        hosts:
+          type: string
+        name:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.createPlaybookResponse:
+      example:
+        playbook:
+          file_path: file_path
+          updated_at: updated_at
+          hosts: hosts
+          name: name
+          created_at: created_at
+          id: id
+          become: true
+      properties:
+        playbook:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Playbook"
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.exportPlaybookResponse:
+      example:
+        yaml: yaml
+      properties:
+        yaml:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.getPlaybookResponse:
+      example:
+        tasks:
+          - module: module
+            name: name
+            created_at: created_at
+            id: id
+            position: 0
+            params: "{}"
+            playbook_id: playbook_id
+          - module: module
+            name: name
+            created_at: created_at
+            id: id
+            position: 0
+            params: "{}"
+            playbook_id: playbook_id
+        playbook:
+          file_path: file_path
+          updated_at: updated_at
+          hosts: hosts
+          name: name
+          created_at: created_at
+          id: id
+          become: true
+      properties:
+        playbook:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Playbook"
+        tasks:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.PlaybookTask"
+          type: array
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.listPlaybooksResponse:
+      example:
+        total: 0
+        playbooks:
+          - file_path: file_path
+            updated_at: updated_at
+            hosts: hosts
+            name: name
+            created_at: created_at
+            id: id
+            become: true
+          - file_path: file_path
+            updated_at: updated_at
+            hosts: hosts
+            name: name
+            created_at: created_at
+            id: id
+            become: true
+      properties:
+        playbooks:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Playbook"
+          type: array
+        total:
+          type: integer
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.reorderTasksRequest:
+      properties:
+        task_ids:
+          items:
+            type: string
+          type: array
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.updateTaskRequest:
+      properties:
+        module:
+          type: string
+        name:
+          type: string
+        params:
+          properties: {}
+          type: object
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_ansible.updateTaskResponse:
+      example:
+        task:
+          module: module
+          name: name
+          created_at: created_at
+          id: id
+          position: 0
+          params: "{}"
+          playbook_id: playbook_id
+      properties:
+        task:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.PlaybookTask"
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_error.ErrorResponse:
+      example:
+        code: 0
+        details: details
+        error: error
+      properties:
+        code:
+          type: integer
+        details:
+          type: string
+        error:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.ErrorResponse:
+      example:
+        code: 1
+        details: details
+        error: error
+      properties:
+        code:
+          type: integer
+        details:
+          type: string
+        error:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.accessErrorResponse:
+      properties:
+        code:
+          type: integer
+        details:
+          type: string
+        error:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.caPublicKeyResponse:
+      properties:
+        public_key:
+          description: PublicKey is the CA public key in OpenSSH format.
+          type: string
+        usage:
+          description: Usage explains how to use this key.
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.certificateResponse:
+      properties:
+        id:
+          type: string
+        identity:
+          type: string
+        is_expired:
+          type: boolean
+        issued_at:
+          type: string
+        principals:
+          items:
+            type: string
+          type: array
+        sandbox_id:
+          type: string
+        serial_number:
+          type: integer
+        status:
+          type: string
+        ttl_seconds:
+          type: integer
+        user_id:
+          type: string
+        valid_after:
+          type: string
+        valid_before:
+          type: string
+        vm_id:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.createSandboxRequest:
+      properties:
+        agent_id:
+          description: required
+          type: string
+        auto_start:
+          description: "optional; if true, start the VM immediately after creation"
+          type: boolean
+        cpu:
+          description: optional; default from service config if <=0
+          type: integer
+        memory_mb:
+          description: optional; default from service config if <=0
+          type: integer
+        source_vm_name:
+          description: required; name of existing VM in libvirt to clone from
+          type: string
+        ttl_seconds:
+          description: optional; TTL for auto garbage collection
+          type: integer
+        wait_for_ip:
+          description: "optional; if true and auto_start, wait for IP discovery"
+          type: boolean
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.createSandboxResponse:
+      example:
+        sandbox:
+          host_address: host_address
+          agent_id: agent_id
+          ttl_seconds: 0
+          created_at: created_at
+          ip_address: ip_address
+          deleted_at: deleted_at
+          network: network
+          base_image: base_image
+          updated_at: updated_at
+          job_id: job_id
+          sandbox_name: sandbox_name
+          id: id
+          state: CREATED
+          host_name: host_name
+        ip_address: ip_address
+      properties:
+        ip_address:
+          description: populated when auto_start and wait_for_ip are true
+          type: string
+        sandbox:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Sandbox"
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.destroySandboxResponse:
+      example:
+        base_image: base_image
+        ttl_seconds: 0
+        sandbox_name: sandbox_name
+        state: CREATED
+      properties:
+        base_image:
+          type: string
+        sandbox_name:
+          type: string
+        state:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.SandboxState"
+        ttl_seconds:
+          type: integer
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.diffRequest:
+      properties:
+        from_snapshot:
+          description: required
+          type: string
+        to_snapshot:
+          description: required
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.diffResponse:
+      example:
+        diff:
+          to_snapshot: to_snapshot
+          from_snapshot: from_snapshot
+          sandbox_id: sandbox_id
+          created_at: created_at
+          id: id
+          diff_json: "{}"
+      properties:
+        diff:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Diff"
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.discoverIPResponse:
+      example:
+        ip_address: ip_address
+      properties:
+        ip_address:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.generateResponse:
+      example:
+        note: note
+        message: message
+      properties:
+        message:
+          type: string
+        note:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.getSandboxResponse:
+      example:
+        sandbox:
+          host_address: host_address
+          agent_id: agent_id
+          ttl_seconds: 0
+          created_at: created_at
+          ip_address: ip_address
+          deleted_at: deleted_at
+          network: network
+          base_image: base_image
+          updated_at: updated_at
+          job_id: job_id
+          sandbox_name: sandbox_name
+          id: id
+          state: CREATED
+          host_name: host_name
+        commands:
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
+      properties:
+        commands:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Command"
+          type: array
+        sandbox:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Sandbox"
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.healthResponse:
+      example:
+        status: status
+      properties:
+        status:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.hostError:
+      example:
+        host_address: host_address
+        error: error
+        host_name: host_name
+      properties:
+        error:
+          type: string
+        host_address:
+          type: string
+        host_name:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.injectSSHKeyRequest:
+      properties:
+        public_key:
+          description: required
+          type: string
+        username:
+          description: 'required (explicit); typical: "ubuntu" or "centos"'
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.listCertificatesResponse:
+      properties:
+        certificates:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.certificateResponse"
+          type: array
+        total:
+          type: integer
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.listSandboxCommandsResponse:
+      example:
+        total: 0
+        commands:
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
+          - metadata:
+              redacted:
+                key: redacted
+              work_dir: work_dir
+              user: user
+              timeout: 6
+            stdout: stdout
+            env_json: env_json
+            exit_code: 0
+            sandbox_id: sandbox_id
+            started_at: started_at
+            id: id
+            stderr: stderr
+            command: command
+            ended_at: ended_at
+      properties:
+        commands:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Command"
+          type: array
+        total:
+          type: integer
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.listSandboxesResponse:
+      example:
+        total: 6
+        sandboxes:
+          - base_image: base_image
+            agent_id: agent_id
+            updated_at: updated_at
+            job_id: job_id
+            ttl_seconds: 0
+            created_at: created_at
+            sandbox_name: sandbox_name
+            id: id
+            ip_address: ip_address
+            state: state
+            network: network
+          - base_image: base_image
+            agent_id: agent_id
+            updated_at: updated_at
+            job_id: job_id
+            ttl_seconds: 0
+            created_at: created_at
+            sandbox_name: sandbox_name
+            id: id
+            ip_address: ip_address
+            state: state
+            network: network
+      properties:
+        sandboxes:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.sandboxInfo"
+          type: array
+        total:
+          type: integer
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.listSessionsResponse:
+      properties:
+        sessions:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.sessionResponse"
+          type: array
+        total:
+          type: integer
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.listVMsResponse:
+      example:
+        vms:
+          - host_address: host_address
+            name: name
+            state: state
+            persistent: true
+            uuid: uuid
+            disk_path: disk_path
+            host_name: host_name
+          - host_address: host_address
+            name: name
+            state: state
+            persistent: true
+            uuid: uuid
+            disk_path: disk_path
+            host_name: host_name
+        host_errors:
+          - host_address: host_address
+            error: error
+            host_name: host_name
+          - host_address: host_address
+            error: error
+            host_name: host_name
+      properties:
+        host_errors:
+          description: Errors from unreachable hosts (multi-host mode)
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.hostError"
+          type: array
+        vms:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.vmInfo"
+          type: array
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.publishRequest:
+      properties:
+        job_id:
+          description: required
+          type: string
+        message:
+          description: optional commit/PR message
+          type: string
+        reviewers:
+          description: optional
+          items:
+            type: string
+          type: array
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.publishResponse:
+      example:
+        note: note
+        message: message
+      properties:
+        message:
+          type: string
+        note:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.requestAccessRequest:
+      properties:
+        public_key:
+          description: PublicKey is the user's SSH public key in OpenSSH format.
+          type: string
+        sandbox_id:
+          description: SandboxID is the target sandbox.
+          type: string
+        ttl_minutes:
+          description: TTLMinutes is the requested access duration (1-10 minutes).
+          type: integer
+        user_id:
+          description: UserID identifies the requesting user.
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.requestAccessResponse:
+      properties:
+        certificate:
+          description: Certificate is the SSH certificate content (save as key-cert.pub).
+          type: string
+        certificate_id:
+          description: CertificateID is the ID of the issued certificate.
+          type: string
+        connect_command:
+          description: ConnectCommand is an example SSH command for connecting.
+          type: string
+        instructions:
+          description: Instructions provides usage instructions.
+          type: string
+        ssh_port:
+          description: SSHPort is the SSH port (usually 22).
+          type: integer
+        ttl_seconds:
+          description: TTLSeconds is the remaining validity in seconds.
+          type: integer
+        username:
+          description: Username is the SSH username to use.
+          type: string
+        valid_until:
+          description: ValidUntil is when the certificate expires (RFC3339).
+          type: string
+        vm_ip_address:
+          description: VMIPAddress is the IP address of the sandbox VM.
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.revokeCertificateRequest:
+      properties:
+        reason:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.revokeCertificateResponse:
+      properties:
+        id:
+          type: string
+        message:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.runCommandRequest:
+      properties:
+        command:
+          description: required
+          type: string
+        env:
+          additionalProperties:
+            type: string
+          description: optional
+          type: object
+        private_key_path:
+          description:
+            "optional; if empty, uses managed credentials (requires SSH\
+            \ CA)"
+          type: string
+        timeout_sec:
+          description: optional; default from service config
+          type: integer
+        user:
+          description: optional; defaults to "sandbox" when using managed credentials
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.runCommandResponse:
+      example:
+        command:
+          metadata:
+            redacted:
+              key: redacted
+            work_dir: work_dir
+            user: user
+            timeout: 6
+          stdout: stdout
+          env_json: env_json
+          exit_code: 0
+          sandbox_id: sandbox_id
+          started_at: started_at
+          id: id
+          stderr: stderr
+          command: command
+          ended_at: ended_at
+      properties:
+        command:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Command"
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.sandboxInfo:
+      example:
+        base_image: base_image
+        agent_id: agent_id
+        updated_at: updated_at
+        job_id: job_id
+        ttl_seconds: 0
+        created_at: created_at
+        sandbox_name: sandbox_name
+        id: id
+        ip_address: ip_address
+        state: state
+        network: network
+      properties:
+        agent_id:
+          type: string
+        base_image:
+          type: string
+        created_at:
+          type: string
+        id:
+          type: string
+        ip_address:
+          type: string
+        job_id:
+          type: string
+        network:
+          type: string
+        sandbox_name:
+          type: string
+        state:
+          type: string
+        ttl_seconds:
+          type: integer
+        updated_at:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.sessionEndRequest:
+      properties:
+        reason:
+          type: string
+        session_id:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.sessionEndResponse:
+      properties:
+        message:
+          type: string
+        session_id:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.sessionResponse:
+      properties:
+        certificate_id:
+          type: string
+        duration_seconds:
+          type: integer
+        ended_at:
+          type: string
+        id:
+          type: string
+        sandbox_id:
+          type: string
+        source_ip:
+          type: string
+        started_at:
+          type: string
+        status:
+          type: string
+        user_id:
+          type: string
+        vm_id:
+          type: string
+        vm_ip_address:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.sessionStartRequest:
+      properties:
+        certificate_id:
+          type: string
+        source_ip:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.sessionStartResponse:
+      properties:
+        session_id:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.snapshotRequest:
+      properties:
+        external:
+          description: optional; default false (internal snapshot)
+          type: boolean
+        name:
+          description: required
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.snapshotResponse:
+      example:
+        snapshot:
+          ref: ref
+          kind: INTERNAL
+          name: name
+          sandbox_id: sandbox_id
+          created_at: created_at
+          id: id
+          meta_json: meta_json
+      properties:
+        snapshot:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Snapshot"
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.startSandboxRequest:
+      properties:
+        wait_for_ip:
+          description: optional; default false
+          type: boolean
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.startSandboxResponse:
+      example:
+        ip_address: ip_address
+      properties:
+        ip_address:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_rest.vmInfo:
+      example:
+        host_address: host_address
+        name: name
+        state: state
+        persistent: true
+        uuid: uuid
+        disk_path: disk_path
+        host_name: host_name
+      properties:
+        disk_path:
+          type: string
+        host_address:
+          description: Host IP/hostname (multi-host mode)
+          type: string
+        host_name:
+          description: Host display name (multi-host mode)
+          type: string
+        name:
+          type: string
+        persistent:
+          type: boolean
+        state:
+          type: string
+        uuid:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.ChangeDiff:
+      properties:
+        commands_run:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.CommandSummary"
+          type: array
+        files_added:
+          items:
+            type: string
+          type: array
+        files_modified:
+          items:
+            type: string
+          type: array
+        files_removed:
+          items:
+            type: string
+          type: array
+        packages_added:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.PackageInfo"
+          type: array
+        packages_removed:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.PackageInfo"
+          type: array
+        services_changed:
+          items:
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.ServiceChange"
+          type: array
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Command:
+      example:
+        metadata:
+          redacted:
+            key: redacted
+          work_dir: work_dir
+          user: user
+          timeout: 6
+        stdout: stdout
+        env_json: env_json
+        exit_code: 0
+        sandbox_id: sandbox_id
+        started_at: started_at
+        id: id
+        stderr: stderr
+        command: command
+        ended_at: ended_at
+      properties:
+        command:
+          type: string
+        ended_at:
+          type: string
+        env_json:
+          description: JSON-encoded env map
+          type: string
+        exit_code:
+          type: integer
+        id:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.CommandExecRecord"
+        sandbox_id:
+          type: string
+        started_at:
+          type: string
+        stderr:
+          type: string
+        stdout:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.CommandExecRecord:
+      example:
+        redacted:
+          key: redacted
+        work_dir: work_dir
+        user: user
+        timeout: 6
+      properties:
+        redacted:
+          additionalProperties:
+            type: string
+          description: placeholders for secrets redaction
+          type: object
+        timeout:
+          $ref: "#/components/schemas/time.Duration"
+        user:
+          type: string
+        work_dir:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.CommandSummary:
+      properties:
+        at:
+          type: string
+        cmd:
+          type: string
+        exit_code:
+          type: integer
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Diff:
+      example:
+        to_snapshot: to_snapshot
+        from_snapshot: from_snapshot
+        sandbox_id: sandbox_id
+        created_at: created_at
+        id: id
+        diff_json: "{}"
+      properties:
+        created_at:
+          type: string
+        diff_json:
+          allOf:
+            - $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.ChangeDiff"
+          description: JSON-encoded change diff
+          type: object
+        from_snapshot:
+          type: string
+        id:
+          type: string
+        sandbox_id:
+          type: string
+        to_snapshot:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.PackageInfo:
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Playbook:
+      example:
+        file_path: file_path
+        updated_at: updated_at
+        hosts: hosts
+        name: name
+        created_at: created_at
+        id: id
+        become: true
+      properties:
+        become:
+          description: whether to use privilege escalation
+          type: boolean
+        created_at:
+          type: string
+        file_path:
+          description: rendered YAML file path
+          type: string
+        hosts:
+          description: 'target hosts pattern (e.g., "all", "webservers")'
+          type: string
+        id:
+          type: string
+        name:
+          description: unique playbook name
+          type: string
+        updated_at:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.PlaybookTask:
+      example:
+        module: module
+        name: name
+        created_at: created_at
+        id: id
+        position: 0
+        params: "{}"
+        playbook_id: playbook_id
+      properties:
+        created_at:
+          type: string
+        id:
+          type: string
+        module:
+          description: "ansible module (apt, shell, copy, etc.)"
+          type: string
+        name:
+          description: task name/description
+          type: string
+        params:
+          description: module-specific parameters
+          properties: {}
+          type: object
+        playbook_id:
+          type: string
+        position:
+          description: ordering within playbook
+          type: integer
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Sandbox:
+      example:
+        host_address: host_address
+        agent_id: agent_id
+        ttl_seconds: 0
+        created_at: created_at
+        ip_address: ip_address
+        deleted_at: deleted_at
+        network: network
+        base_image: base_image
+        updated_at: updated_at
+        job_id: job_id
+        sandbox_name: sandbox_name
+        id: id
+        state: CREATED
+        host_name: host_name
+      properties:
+        agent_id:
+          description: requesting agent identity
+          type: string
+        base_image:
+          description: base qcow2 filename
+          type: string
+        created_at:
+          description: Metadata
+          type: string
+        deleted_at:
+          type: string
+        host_address:
+          description: IP or hostname of the libvirt host
+          type: string
+        host_name:
+          description:
+            "Multi-host support: identifies which libvirt host this sandbox\
+            \ runs on"
+          type: string
+        id:
+          description: 'e.g., "SBX-0001"'
+          type: string
+        ip_address:
+          description: discovered IP (if any)
+          type: string
+        job_id:
+          description: correlation id for the end-to-end change set
+          type: string
+        network:
+          description: libvirt network name
+          type: string
+        sandbox_name:
+          description: libvirt domain name
+          type: string
+        state:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.SandboxState"
+        ttl_seconds:
+          description: optional TTL for auto GC
+          type: integer
+        updated_at:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.SandboxState:
+      enum:
+        - CREATED
+        - STARTING
+        - RUNNING
+        - STOPPED
+        - DESTROYED
+        - ERROR
+      type: string
+      x-enum-varnames:
+        - SandboxStateCreated
+        - SandboxStateStarting
+        - SandboxStateRunning
+        - SandboxStateStopped
+        - SandboxStateDestroyed
+        - SandboxStateError
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.ServiceChange:
+      properties:
+        enabled:
+          type: boolean
+        name:
+          type: string
+        state:
+          description: started|stopped|restarted|reloaded
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Snapshot:
+      example:
+        ref: ref
+        kind: INTERNAL
+        name: name
+        sandbox_id: sandbox_id
+        created_at: created_at
+        id: id
+        meta_json: meta_json
+      properties:
+        created_at:
+          type: string
+        id:
+          type: string
+        kind:
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.SnapshotKind"
+        meta_json:
+          description: optional JSON metadata
+          type: string
+        name:
+          description: logical name (unique per sandbox)
+          type: string
+        ref:
+          description: |-
+            Ref is a backend-specific reference: for internal snapshots this could be a UUID or name,
+            for external snapshots it could be a file path to the overlay qcow2.
+          type: string
+        sandbox_id:
+          type: string
+      type: object
+    github_com_aspectrr_fluid_sh_fluid-remote_internal_store.SnapshotKind:
+      enum:
+        - INTERNAL
+        - EXTERNAL
+      type: string
+      x-enum-varnames:
+        - SnapshotKindInternal
+        - SnapshotKindExternal
     internal_ansible.Job:
       properties:
         check:
@@ -1360,18 +2540,9 @@ components:
           type: object
       type: object
     internal_ansible.addTaskResponse:
-      example:
-        task:
-          module: module
-          name: name
-          created_at: created_at
-          id: id
-          position: 0
-          params: "{}"
-          playbook_id: playbook_id
       properties:
         task:
-          $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.PlaybookTask"
       type: object
     internal_ansible.createPlaybookRequest:
       properties:
@@ -1383,81 +2554,29 @@ components:
           type: string
       type: object
     internal_ansible.createPlaybookResponse:
-      example:
-        playbook:
-          file_path: file_path
-          updated_at: updated_at
-          hosts: hosts
-          name: name
-          created_at: created_at
-          id: id
-          become: true
       properties:
         playbook:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Playbook"
       type: object
     internal_ansible.exportPlaybookResponse:
-      example:
-        yaml: yaml
       properties:
         yaml:
           type: string
       type: object
     internal_ansible.getPlaybookResponse:
-      example:
-        tasks:
-          - module: module
-            name: name
-            created_at: created_at
-            id: id
-            position: 0
-            params: "{}"
-            playbook_id: playbook_id
-          - module: module
-            name: name
-            created_at: created_at
-            id: id
-            position: 0
-            params: "{}"
-            playbook_id: playbook_id
-        playbook:
-          file_path: file_path
-          updated_at: updated_at
-          hosts: hosts
-          name: name
-          created_at: created_at
-          id: id
-          become: true
       properties:
         playbook:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Playbook"
         tasks:
           items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.PlaybookTask"
           type: array
       type: object
     internal_ansible.listPlaybooksResponse:
-      example:
-        total: 0
-        playbooks:
-          - file_path: file_path
-            updated_at: updated_at
-            hosts: hosts
-            name: name
-            created_at: created_at
-            id: id
-            become: true
-          - file_path: file_path
-            updated_at: updated_at
-            hosts: hosts
-            name: name
-            created_at: created_at
-            id: id
-            become: true
       properties:
         playbooks:
           items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Playbook"
           type: array
         total:
           type: integer
@@ -1480,18 +2599,9 @@ components:
           type: object
       type: object
     internal_ansible.updateTaskResponse:
-      example:
-        task:
-          module: module
-          name: name
-          created_at: created_at
-          id: id
-          position: 0
-          params: "{}"
-          playbook_id: playbook_id
       properties:
         task:
-          $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.PlaybookTask"
       type: object
     internal_rest.ErrorResponse:
       properties:
@@ -1594,9 +2704,6 @@ components:
         ttl_seconds:
           description: optional; TTL for auto garbage collection
           type: integer
-        vm_name:
-          description: optional; generated if empty
-          type: string
         wait_for_ip:
           description: "optional; if true and auto_start, wait for IP discovery"
           type: boolean
@@ -1607,7 +2714,7 @@ components:
           description: populated when auto_start and wait_for_ip are true
           type: string
         sandbox:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Sandbox"
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Sandbox"
       type: object
     internal_rest.destroySandboxResponse:
       properties:
@@ -1616,7 +2723,7 @@ components:
         sandbox_name:
           type: string
         state:
-          $ref: "#/components/schemas/fluid-remote_internal_store.SandboxState"
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.SandboxState"
         ttl_seconds:
           type: integer
       type: object
@@ -1632,7 +2739,7 @@ components:
     internal_rest.diffResponse:
       properties:
         diff:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Diff"
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Diff"
       type: object
     internal_rest.discoverIPResponse:
       properties:
@@ -1650,14 +2757,23 @@ components:
       properties:
         commands:
           items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.Command"
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Command"
           type: array
         sandbox:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Sandbox"
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Sandbox"
       type: object
     internal_rest.healthResponse:
       properties:
         status:
+          type: string
+      type: object
+    internal_rest.hostError:
+      properties:
+        error:
+          type: string
+        host_address:
+          type: string
+        host_name:
           type: string
       type: object
     internal_rest.injectSSHKeyRequest:
@@ -1715,7 +2831,7 @@ components:
       properties:
         commands:
           items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.Command"
+            $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Command"
           type: array
         total:
           type: integer
@@ -1765,6 +2881,11 @@ components:
       type: object
     internal_rest.listVMsResponse:
       properties:
+        host_errors:
+          description: Errors from unreachable hosts (multi-host mode)
+          items:
+            $ref: "#/components/schemas/internal_rest.hostError"
+          type: array
         vms:
           items:
             $ref: "#/components/schemas/internal_rest.vmInfo"
@@ -1886,7 +3007,7 @@ components:
     internal_rest.runCommandResponse:
       properties:
         command:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Command"
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Command"
       type: object
     internal_rest.sandboxInfo:
       properties:
@@ -1993,7 +3114,7 @@ components:
     internal_rest.snapshotResponse:
       properties:
         snapshot:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Snapshot"
+          $ref: "#/components/schemas/github_com_aspectrr_fluid_sh_fluid-remote_internal_store.Snapshot"
       type: object
     internal_rest.startSandboxRequest:
       properties:
@@ -2009,6 +3130,12 @@ components:
     internal_rest.vmInfo:
       properties:
         disk_path:
+          type: string
+        host_address:
+          description: Host IP/hostname (multi-host mode)
+          type: string
+        host_name:
+          description: Host display name (multi-host mode)
           type: string
         name:
           type: string
@@ -2040,1063 +3167,4 @@ components:
         - Second
         - Minute
         - Hour
-    fluid-remote_internal_ansible.Job:
-      example:
-        check: true
-        id: id
-        vm_name: vm_name
-        playbook: playbook
-        status: pending
-      properties:
-        check:
-          type: boolean
-        id:
-          type: string
-        playbook:
-          type: string
-        status:
-          $ref: "#/components/schemas/fluid-remote_internal_ansible.JobStatus"
-        vm_name:
-          type: string
-      type: object
-    fluid-remote_internal_ansible.JobRequest:
-      properties:
-        check:
-          type: boolean
-        playbook:
-          type: string
-        vm_name:
-          type: string
-      type: object
-    fluid-remote_internal_ansible.JobResponse:
-      example:
-        job_id: job_id
-        ws_url: ws_url
-      properties:
-        job_id:
-          type: string
-        ws_url:
-          type: string
-      type: object
-    fluid-remote_internal_ansible.JobStatus:
-      enum:
-        - pending
-        - running
-        - finished
-        - failed
-      type: string
-      x-enum-varnames:
-        - JobStatusPending
-        - JobStatusRunning
-        - JobStatusFinished
-        - JobStatusFailed
-    fluid-remote_internal_ansible.addTaskRequest:
-      properties:
-        module:
-          type: string
-        name:
-          type: string
-        params:
-          properties: {}
-          type: object
-      type: object
-    fluid-remote_internal_ansible.addTaskResponse:
-      properties:
-        task:
-          $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
-      type: object
-    fluid-remote_internal_ansible.createPlaybookRequest:
-      properties:
-        become:
-          type: boolean
-        hosts:
-          type: string
-        name:
-          type: string
-      type: object
-    fluid-remote_internal_ansible.createPlaybookResponse:
-      properties:
-        playbook:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
-      type: object
-    fluid-remote_internal_ansible.exportPlaybookResponse:
-      properties:
-        yaml:
-          type: string
-      type: object
-    fluid-remote_internal_ansible.getPlaybookResponse:
-      properties:
-        playbook:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
-        tasks:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
-          type: array
-      type: object
-    fluid-remote_internal_ansible.listPlaybooksResponse:
-      properties:
-        playbooks:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.Playbook"
-          type: array
-        total:
-          type: integer
-      type: object
-    fluid-remote_internal_ansible.reorderTasksRequest:
-      properties:
-        task_ids:
-          items:
-            type: string
-          type: array
-      type: object
-    fluid-remote_internal_ansible.updateTaskRequest:
-      properties:
-        module:
-          type: string
-        name:
-          type: string
-        params:
-          properties: {}
-          type: object
-      type: object
-    fluid-remote_internal_ansible.updateTaskResponse:
-      properties:
-        task:
-          $ref: "#/components/schemas/fluid-remote_internal_store.PlaybookTask"
-      type: object
-    fluid-remote_internal_error.ErrorResponse:
-      example:
-        code: 0
-        details: details
-        error: error
-      properties:
-        code:
-          type: integer
-        details:
-          type: string
-        error:
-          type: string
-      type: object
-    fluid-remote_internal_rest.ErrorResponse:
-      example:
-        code: 1
-        details: details
-        error: error
-      properties:
-        code:
-          type: integer
-        details:
-          type: string
-        error:
-          type: string
-      type: object
-    fluid-remote_internal_rest.accessErrorResponse:
-      properties:
-        code:
-          type: integer
-        details:
-          type: string
-        error:
-          type: string
-      type: object
-    fluid-remote_internal_rest.caPublicKeyResponse:
-      properties:
-        public_key:
-          description: PublicKey is the CA public key in OpenSSH format.
-          type: string
-        usage:
-          description: Usage explains how to use this key.
-          type: string
-      type: object
-    fluid-remote_internal_rest.certificateResponse:
-      properties:
-        id:
-          type: string
-        identity:
-          type: string
-        is_expired:
-          type: boolean
-        issued_at:
-          type: string
-        principals:
-          items:
-            type: string
-          type: array
-        sandbox_id:
-          type: string
-        serial_number:
-          type: integer
-        status:
-          type: string
-        ttl_seconds:
-          type: integer
-        user_id:
-          type: string
-        valid_after:
-          type: string
-        valid_before:
-          type: string
-        vm_id:
-          type: string
-      type: object
-    fluid-remote_internal_rest.createSandboxRequest:
-      properties:
-        agent_id:
-          description: required
-          type: string
-        auto_start:
-          description: "optional; if true, start the VM immediately after creation"
-          type: boolean
-        cpu:
-          description: optional; default from service config if <=0
-          type: integer
-        memory_mb:
-          description: optional; default from service config if <=0
-          type: integer
-        source_vm_name:
-          description: required; name of existing VM in libvirt to clone from
-          type: string
-        ttl_seconds:
-          description: optional; TTL for auto garbage collection
-          type: integer
-        vm_name:
-          description: optional; generated if empty
-          type: string
-        wait_for_ip:
-          description: "optional; if true and auto_start, wait for IP discovery"
-          type: boolean
-      type: object
-    fluid-remote_internal_rest.createSandboxResponse:
-      example:
-        sandbox:
-          base_image: base_image
-          agent_id: agent_id
-          updated_at: updated_at
-          job_id: job_id
-          ttl_seconds: 0
-          created_at: created_at
-          sandbox_name: sandbox_name
-          id: id
-          ip_address: ip_address
-          state: CREATED
-          deleted_at: deleted_at
-          network: network
-        ip_address: ip_address
-      properties:
-        ip_address:
-          description: populated when auto_start and wait_for_ip are true
-          type: string
-        sandbox:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Sandbox"
-      type: object
-    fluid-remote_internal_rest.destroySandboxResponse:
-      example:
-        base_image: base_image
-        ttl_seconds: 0
-        sandbox_name: sandbox_name
-        state: CREATED
-      properties:
-        base_image:
-          type: string
-        sandbox_name:
-          type: string
-        state:
-          $ref: "#/components/schemas/fluid-remote_internal_store.SandboxState"
-        ttl_seconds:
-          type: integer
-      type: object
-    fluid-remote_internal_rest.diffRequest:
-      properties:
-        from_snapshot:
-          description: required
-          type: string
-        to_snapshot:
-          description: required
-          type: string
-      type: object
-    fluid-remote_internal_rest.diffResponse:
-      example:
-        diff:
-          to_snapshot: to_snapshot
-          from_snapshot: from_snapshot
-          sandbox_id: sandbox_id
-          created_at: created_at
-          id: id
-          diff_json: "{}"
-      properties:
-        diff:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Diff"
-      type: object
-    fluid-remote_internal_rest.discoverIPResponse:
-      example:
-        ip_address: ip_address
-      properties:
-        ip_address:
-          type: string
-      type: object
-    fluid-remote_internal_rest.generateResponse:
-      example:
-        note: note
-        message: message
-      properties:
-        message:
-          type: string
-        note:
-          type: string
-      type: object
-    fluid-remote_internal_rest.getSandboxResponse:
-      example:
-        sandbox:
-          base_image: base_image
-          agent_id: agent_id
-          updated_at: updated_at
-          job_id: job_id
-          ttl_seconds: 0
-          created_at: created_at
-          sandbox_name: sandbox_name
-          id: id
-          ip_address: ip_address
-          state: CREATED
-          deleted_at: deleted_at
-          network: network
-        commands:
-          - metadata:
-              redacted:
-                key: redacted
-              work_dir: work_dir
-              user: user
-              timeout: 6
-            stdout: stdout
-            env_json: env_json
-            exit_code: 0
-            sandbox_id: sandbox_id
-            started_at: started_at
-            id: id
-            stderr: stderr
-            command: command
-            ended_at: ended_at
-          - metadata:
-              redacted:
-                key: redacted
-              work_dir: work_dir
-              user: user
-              timeout: 6
-            stdout: stdout
-            env_json: env_json
-            exit_code: 0
-            sandbox_id: sandbox_id
-            started_at: started_at
-            id: id
-            stderr: stderr
-            command: command
-            ended_at: ended_at
-      properties:
-        commands:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.Command"
-          type: array
-        sandbox:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Sandbox"
-      type: object
-    fluid-remote_internal_rest.healthResponse:
-      example:
-        status: status
-      properties:
-        status:
-          type: string
-      type: object
-    fluid-remote_internal_rest.injectSSHKeyRequest:
-      properties:
-        public_key:
-          description: required
-          type: string
-        username:
-          description: 'required (explicit); typical: "ubuntu" or "centos"'
-          type: string
-      type: object
-    fluid-remote_internal_rest.listCertificatesResponse:
-      properties:
-        certificates:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_rest.certificateResponse"
-          type: array
-        total:
-          type: integer
-      type: object
-    fluid-remote_internal_rest.listSandboxCommandsResponse:
-      example:
-        total: 0
-        commands:
-          - metadata:
-              redacted:
-                key: redacted
-              work_dir: work_dir
-              user: user
-              timeout: 6
-            stdout: stdout
-            env_json: env_json
-            exit_code: 0
-            sandbox_id: sandbox_id
-            started_at: started_at
-            id: id
-            stderr: stderr
-            command: command
-            ended_at: ended_at
-          - metadata:
-              redacted:
-                key: redacted
-              work_dir: work_dir
-              user: user
-              timeout: 6
-            stdout: stdout
-            env_json: env_json
-            exit_code: 0
-            sandbox_id: sandbox_id
-            started_at: started_at
-            id: id
-            stderr: stderr
-            command: command
-            ended_at: ended_at
-      properties:
-        commands:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.Command"
-          type: array
-        total:
-          type: integer
-      type: object
-    fluid-remote_internal_rest.listSandboxesResponse:
-      example:
-        total: 6
-        sandboxes:
-          - base_image: base_image
-            agent_id: agent_id
-            updated_at: updated_at
-            job_id: job_id
-            ttl_seconds: 0
-            created_at: created_at
-            sandbox_name: sandbox_name
-            id: id
-            ip_address: ip_address
-            state: state
-            network: network
-          - base_image: base_image
-            agent_id: agent_id
-            updated_at: updated_at
-            job_id: job_id
-            ttl_seconds: 0
-            created_at: created_at
-            sandbox_name: sandbox_name
-            id: id
-            ip_address: ip_address
-            state: state
-            network: network
-      properties:
-        sandboxes:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_rest.sandboxInfo"
-          type: array
-        total:
-          type: integer
-      type: object
-    fluid-remote_internal_rest.listSessionsResponse:
-      properties:
-        sessions:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_rest.sessionResponse"
-          type: array
-        total:
-          type: integer
-      type: object
-    fluid-remote_internal_rest.listVMsResponse:
-      example:
-        vms:
-          - name: name
-            state: state
-            persistent: true
-            uuid: uuid
-            disk_path: disk_path
-          - name: name
-            state: state
-            persistent: true
-            uuid: uuid
-            disk_path: disk_path
-      properties:
-        vms:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_rest.vmInfo"
-          type: array
-      type: object
-    fluid-remote_internal_rest.publishRequest:
-      properties:
-        job_id:
-          description: required
-          type: string
-        message:
-          description: optional commit/PR message
-          type: string
-        reviewers:
-          description: optional
-          items:
-            type: string
-          type: array
-      type: object
-    fluid-remote_internal_rest.publishResponse:
-      example:
-        note: note
-        message: message
-      properties:
-        message:
-          type: string
-        note:
-          type: string
-      type: object
-    fluid-remote_internal_rest.requestAccessRequest:
-      properties:
-        public_key:
-          description: PublicKey is the user's SSH public key in OpenSSH format.
-          type: string
-        sandbox_id:
-          description: SandboxID is the target sandbox.
-          type: string
-        ttl_minutes:
-          description: TTLMinutes is the requested access duration (1-10 minutes).
-          type: integer
-        user_id:
-          description: UserID identifies the requesting user.
-          type: string
-      type: object
-    fluid-remote_internal_rest.requestAccessResponse:
-      properties:
-        certificate:
-          description: Certificate is the SSH certificate content (save as key-cert.pub).
-          type: string
-        certificate_id:
-          description: CertificateID is the ID of the issued certificate.
-          type: string
-        connect_command:
-          description: ConnectCommand is an example SSH command for connecting.
-          type: string
-        instructions:
-          description: Instructions provides usage instructions.
-          type: string
-        ssh_port:
-          description: SSHPort is the SSH port (usually 22).
-          type: integer
-        ttl_seconds:
-          description: TTLSeconds is the remaining validity in seconds.
-          type: integer
-        username:
-          description: Username is the SSH username to use.
-          type: string
-        valid_until:
-          description: ValidUntil is when the certificate expires (RFC3339).
-          type: string
-        vm_ip_address:
-          description: VMIPAddress is the IP address of the sandbox VM.
-          type: string
-      type: object
-    fluid-remote_internal_rest.revokeCertificateRequest:
-      properties:
-        reason:
-          type: string
-      type: object
-    fluid-remote_internal_rest.revokeCertificateResponse:
-      properties:
-        id:
-          type: string
-        message:
-          type: string
-      type: object
-    fluid-remote_internal_rest.runCommandRequest:
-      properties:
-        command:
-          description: required
-          type: string
-        env:
-          additionalProperties:
-            type: string
-          description: optional
-          type: object
-        private_key_path:
-          description:
-            "optional; if empty, uses managed credentials (requires SSH\
-            \ CA)"
-          type: string
-        timeout_sec:
-          description: optional; default from service config
-          type: integer
-        user:
-          description: optional; defaults to "sandbox" when using managed credentials
-          type: string
-      type: object
-    fluid-remote_internal_rest.runCommandResponse:
-      example:
-        command:
-          metadata:
-            redacted:
-              key: redacted
-            work_dir: work_dir
-            user: user
-            timeout: 6
-          stdout: stdout
-          env_json: env_json
-          exit_code: 0
-          sandbox_id: sandbox_id
-          started_at: started_at
-          id: id
-          stderr: stderr
-          command: command
-          ended_at: ended_at
-      properties:
-        command:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Command"
-      type: object
-    fluid-remote_internal_rest.sandboxInfo:
-      example:
-        base_image: base_image
-        agent_id: agent_id
-        updated_at: updated_at
-        job_id: job_id
-        ttl_seconds: 0
-        created_at: created_at
-        sandbox_name: sandbox_name
-        id: id
-        ip_address: ip_address
-        state: state
-        network: network
-      properties:
-        agent_id:
-          type: string
-        base_image:
-          type: string
-        created_at:
-          type: string
-        id:
-          type: string
-        ip_address:
-          type: string
-        job_id:
-          type: string
-        network:
-          type: string
-        sandbox_name:
-          type: string
-        state:
-          type: string
-        ttl_seconds:
-          type: integer
-        updated_at:
-          type: string
-      type: object
-    fluid-remote_internal_rest.sessionEndRequest:
-      properties:
-        reason:
-          type: string
-        session_id:
-          type: string
-      type: object
-    fluid-remote_internal_rest.sessionEndResponse:
-      properties:
-        message:
-          type: string
-        session_id:
-          type: string
-      type: object
-    fluid-remote_internal_rest.sessionResponse:
-      properties:
-        certificate_id:
-          type: string
-        duration_seconds:
-          type: integer
-        ended_at:
-          type: string
-        id:
-          type: string
-        sandbox_id:
-          type: string
-        source_ip:
-          type: string
-        started_at:
-          type: string
-        status:
-          type: string
-        user_id:
-          type: string
-        vm_id:
-          type: string
-        vm_ip_address:
-          type: string
-      type: object
-    fluid-remote_internal_rest.sessionStartRequest:
-      properties:
-        certificate_id:
-          type: string
-        source_ip:
-          type: string
-      type: object
-    fluid-remote_internal_rest.sessionStartResponse:
-      properties:
-        session_id:
-          type: string
-      type: object
-    fluid-remote_internal_rest.snapshotRequest:
-      properties:
-        external:
-          description: optional; default false (internal snapshot)
-          type: boolean
-        name:
-          description: required
-          type: string
-      type: object
-    fluid-remote_internal_rest.snapshotResponse:
-      example:
-        snapshot:
-          ref: ref
-          kind: INTERNAL
-          name: name
-          sandbox_id: sandbox_id
-          created_at: created_at
-          id: id
-          meta_json: meta_json
-      properties:
-        snapshot:
-          $ref: "#/components/schemas/fluid-remote_internal_store.Snapshot"
-      type: object
-    fluid-remote_internal_rest.startSandboxRequest:
-      properties:
-        wait_for_ip:
-          description: optional; default false
-          type: boolean
-      type: object
-    fluid-remote_internal_rest.startSandboxResponse:
-      example:
-        ip_address: ip_address
-      properties:
-        ip_address:
-          type: string
-      type: object
-    fluid-remote_internal_rest.vmInfo:
-      example:
-        name: name
-        state: state
-        persistent: true
-        uuid: uuid
-        disk_path: disk_path
-      properties:
-        disk_path:
-          type: string
-        name:
-          type: string
-        persistent:
-          type: boolean
-        state:
-          type: string
-        uuid:
-          type: string
-      type: object
-    fluid-remote_internal_store.ChangeDiff:
-      properties:
-        commands_run:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.CommandSummary"
-          type: array
-        files_added:
-          items:
-            type: string
-          type: array
-        files_modified:
-          items:
-            type: string
-          type: array
-        files_removed:
-          items:
-            type: string
-          type: array
-        packages_added:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.PackageInfo"
-          type: array
-        packages_removed:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.PackageInfo"
-          type: array
-        services_changed:
-          items:
-            $ref: "#/components/schemas/fluid-remote_internal_store.ServiceChange"
-          type: array
-      type: object
-    fluid-remote_internal_store.Command:
-      example:
-        metadata:
-          redacted:
-            key: redacted
-          work_dir: work_dir
-          user: user
-          timeout: 6
-        stdout: stdout
-        env_json: env_json
-        exit_code: 0
-        sandbox_id: sandbox_id
-        started_at: started_at
-        id: id
-        stderr: stderr
-        command: command
-        ended_at: ended_at
-      properties:
-        command:
-          type: string
-        ended_at:
-          type: string
-        env_json:
-          description: JSON-encoded env map
-          type: string
-        exit_code:
-          type: integer
-        id:
-          type: string
-        metadata:
-          $ref: "#/components/schemas/fluid-remote_internal_store.CommandExecRecord"
-        sandbox_id:
-          type: string
-        started_at:
-          type: string
-        stderr:
-          type: string
-        stdout:
-          type: string
-      type: object
-    fluid-remote_internal_store.CommandExecRecord:
-      example:
-        redacted:
-          key: redacted
-        work_dir: work_dir
-        user: user
-        timeout: 6
-      properties:
-        redacted:
-          additionalProperties:
-            type: string
-          description: placeholders for secrets redaction
-          type: object
-        timeout:
-          $ref: "#/components/schemas/time.Duration"
-        user:
-          type: string
-        work_dir:
-          type: string
-      type: object
-    fluid-remote_internal_store.CommandSummary:
-      properties:
-        at:
-          type: string
-        cmd:
-          type: string
-        exit_code:
-          type: integer
-      type: object
-    fluid-remote_internal_store.Diff:
-      example:
-        to_snapshot: to_snapshot
-        from_snapshot: from_snapshot
-        sandbox_id: sandbox_id
-        created_at: created_at
-        id: id
-        diff_json: "{}"
-      properties:
-        created_at:
-          type: string
-        diff_json:
-          allOf:
-            - $ref: "#/components/schemas/fluid-remote_internal_store.ChangeDiff"
-          description: JSON-encoded change diff
-          type: object
-        from_snapshot:
-          type: string
-        id:
-          type: string
-        sandbox_id:
-          type: string
-        to_snapshot:
-          type: string
-      type: object
-    fluid-remote_internal_store.PackageInfo:
-      properties:
-        name:
-          type: string
-        version:
-          type: string
-      type: object
-    fluid-remote_internal_store.Playbook:
-      example:
-        file_path: file_path
-        updated_at: updated_at
-        hosts: hosts
-        name: name
-        created_at: created_at
-        id: id
-        become: true
-      properties:
-        become:
-          description: whether to use privilege escalation
-          type: boolean
-        created_at:
-          type: string
-        file_path:
-          description: rendered YAML file path
-          type: string
-        hosts:
-          description: 'target hosts pattern (e.g., "all", "webservers")'
-          type: string
-        id:
-          type: string
-        name:
-          description: unique playbook name
-          type: string
-        updated_at:
-          type: string
-      type: object
-    fluid-remote_internal_store.PlaybookTask:
-      example:
-        module: module
-        name: name
-        created_at: created_at
-        id: id
-        position: 0
-        params: "{}"
-        playbook_id: playbook_id
-      properties:
-        created_at:
-          type: string
-        id:
-          type: string
-        module:
-          description: "ansible module (apt, shell, copy, etc.)"
-          type: string
-        name:
-          description: task name/description
-          type: string
-        params:
-          description: module-specific parameters
-          properties: {}
-          type: object
-        playbook_id:
-          type: string
-        position:
-          description: ordering within playbook
-          type: integer
-      type: object
-    fluid-remote_internal_store.Sandbox:
-      example:
-        base_image: base_image
-        agent_id: agent_id
-        updated_at: updated_at
-        job_id: job_id
-        ttl_seconds: 0
-        created_at: created_at
-        sandbox_name: sandbox_name
-        id: id
-        ip_address: ip_address
-        state: CREATED
-        deleted_at: deleted_at
-        network: network
-      properties:
-        agent_id:
-          description: requesting agent identity
-          type: string
-        base_image:
-          description: base qcow2 filename
-          type: string
-        created_at:
-          description: Metadata
-          type: string
-        deleted_at:
-          type: string
-        id:
-          description: 'e.g., "SBX-0001"'
-          type: string
-        ip_address:
-          description: discovered IP (if any)
-          type: string
-        job_id:
-          description: correlation id for the end-to-end change set
-          type: string
-        network:
-          description: libvirt network name
-          type: string
-        sandbox_name:
-          description: libvirt domain name
-          type: string
-        state:
-          $ref: "#/components/schemas/fluid-remote_internal_store.SandboxState"
-        ttl_seconds:
-          description: optional TTL for auto GC
-          type: integer
-        updated_at:
-          type: string
-      type: object
-    fluid-remote_internal_store.SandboxState:
-      enum:
-        - CREATED
-        - STARTING
-        - RUNNING
-        - STOPPED
-        - DESTROYED
-        - ERROR
-      type: string
-      x-enum-varnames:
-        - SandboxStateCreated
-        - SandboxStateStarting
-        - SandboxStateRunning
-        - SandboxStateStopped
-        - SandboxStateDestroyed
-        - SandboxStateError
-    fluid-remote_internal_store.ServiceChange:
-      properties:
-        enabled:
-          type: boolean
-        name:
-          type: string
-        state:
-          description: started|stopped|restarted|reloaded
-          type: string
-      type: object
-    fluid-remote_internal_store.Snapshot:
-      example:
-        ref: ref
-        kind: INTERNAL
-        name: name
-        sandbox_id: sandbox_id
-        created_at: created_at
-        id: id
-        meta_json: meta_json
-      properties:
-        created_at:
-          type: string
-        id:
-          type: string
-        kind:
-          $ref: "#/components/schemas/fluid-remote_internal_store.SnapshotKind"
-        meta_json:
-          description: optional JSON metadata
-          type: string
-        name:
-          description: logical name (unique per sandbox)
-          type: string
-        ref:
-          description: |-
-            Ref is a backend-specific reference: for internal snapshots this could be a UUID or name,
-            for external snapshots it could be a file path to the overlay qcow2.
-          type: string
-        sandbox_id:
-          type: string
-      type: object
-    fluid-remote_internal_store.SnapshotKind:
-      enum:
-        - INTERNAL
-        - EXTERNAL
-      type: string
-      x-enum-varnames:
-        - SnapshotKindInternal
-        - SnapshotKindExternal
 x-original-swagger-version: "2.0"

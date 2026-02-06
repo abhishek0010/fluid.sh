@@ -64,6 +64,9 @@ type FluidAgent struct {
 
 	// Pending approval for network access
 	pendingNetworkApproval *PendingNetworkApproval
+
+	// Read-only mode: only query tools are available to the LLM
+	readOnly bool
 }
 
 // PendingNetworkApproval represents a network access request waiting for approval
@@ -103,6 +106,11 @@ func NewFluidAgent(cfg *config.Config, store store.Store, vmService *vm.Service,
 // SetStatusCallback sets the callback function for status updates
 func (a *FluidAgent) SetStatusCallback(callback func(tea.Msg)) {
 	a.statusCallback = callback
+}
+
+// SetReadOnly toggles read-only mode on the agent
+func (a *FluidAgent) SetReadOnly(ro bool) {
+	a.readOnly = ro
 }
 
 // sendStatus sends a status message through the callback if set
@@ -222,12 +230,19 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 
 		// LLM-driven execution loop
 		for {
+			systemPrompt := a.cfg.AIAgent.DefaultSystem
+			tools := llm.GetTools()
+			if a.readOnly {
+				tools = llm.GetReadOnlyTools()
+				systemPrompt += "\n\nYou are in READ-ONLY mode. You can only query and observe - you cannot create, modify, or destroy any resources.  Available tools: list_sandboxes, get_sandbox, list_vms, read_file, list_playbooks, get_playbook."
+			}
+
 			req := llm.ChatRequest{
 				Messages: append([]llm.Message{{
 					Role:    llm.RoleSystem,
-					Content: a.cfg.AIAgent.DefaultSystem,
+					Content: systemPrompt,
 				}}, a.history...),
-				Tools: llm.GetTools(),
+				Tools: tools,
 			}
 
 			if a.telemetry != nil {

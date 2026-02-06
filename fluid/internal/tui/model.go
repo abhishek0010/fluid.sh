@@ -88,6 +88,7 @@ type Model struct {
 
 	// Agent
 	agentRunner AgentRunner
+	readOnly    bool
 
 	// Playbooks browser
 	playbooksModel PlaybooksModel
@@ -147,6 +148,8 @@ type AgentRunner interface {
 	Reset()
 	// SetStatusCallback sets a callback for status updates during execution
 	SetStatusCallback(func(tea.Msg))
+	// SetReadOnly toggles read-only mode (only query tools available)
+	SetReadOnly(bool)
 }
 
 // NewModel creates a new TUI model
@@ -435,6 +438,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch keyStr {
+		case "shift+tab":
+			m.readOnly = !m.readOnly
+			if m.agentRunner != nil {
+				m.agentRunner.SetReadOnly(m.readOnly)
+			}
+			mode := "edit"
+			if m.readOnly {
+				mode = "read-only"
+			}
+			m.addSystemMessage(fmt.Sprintf("Switched to %s mode.", mode))
+			m.updateViewportContent(false)
+			return m, nil
 		case "ctrl+c":
 			// If already in cleanup, allow force quit
 			if m.inCleanup {
@@ -1051,7 +1066,7 @@ func (m Model) View() string {
 	if m.cfg != nil && m.cfg.AIAgent.Model != "" {
 		modelName = m.cfg.AIAgent.Model
 	}
-	statusBar := RenderStatusBarBottom(modelName, sandboxID, sandboxHost, contextUsage, m.width)
+	statusBar := RenderStatusBarBottom(modelName, sandboxID, sandboxHost, contextUsage, m.readOnly, m.width)
 	statusHeight := lipgloss.Height(statusBar)
 
 	// Calculate viewport height to fill remaining space

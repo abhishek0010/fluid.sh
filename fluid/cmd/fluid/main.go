@@ -224,7 +224,7 @@ libvirt:
 
 vm:
   default_vcpus: 2
-  default_memory_mb: 2048
+  default_memory_mb: 4096
   command_timeout: 5m
   ip_discovery_timeout: 2m
 
@@ -283,7 +283,7 @@ libvirt:
 
 vm:
   default_vcpus: 2
-  default_memory_mb: 2048
+  default_memory_mb: 4096
   command_timeout: 5m
   ip_discovery_timeout: 2m
 

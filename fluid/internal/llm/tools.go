@@ -1,5 +1,26 @@
 package llm
 
+// readOnlyTools is the set of tool names allowed in read-only mode.
+var readOnlyTools = map[string]bool{
+	"list_sandboxes": true,
+	"get_sandbox":    true,
+	"list_vms":       true,
+	"read_file":      true,
+	"list_playbooks": true,
+	"get_playbook":   true,
+}
+
+// GetReadOnlyTools returns only the tools that are safe for read-only mode.
+func GetReadOnlyTools() []Tool {
+	var tools []Tool
+	for _, t := range GetTools() {
+		if readOnlyTools[t.Function.Name] {
+			tools = append(tools, t)
+		}
+	}
+	return tools
+}
+
 // GetTools returns the list of tools available to the LLM.
 func GetTools() []Tool {
 	return []Tool{

@@ -30,7 +30,7 @@ bash scripts/generate.sh
 
 # Build
 echo -e "${BLUE}Building package...${NC}"
-cd virsh-sandbox-py
+cd fluid-py
 python3 -m build
 
 # Check
