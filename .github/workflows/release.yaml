@@ -4,11 +4,22 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+
 permissions:
   contents: write
+
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          - runner: ubuntu-24.04-arm
+            goos: linux
+            goarch: arm64
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,32 +31,17 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.24"
-          cache-dependency-path: fluid/go.sum
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Install Build Dependencies
+      - name: Install Libvirt
         run: |
-          sudo dpkg --add-architecture arm64
           sudo apt-get update
-          sudo apt-get install -y \
-            gcc-aarch64-linux-gnu \
-            g++-aarch64-linux-gnu \
-            libvirt-dev:amd64 \
-            libvirt-dev:arm64 \
-            qemu-user-static
+          sudo apt-get install -y libvirt-dev
 
       - name: Import GPG private key
         run: |
           mkdir -p ~/.gnupg
           chmod 700 ~/.gnupg
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-          echo "=== Secret keys ==="
-          gpg --list-secret-keys --keyid-format LONG
 
       - name: Configure GPG for CI
         run: |
@@ -55,28 +51,40 @@ jobs:
           gpgconf --kill gpg-agent
           gpgconf --launch gpg-agent
 
-      - name: Debug GPG Setup
-        run: |
-          echo "=== Listing secret keys ==="
-          gpg --list-secret-keys --keyid-format LONG
-          echo ""
-          echo "=== GPG_FINGERPRINT value ==="
-          echo "${{ secrets.GPG_FINGERPRINT }}"
-          echo ""
-          echo "=== Testing signature with fingerprint ==="
-          echo "test" | gpg --batch --yes --armor --pinentry-mode loopback \
-            --passphrase="${{ secrets.GPG_PASSPHRASE }}" \
-            --local-user="${{ secrets.GPG_FINGERPRINT }}" \
-            --detach-sign || echo "FAILED"
-
-      - name: Run GoReleaser
+      - name: Run GoReleaser (single target)
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean
+          args: build --single-target --snapshot
         env:
-          GPG_FINGERPRINT: ${{ secrets.GPG_FINGERPRINT }}
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          CGO_ENABLED: "1"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.goarch }}
+          path: dist/
+
+  release:
+    needs: goreleaser
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            binaries-amd64/**/*
+            binaries-arm64/**/*
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
