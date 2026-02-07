@@ -1,13 +1,10 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
-
 project_name: fluid
-
 before:
   hooks:
     - sh -c "cd fluid-remote && go mod tidy"
     - sh -c "cd fluid && go mod tidy"
-
 builds:
   - id: fluid-remote
     dir: fluid-remote
@@ -29,7 +26,18 @@ builds:
       - -X main.version={{ .Version }}
       - -X main.commit={{ .Commit }}
       - -X main.date={{ .Date }}
-
+    overrides:
+      - goos: linux
+        goarch: arm64
+        env:
+          - CC=aarch64-linux-gnu-gcc
+          - CXX=aarch64-linux-gnu-g++
+          - PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
+      - goos: linux
+        goarch: amd64
+        env:
+          - CC=gcc
+          - CXX=g++
   - id: fluid
     dir: fluid
     main: ./cmd/fluid
@@ -50,7 +58,18 @@ builds:
       - -X main.version={{ .Version }}
       - -X main.commit={{ .Commit }}
       - -X main.date={{ .Date }}
-
+    overrides:
+      - goos: linux
+        goarch: arm64
+        env:
+          - CC=aarch64-linux-gnu-gcc
+          - CXX=aarch64-linux-gnu-g++
+          - PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
+      - goos: linux
+        goarch: amd64
+        env:
+          - CC=gcc
+          - CXX=g++
 archives:
   - id: fluid-remote
     builds:
@@ -60,7 +79,6 @@ archives:
     files:
       - README.md
       - LICENSE
-
   - id: fluid
     builds:
       - fluid
@@ -69,11 +87,9 @@ archives:
     files:
       - README.md
       - LICENSE
-
 checksum:
   name_template: checksums.txt
   algorithm: sha256
-
 signs:
   # Sign binaries
   - id: binary
@@ -91,7 +107,6 @@ signs:
       - "${signature}"
       - "--detach-sign"
       - "${artifact}"
-
   # Sign checksums
   - id: checksum
     cmd: gpg
@@ -108,14 +123,12 @@ signs:
       - "${signature}"
       - "--detach-sign"
       - "${artifact}"
-
 changelog:
   sort: asc
   filters:
     exclude:
       - "^docs:"
       - "^test:"
-
 nfpms:
   - id: fluid-remote
     package_name: fluid-remote
@@ -133,7 +146,6 @@ nfpms:
     contents:
       - src: fluid-remote
         dst: /usr/local/bin/fluid-remote
-
   - id: fluid
     package_name: fluid
     vendor: "Fluid.sh"
@@ -147,7 +159,6 @@ nfpms:
     contents:
       - src: fluid
         dst: /usr/local/bin/fluid
-
 release:
   github:
     owner: aspectrr
