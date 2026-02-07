@@ -4,22 +4,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   goreleaser:
-    strategy:
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            goos: linux
-            goarch: amd64
-          - runner: ubuntu-24.04-arm
-            goos: linux
-            goarch: arm64
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,64 +16,46 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.24"
-
-      - name: Install Libvirt
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libvirt-dev
-
-      - name: Import GPG private key
-        run: |
-          mkdir -p ~/.gnupg
-          chmod 700 ~/.gnupg
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-
-      - name: Configure GPG for CI
-        run: |
-          echo "use-agent" >> ~/.gnupg/gpg.conf
-          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
-          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-          gpgconf --kill gpg-agent
-          gpgconf --launch gpg-agent
-
-      - name: Run GoReleaser (single target)
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: latest
-          args: build --single-target --snapshot
+      - name: Build and Release
         env:
-          CGO_ENABLED: "1"
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: binaries-${{ matrix.goarch }}
-          path: dist/
-
-  release:
-    needs: goreleaser
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            binaries-amd64/**/*
-            binaries-arm64/**/*
-        env:
+          GPG_FINGERPRINT: ${{ secrets.GPG_FINGERPRINT }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -e GPG_FINGERPRINT \
+            -e GPG_PASSPHRASE \
+            -e GPG_PRIVATE_KEY \
+            -e GITHUB_TOKEN \
+            -w /workspace \
+            golang:1.24-bookworm \
+            bash -c '
+              set -e
+
+              # Install cross-compilation tools and GPG
+              dpkg --add-architecture arm64
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                gcc gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+                libvirt-dev libvirt-dev:arm64 \
+                pkg-config gnupg git
+
+              # Mark workspace as safe for git
+              git config --global --add safe.directory /workspace
+
+              # Import and configure GPG
+              mkdir -p ~/.gnupg && chmod 700 ~/.gnupg
+              if [ -n "$GPG_PRIVATE_KEY" ]; then
+                echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+              fi
+              echo "use-agent" >> ~/.gnupg/gpg.conf
+              echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+              echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+              gpgconf --kill gpg-agent
+              gpgconf --launch gpg-agent
+
+              # Install and run goreleaser
+              curl -sfL https://goreleaser.com/static/run | bash -s -- release --clean
+            '

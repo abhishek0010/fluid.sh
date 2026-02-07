@@ -97,7 +97,6 @@ checksum:
   name_template: checksums.txt
   algorithm: sha256
 signs:
-  # Sign binaries
   - id: binary
     cmd: gpg
     artifacts: binary
@@ -113,7 +112,6 @@ signs:
       - "${signature}"
       - "--detach-sign"
       - "${artifact}"
-  # Sign checksums
   - id: checksum
     cmd: gpg
     artifacts: checksum
@@ -138,6 +136,9 @@ changelog:
 nfpms:
   - id: fluid-remote
     package_name: fluid-remote
+    builds:
+      - fluid-remote
+    bindir: /usr/local/bin
     vendor: "Fluid.sh"
     homepage: "https://github.com/aspectrr/fluid.sh"
     maintainer: "Collin Pfeifer <cpfeifer@madcactus.org>"
@@ -149,11 +150,11 @@ nfpms:
     dependencies:
       - openssh-client
       - postgresql-client
-    contents:
-      - src: fluid-remote
-        dst: /usr/local/bin/fluid-remote
   - id: fluid
     package_name: fluid
+    builds:
+      - fluid
+    bindir: /usr/local/bin
     vendor: "Fluid.sh"
     homepage: "https://github.com/aspectrr/fluid.sh"
     maintainer: "Collin Pfeifer <cpfeifer@madcactus.org>"
@@ -162,9 +163,6 @@ nfpms:
     formats:
       - deb
       - rpm
-    contents:
-      - src: fluid
-        dst: /usr/local/bin/fluid
 release:
   github:
     owner: aspectrr
