@@ -18,6 +18,9 @@ jobs:
 
       - name: Build and Release
         env:
+          CGO_ENABLED: 1
+          CC_linux_arm64: aarch64-linux-gnu-gcc
+          CXX_linux_arm64: aarch64-linux-gnu-g++
           GPG_FINGERPRINT: ${{ secrets.GPG_FINGERPRINT }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
