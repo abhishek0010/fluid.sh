@@ -1,14 +1,11 @@
 name: Release
-
 on:
   push:
     tags:
       - "v*"
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
@@ -25,10 +22,22 @@ jobs:
           go-version: "1.24"
           cache-dependency-path: fluid/go.sum
 
-      - name: Install Libvirt Headers (Required for CGO)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Build Dependencies
         run: |
+          sudo dpkg --add-architecture arm64
           sudo apt-get update
-          sudo apt-get install -y libvirt-dev
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            libvirt-dev:amd64 \
+            libvirt-dev:arm64 \
+            qemu-user-static
 
       - name: Import GPG private key
         run: |
@@ -60,14 +69,6 @@ jobs:
             --local-user="${{ secrets.GPG_FINGERPRINT }}" \
             --detach-sign || echo "FAILED"
 
-      - name: Install Build Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libvirt-dev \
-            gcc-aarch64-linux-gnu \
-            g++-aarch64-linux-gnu
-
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -75,9 +76,6 @@ jobs:
           version: latest
           args: release --clean
         env:
-          CGO_ENABLED: 1
-          CC_linux_arm64: aarch64-linux-gnu-gcc
-          CXX_linux_arm64: aarch64-linux-gnu-g++
           GPG_FINGERPRINT: ${{ secrets.GPG_FINGERPRINT }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
