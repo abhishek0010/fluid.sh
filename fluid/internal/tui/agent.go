@@ -1775,7 +1775,7 @@ func (a *FluidAgent) runSourceCommand(ctx context.Context, sourceVM, command str
 
 // shellEscape safely escapes a string for use in a shell command.
 // It uses POSIX single-quote escaping: wrap in single quotes and replace
-// any single quotes with '\” (end quote, escaped quote, start quote).
+// any single quotes with '\'' (end quote, escaped quote, start quote).
 func shellEscape(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }
