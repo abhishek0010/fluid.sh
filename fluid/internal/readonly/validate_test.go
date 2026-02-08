@@ -230,3 +230,70 @@ func TestValidateCommand_PathQualified(t *testing.T) {
 		t.Error("expected /usr/bin/rm to be blocked")
 	}
 }
+
+func TestValidateCommand_CommandSubstitution(t *testing.T) {
+	tests := []string{
+		"echo $(rm -rf /)",
+		"cat /etc/hosts && echo $(whoami)",
+		"ls $(pwd)",
+		"echo `rm -rf /`",
+		"cat /etc/hosts && echo `whoami`",
+		"ls `pwd`",
+		"ps aux | grep `whoami`",
+	}
+
+	for _, cmd := range tests {
+		err := ValidateCommand(cmd)
+		if err == nil {
+			t.Errorf("expected command %q to be blocked (command substitution), but it was allowed", cmd)
+		}
+	}
+}
+
+func TestValidateCommand_ProcessSubstitution(t *testing.T) {
+	tests := []string{
+		"diff <(ls /etc) <(ls /var)",
+		"cat <(echo hello)",
+		"tee >(cat)",
+		"echo hello > >(cat)",
+	}
+
+	for _, cmd := range tests {
+		err := ValidateCommand(cmd)
+		if err == nil {
+			t.Errorf("expected command %q to be blocked (process substitution), but it was allowed", cmd)
+		}
+	}
+}
+
+func TestValidateCommand_Newlines(t *testing.T) {
+	tests := []string{
+		"ls\nrm -rf /",
+		"cat /etc/hosts\nwhoami",
+		"echo hello\r\nrm -rf /",
+		"ps aux\nkill -9 1",
+	}
+
+	for _, cmd := range tests {
+		err := ValidateCommand(cmd)
+		if err == nil {
+			t.Errorf("expected command %q to be blocked (newlines), but it was allowed", cmd)
+		}
+	}
+}
+
+func TestValidateCommand_QuotedMetacharacters(t *testing.T) {
+	// Metacharacters inside quotes should be allowed
+	allowed := []string{
+		"echo '$(rm -rf /)'",
+		"echo \"`whoami`\"",
+		"echo 'hello\nworld'",
+		"cat /etc/hosts | grep 'test > output'",
+	}
+
+	for _, cmd := range allowed {
+		if err := ValidateCommand(cmd); err != nil {
+			t.Errorf("expected command %q to be allowed (metacharacters in quotes), got error: %v", cmd, err)
+		}
+	}
+}

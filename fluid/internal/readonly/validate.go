@@ -83,6 +83,11 @@ func ValidateCommand(command string) error {
 		return fmt.Errorf("empty command")
 	}
 
+	// Block dangerous shell metacharacters that could be used for command injection.
+	if err := checkDangerousMetacharacters(command); err != nil {
+		return err
+	}
+
 	// Block output redirection (unquoted > or >>).
 	if containsUnquotedRedirection(command) {
 		return fmt.Errorf("output redirection is not allowed in read-only mode")
@@ -117,6 +122,46 @@ func ValidateCommand(command string) error {
 		}
 	}
 
+	return nil
+}
+
+// checkDangerousMetacharacters detects shell expansion primitives that could
+// be used to smuggle commands past the allowlist. We block command substitution,
+// process substitution, and newlines outside of quotes.
+func checkDangerousMetacharacters(s string) error {
+	inSingle := false
+	inDouble := false
+	prev := rune(0)
+
+	runes := []rune(s)
+	for i := 0; i < len(runes); i++ {
+		ch := runes[i]
+
+		switch {
+		case ch == '\'' && !inDouble && prev != '\\':
+			inSingle = !inSingle
+		case ch == '"' && !inSingle && prev != '\\':
+			inDouble = !inDouble
+		case !inSingle && !inDouble:
+			// Check for command substitution: $(...)
+			if ch == '$' && i+1 < len(runes) && runes[i+1] == '(' {
+				return fmt.Errorf("command substitution $(...) is not allowed in read-only mode")
+			}
+			// Check for backticks (alternate command substitution)
+			if ch == '`' {
+				return fmt.Errorf("backtick command substitution is not allowed in read-only mode")
+			}
+			// Check for process substitution: <(...) or >(...)
+			if (ch == '<' || ch == '>') && i+1 < len(runes) && runes[i+1] == '(' {
+				return fmt.Errorf("process substitution is not allowed in read-only mode")
+			}
+			// Check for newlines (could be used to inject additional commands)
+			if ch == '\n' || ch == '\r' {
+				return fmt.Errorf("newline characters are not allowed in read-only mode")
+			}
+		}
+		prev = ch
+	}
 	return nil
 }
 
