@@ -213,4 +213,30 @@ const { Content } = await post.render();
         font-size: 0.875rem;
         line-height: 1.7;
     }
+
+    /* Tables */
+    .prose table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.25rem;
+        font-size: 0.875rem;
+    }
+
+    .prose thead th {
+        color: #e5e5e5; /* neutral-200 */
+        font-weight: 600;
+        text-align: left;
+        padding: 0.625rem 0.75rem;
+        border-bottom: 1px solid #404040; /* neutral-600 */
+    }
+
+    .prose tbody td {
+        color: #a3a3a3; /* neutral-400 */
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid #262626; /* neutral-800 */
+    }
+
+    .prose tbody tr:hover {
+        background-color: rgba(23, 23, 23, 0.5); /* neutral-900/50 */
+    }
 </style>

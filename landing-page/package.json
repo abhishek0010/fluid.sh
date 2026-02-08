@@ -8,6 +8,7 @@
     "astro": "^5.16.11",
     "astro-embed": "^0.12.0",
     "posthog-node": "^5.24.2",
+    "prettier-plugin-astro": "^0.14.1",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
   },
