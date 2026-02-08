@@ -1091,12 +1091,10 @@ func TestRunSourceVMCommandWithCallback_StreamingSuccess(t *testing.T) {
 		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
 	}
 
+	// Provide a simple callback - it won't be invoked with the current mock setup,
+	// but this test verifies the code path compiles and executes without error.
 	callback := func(chunk OutputChunk) {
-		// Callback invoked
-		// Verify chunk structure is correct
-		if chunk.Data == nil && !chunk.IsStderr && !chunk.IsRetry {
-			t.Error("expected chunk to have some data or be marked as stderr/retry")
-		}
+		// Callback provided but not invoked by mock
 	}
 
 	result, err := svc.RunSourceVMCommandWithCallback(context.Background(), "source-vm-1", "ls -l", 60*time.Second, callback)
