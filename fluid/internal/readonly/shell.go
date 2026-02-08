@@ -115,25 +115,102 @@ BLOCKED_PATTERNS=(
     "^pip3 uninstall"
 )
 
-# Check each pipe segment
-IFS='|' read -ra SEGMENTS <<< "$CMD"
-for segment in "${SEGMENTS[@]}"; do
-    # Trim leading whitespace
-    segment="${segment#"${segment%%[![:space:]]*}"}"
-
-    for pattern in "${BLOCKED_PATTERNS[@]}"; do
-        if echo "$segment" | grep -qE "$pattern"; then
-            echo "ERROR: Command blocked by restricted shell: $segment" >&2
-            exit 126
-        fi
-    done
-done
+# Block command substitution and subshells
+# Check for $(...), backticks, <(...), >(...)
+if echo "$CMD" | grep -qE '\$\(|` + "`" + `|<\(|>\('; then
+    echo "ERROR: Command substitution and subshells are not permitted." >&2
+    exit 126
+fi
 
 # Block output redirection
 if echo "$CMD" | grep -qE '[^"'"'"']>[^&]|[^"'"'"']>>'; then
     echo "ERROR: Output redirection is not permitted." >&2
     exit 126
 fi
+
+# Block newlines (commands must be single-line)
+if [[ "$CMD" == *$'\n'* ]]; then
+    echo "ERROR: Multi-line commands are not permitted." >&2
+    exit 126
+fi
+
+# Split command on all shell separators: | || ; && (and newlines, already blocked above)
+# We need to parse the command to split on these operators outside of quotes.
+# For defense-in-depth, we'll use a bash function to split properly.
+
+# Parse and validate each segment
+parse_and_validate_segments() {
+    local cmd="$1"
+    local segment=""
+    local in_single_quote=false
+    local in_double_quote=false
+    local prev_char=""
+    local i
+    
+    for (( i=0; i<${#cmd}; i++ )); do
+        local char="${cmd:$i:1}"
+        local next_char="${cmd:$((i+1)):1}"
+        
+        # Track quote state
+        if [[ "$char" == "'" && "$in_double_quote" == false && "$prev_char" != "\\" ]]; then
+            in_single_quote=$( [[ "$in_single_quote" == true ]] && echo false || echo true )
+            segment+="$char"
+        elif [[ "$char" == '"' && "$in_single_quote" == false && "$prev_char" != "\\" ]]; then
+            in_double_quote=$( [[ "$in_double_quote" == true ]] && echo false || echo true )
+            segment+="$char"
+        # Check for separators outside quotes
+        elif [[ "$in_single_quote" == false && "$in_double_quote" == false ]]; then
+            if [[ "$char" == "|" ]]; then
+                # Check for ||
+                if [[ "$next_char" == "|" ]]; then
+                    validate_segment "$segment"
+                    segment=""
+                    ((i++))  # Skip next |
+                else
+                    validate_segment "$segment"
+                    segment=""
+                fi
+            elif [[ "$char" == ";" ]]; then
+                validate_segment "$segment"
+                segment=""
+            elif [[ "$char" == "&" && "$next_char" == "&" ]]; then
+                validate_segment "$segment"
+                segment=""
+                ((i++))  # Skip next &
+            else
+                segment+="$char"
+            fi
+        else
+            segment+="$char"
+        fi
+        
+        prev_char="$char"
+    done
+    
+    # Validate the last segment
+    if [[ -n "$segment" ]]; then
+        validate_segment "$segment"
+    fi
+}
+
+validate_segment() {
+    local segment="$1"
+    # Trim leading whitespace
+    segment="${segment#"${segment%%[![:space:]]*}"}"
+    
+    # Skip empty segments
+    [[ -z "$segment" ]] && return
+    
+    for pattern in "${BLOCKED_PATTERNS[@]}"; do
+        if echo "$segment" | grep -qE "$pattern"; then
+            echo "ERROR: Command blocked by restricted shell: $segment" >&2
+            exit 126
+        fi
+    done
+}
+
+# Validate all segments
+parse_and_validate_segments "$CMD"
 
 # Execute the command
 exec /bin/bash -c "$CMD"
