@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid/internal/sshkeys"
 	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 	"github.com/aspectrr/fluid.sh/fluid/internal/telemetry"
 )
@@ -914,5 +915,309 @@ func TestValidateIPUniqueness_SameSandboxIgnored(t *testing.T) {
 	err := svc.validateIPUniqueness(context.Background(), "SBX-123", ip)
 	if err != nil {
 		t.Fatalf("unexpected error (same sandbox should be ignored): %v", err)
+	}
+}
+
+// mockKeyManager is a mock implementation of sshkeys.KeyProvider for testing
+type mockKeyManager struct {
+	getSourceVMCredentialsFn func(ctx context.Context, sourceVMName string) (*sshkeys.Credentials, error)
+}
+
+func (m *mockKeyManager) GetCredentials(ctx context.Context, sandboxID, username string) (*sshkeys.Credentials, error) {
+	return nil, nil
+}
+
+func (m *mockKeyManager) GetSourceVMCredentials(ctx context.Context, sourceVMName string) (*sshkeys.Credentials, error) {
+	if m.getSourceVMCredentialsFn != nil {
+		return m.getSourceVMCredentialsFn(ctx, sourceVMName)
+	}
+	return nil, nil
+}
+
+func (m *mockKeyManager) CleanupSandbox(ctx context.Context, sandboxID string) error {
+	return nil
+}
+
+func (m *mockKeyManager) Close() error {
+	return nil
+}
+
+func TestRunSourceVMCommand_AllowlistRejection(t *testing.T) {
+	mockMgr := &mockManager{}
+	mockKeyMgr := &mockKeyManager{}
+
+	svc := &Service{
+		telemetry: telemetry.NewNoopService(),
+		mgr:       mockMgr,
+		keyMgr:    mockKeyMgr,
+		timeNowFn: time.Now,
+		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+	}
+
+	// Test command not in the readonly allowlist (e.g., "rm" is not allowed)
+	_, err := svc.RunSourceVMCommand(context.Background(), "source-vm-1", "rm -rf /tmp/test", 60*time.Second)
+	if err == nil {
+		t.Fatal("expected error for disallowed command, got nil")
+	}
+	if !strings.Contains(err.Error(), "command not allowed in read-only mode") {
+		t.Errorf("expected 'command not allowed in read-only mode' error, got: %v", err)
+	}
+}
+
+func TestRunSourceVMCommand_IPDiscoveryFailure(t *testing.T) {
+	mockMgr := &mockManager{
+		getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
+			return "", "", errors.New("VM not found")
+		},
+	}
+	mockKeyMgr := &mockKeyManager{}
+
+	svc := &Service{
+		telemetry: telemetry.NewNoopService(),
+		mgr:       mockMgr,
+		keyMgr:    mockKeyMgr,
+		timeNowFn: time.Now,
+		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+	}
+
+	// Use a command that would pass the allowlist check
+	_, err := svc.RunSourceVMCommand(context.Background(), "source-vm-1", "ls -l", 60*time.Second)
+	if err == nil {
+		t.Fatal("expected error for IP discovery failure, got nil")
+	}
+	if !strings.Contains(err.Error(), "discover IP for source VM") {
+		t.Errorf("expected 'discover IP for source VM' error, got: %v", err)
+	}
+}
+
+func TestRunSourceVMCommand_MissingKeyManager(t *testing.T) {
+	mockMgr := &mockManager{}
+
+	svc := &Service{
+		telemetry: telemetry.NewNoopService(),
+		mgr:       mockMgr,
+		keyMgr:    nil, // No key manager set
+		timeNowFn: time.Now,
+		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+	}
+
+	// Use a command that would pass the allowlist check
+	_, err := svc.RunSourceVMCommand(context.Background(), "source-vm-1", "ls -l", 60*time.Second)
+	if err == nil {
+		t.Fatal("expected error for missing key manager, got nil")
+	}
+	if !strings.Contains(err.Error(), "key manager is required for source VM access") {
+		t.Errorf("expected 'key manager is required for source VM access' error, got: %v", err)
+	}
+}
+
+func TestRunSourceVMCommand_Success(t *testing.T) {
+	mockMgr := &mockManager{
+		getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
+			return "192.168.1.200", "52:54:00:12:34:57", nil
+		},
+	}
+	mockKeyMgr := &mockKeyManager{
+		getSourceVMCredentialsFn: func(ctx context.Context, sourceVMName string) (*sshkeys.Credentials, error) {
+			return &sshkeys.Credentials{
+				Username:        "fluid-readonly",
+				PrivateKeyPath:  "/tmp/source-vm-key",
+				CertificatePath: "/tmp/source-vm-key-cert.pub",
+			}, nil
+		},
+	}
+	mockSSH := &mockSSHRunner{
+		runWithCertFn: func(ctx context.Context, addr, user, privateKeyPath, certPath, command string, timeout time.Duration, env map[string]string, proxyJump string) (string, string, int, error) {
+			return "file1.txt\nfile2.txt\n", "", 0, nil
+		},
+	}
+
+	svc := &Service{
+		telemetry: telemetry.NewNoopService(),
+		mgr:       mockMgr,
+		keyMgr:    mockKeyMgr,
+		ssh:       mockSSH,
+		timeNowFn: time.Now,
+		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+	}
+
+	result, err := svc.RunSourceVMCommand(context.Background(), "source-vm-1", "ls -l", 60*time.Second)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("expected result, got nil")
+	}
+	if result.SourceVM != "source-vm-1" {
+		t.Errorf("expected SourceVM 'source-vm-1', got %q", result.SourceVM)
+	}
+	if result.Stdout != "file1.txt\nfile2.txt\n" {
+		t.Errorf("expected stdout %q, got %q", "file1.txt\nfile2.txt\n", result.Stdout)
+	}
+	if result.ExitCode != 0 {
+		t.Errorf("expected exit code 0, got %d", result.ExitCode)
+	}
+}
+
+func TestRunSourceVMCommandWithCallback_StreamingSuccess(t *testing.T) {
+	mockMgr := &mockManager{
+		getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
+			return "192.168.1.200", "52:54:00:12:34:57", nil
+		},
+	}
+	mockKeyMgr := &mockKeyManager{
+		getSourceVMCredentialsFn: func(ctx context.Context, sourceVMName string) (*sshkeys.Credentials, error) {
+			return &sshkeys.Credentials{
+				Username:        "fluid-readonly",
+				PrivateKeyPath:  "/tmp/source-vm-key",
+				CertificatePath: "/tmp/source-vm-key-cert.pub",
+			}, nil
+		},
+	}
+
+	mockSSH := &mockSSHRunner{
+		runWithCertFn: func(ctx context.Context, addr, user, privateKeyPath, certPath, command string, timeout time.Duration, env map[string]string, proxyJump string) (string, string, int, error) {
+			return "file1.txt\nfile2.txt\n", "", 0, nil
+		},
+	}
+
+	svc := &Service{
+		telemetry: telemetry.NewNoopService(),
+		mgr:       mockMgr,
+		keyMgr:    mockKeyMgr,
+		ssh:       mockSSH,
+		timeNowFn: time.Now,
+		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+	}
+
+	// Provide a simple callback - it won't be invoked with the current mock setup,
+	// but this test verifies the code path compiles and executes without error.
+	callback := func(chunk OutputChunk) {
+		// Callback provided but not invoked by mock
+	}
+
+	result, err := svc.RunSourceVMCommandWithCallback(context.Background(), "source-vm-1", "ls -l", 60*time.Second, callback)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("expected result, got nil")
+	}
+	if result.SourceVM != "source-vm-1" {
+		t.Errorf("expected SourceVM 'source-vm-1', got %q", result.SourceVM)
+	}
+	// Note: The mock SSH runner delegates streaming to non-streaming, so callback won't be invoked in this test.
+	// This test verifies the code path compiles and executes without error when a callback is provided.
+}
+
+func TestRunSourceVMCommand_EmptySourceVMName(t *testing.T) {
+	svc := &Service{
+		telemetry: telemetry.NewNoopService(),
+		timeNowFn: time.Now,
+		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+	}
+
+	_, err := svc.RunSourceVMCommand(context.Background(), "", "ls -l", 60*time.Second)
+	if err == nil {
+		t.Fatal("expected error for empty sourceVMName, got nil")
+	}
+	if !strings.Contains(err.Error(), "sourceVMName is required") {
+		t.Errorf("expected 'sourceVMName is required' error, got: %v", err)
+	}
+}
+
+func TestRunSourceVMCommand_EmptyCommand(t *testing.T) {
+	svc := &Service{
+		telemetry: telemetry.NewNoopService(),
+		timeNowFn: time.Now,
+		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+	}
+
+	_, err := svc.RunSourceVMCommand(context.Background(), "source-vm-1", "", 60*time.Second)
+	if err == nil {
+		t.Fatal("expected error for empty command, got nil")
+	}
+	if !strings.Contains(err.Error(), "command is required") {
+		t.Errorf("expected 'command is required' error, got: %v", err)
+	}
+}
+
+func TestRunSourceVMCommand_GetCredentialsFailure(t *testing.T) {
+	mockMgr := &mockManager{
+		getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
+			return "192.168.1.200", "52:54:00:12:34:57", nil
+		},
+	}
+	mockKeyMgr := &mockKeyManager{
+		getSourceVMCredentialsFn: func(ctx context.Context, sourceVMName string) (*sshkeys.Credentials, error) {
+			return nil, errors.New("credentials not found")
+		},
+	}
+
+	svc := &Service{
+		telemetry: telemetry.NewNoopService(),
+		mgr:       mockMgr,
+		keyMgr:    mockKeyMgr,
+		timeNowFn: time.Now,
+		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+	}
+
+	_, err := svc.RunSourceVMCommand(context.Background(), "source-vm-1", "ls -l", 60*time.Second)
+	if err == nil {
+		t.Fatal("expected error for credentials failure, got nil")
+	}
+	if !strings.Contains(err.Error(), "get source VM credentials") {
+		t.Errorf("expected 'get source VM credentials' error, got: %v", err)
+	}
+}
+
+func TestRunSourceVMCommand_SSHRunFailure(t *testing.T) {
+	mockMgr := &mockManager{
+		getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
+			return "192.168.1.200", "52:54:00:12:34:57", nil
+		},
+	}
+	mockKeyMgr := &mockKeyManager{
+		getSourceVMCredentialsFn: func(ctx context.Context, sourceVMName string) (*sshkeys.Credentials, error) {
+			return &sshkeys.Credentials{
+				Username:        "fluid-readonly",
+				PrivateKeyPath:  "/tmp/source-vm-key",
+				CertificatePath: "/tmp/source-vm-key-cert.pub",
+			}, nil
+		},
+	}
+	mockSSH := &mockSSHRunner{
+		runWithCertFn: func(ctx context.Context, addr, user, privateKeyPath, certPath, command string, timeout time.Duration, env map[string]string, proxyJump string) (string, string, int, error) {
+			return "", "connection timeout", 1, errors.New("SSH connection failed")
+		},
+	}
+
+	svc := &Service{
+		telemetry: telemetry.NewNoopService(),
+		mgr:       mockMgr,
+		keyMgr:    mockKeyMgr,
+		ssh:       mockSSH,
+		timeNowFn: time.Now,
+		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+	}
+
+	result, err := svc.RunSourceVMCommand(context.Background(), "source-vm-1", "ls -l", 60*time.Second)
+	if err == nil {
+		t.Fatal("expected error for SSH failure, got nil")
+	}
+	if !strings.Contains(err.Error(), "ssh run on source VM") {
+		t.Errorf("expected 'ssh run on source VM' error, got: %v", err)
+	}
+	// Result should still be returned with exit code and stderr
+	if result == nil {
+		t.Fatal("expected result even with error, got nil")
+	}
+	if result.ExitCode != 1 {
+		t.Errorf("expected exit code 1, got %d", result.ExitCode)
+	}
+	if result.Stderr != "connection timeout" {
+		t.Errorf("expected stderr %q, got %q", "connection timeout", result.Stderr)
 	}
 }
