@@ -1773,13 +1773,20 @@ func (a *FluidAgent) runSourceCommand(ctx context.Context, sourceVM, command str
 	}, nil
 }
 
+// shellEscape safely escapes a string for use in a shell command.
+// It uses POSIX single-quote escaping: wrap in single quotes and replace
+// any single quotes with '\'' (end quote, escaped quote, start quote).
+func shellEscape(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}
+
 // readSourceFile reads a file from a source/golden VM.
 func (a *FluidAgent) readSourceFile(ctx context.Context, sourceVM, path string) (map[string]any, error) {
 	if !filepath.IsAbs(path) {
 		return nil, fmt.Errorf("path must be absolute: %s", path)
 	}
 
-	cmd := fmt.Sprintf("base64 '%s'", path)
+	cmd := fmt.Sprintf("base64 %s", shellEscape(path))
 	result, err := a.vmService.RunSourceVMCommand(ctx, sourceVM, cmd, 0)
 
 	if err != nil && isSourceVMConnectionError(err) {
