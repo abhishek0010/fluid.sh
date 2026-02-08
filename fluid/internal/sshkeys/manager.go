@@ -18,6 +18,10 @@ import (
 	"github.com/aspectrr/fluid.sh/fluid/internal/sshca"
 )
 
+// vmNameSanitizer is a compiled regex for sanitizing VM names used in filesystem paths.
+// It matches any character that is not alphanumeric, dot, underscore, or hyphen.
+var vmNameSanitizer = regexp.MustCompile(`[^A-Za-z0-9._-]`)
+
 // KeyProvider provides SSH credentials for sandboxes.
 type KeyProvider interface {
 	// GetCredentials returns SSH credentials for a sandbox.
@@ -391,8 +395,7 @@ func (m *KeyManager) GetSourceVMCredentials(ctx context.Context, sourceVMName st
 // with an underscore. This prevents path traversal attacks using ".." or "/" in VM names.
 func sanitizeVMName(name string) string {
 	// Only allow: A-Z, a-z, 0-9, dot, underscore, hyphen
-	re := regexp.MustCompile(`[^A-Za-z0-9._-]`)
-	return re.ReplaceAllString(name, "_")
+	return vmNameSanitizer.ReplaceAllString(name, "_")
 }
 
 // generateSourceVMCredentials creates read-only SSH credentials for a source VM.

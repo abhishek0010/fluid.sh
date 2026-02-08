@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -933,12 +934,12 @@ t.Fatalf("GetSourceVMCredentials failed: %v", err)
 }
 
 // Verify that the private key path is within the expected directory
-if !filepath.HasPrefix(creds.PrivateKeyPath, tmpDir) {
+if !strings.HasPrefix(creds.PrivateKeyPath, tmpDir) {
 t.Errorf("private key path %q is not within base directory %q", creds.PrivateKeyPath, tmpDir)
 }
 
 // Verify that the certificate path is within the expected directory
-if !filepath.HasPrefix(creds.CertificatePath, tmpDir) {
+if !strings.HasPrefix(creds.CertificatePath, tmpDir) {
 t.Errorf("certificate path %q is not within base directory %q", creds.CertificatePath, tmpDir)
 }
 
@@ -953,7 +954,7 @@ t.Errorf("certificate file does not exist: %s", creds.CertificatePath)
 // Verify that the parent directory name contains the sanitized VM name
 parentDir := filepath.Base(filepath.Dir(creds.PrivateKeyPath))
 expectedPrefix := "sourcevm-"
-if !filepath.HasPrefix(parentDir, expectedPrefix) {
+if !strings.HasPrefix(parentDir, expectedPrefix) {
 t.Errorf("parent directory %q does not start with expected prefix %q", parentDir, expectedPrefix)
 }
 
