@@ -2,7 +2,7 @@
 
 # fluid.sh 🌊
 
-### Claude Code for Infrastructure
+### Claude Code for Managing and Debugging VMs
 
 [![Commit Activity](https://img.shields.io/github/commit-activity/m/aspectrr/fluid.sh?color=blue)](https://github.com/aspectrr/fluid.sh/commits/main)
 [![License](https://img.shields.io/github/license/aspectrr/fluid.sh?color=blue)](https://github.com/aspectrr/fluid.sh/blob/main/LICENSE)
@@ -10,7 +10,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/aspectrr/fluid.sh)](https://github.com/aspectrr/fluid.sh)
 
 Fluid comes in two flavors:
-A local [CLI Agent](#fluid-cli) (like Claude Code) that can connect to remote KVM hosts from your local host
+A local [CLI Agent](#fluid-cli) that connects to remote KVM hosts from your local host
 
 An [Agent API](#fluid-remote) that connects to KVM hosts and can handle tens to thousands of concurrent agent sessions.
 

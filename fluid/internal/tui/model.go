@@ -86,6 +86,11 @@ type Model struct {
 	inNetworkConfirm    bool
 	networkApprovalChan chan<- NetworkApprovalResult
 
+	// Source prepare approval dialog
+	sourcePrepareConfirmModel SourcePrepareConfirmModel
+	inSourcePrepareConfirm    bool
+	sourcePrepareApprovalChan chan<- SourcePrepareApprovalResult
+
 	// Agent
 	agentRunner AgentRunner
 	readOnly    bool
@@ -335,6 +340,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(ThinkingCmd(), m.listenForStatus())
 	}
 
+	// Handle source prepare approval response
+	if spResp, ok := msg.(SourcePrepareApprovalResponseMsg); ok {
+		m.inSourcePrepareConfirm = false
+		m.state = StateThinking
+		m.thinking = true
+		m.thinkingDots = 0
+
+		if agent, ok := m.agentRunner.(*FluidAgent); ok {
+			agent.HandleSourcePrepareApprovalResponse(spResp.Result.Approved)
+		}
+
+		if spResp.Result.Approved {
+			m.addSystemMessage("Preparing source VM for read-only access...")
+		} else {
+			m.addSystemMessage("Source VM preparation declined.")
+		}
+
+		m.updateViewportContent(true)
+		return m, tea.Batch(ThinkingCmd(), m.listenForStatus())
+	}
+
 	// If in memory confirmation mode, delegate to confirm model
 	if m.inMemoryConfirm {
 		var cmd tea.Cmd
@@ -348,6 +374,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		networkModel, cmd := m.networkConfirmModel.Update(msg)
 		m.networkConfirmModel = networkModel.(NetworkConfirmModel)
+		return m, cmd
+	}
+
+	// If in source prepare confirmation mode, delegate to source prepare confirm model
+	if m.inSourcePrepareConfirm {
+		var cmd tea.Cmd
+		spModel, cmd := m.sourcePrepareConfirmModel.Update(msg)
+		m.sourcePrepareConfirmModel = spModel.(SourcePrepareConfirmModel)
 		return m, cmd
 	}
 
@@ -854,6 +888,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
+	case SourcePrepareApprovalRequestMsg:
+		// Show the source prepare approval confirmation dialog
+		m.inSourcePrepareConfirm = true
+		m.state = StateMemoryApproval
+		m.thinking = false
+
+		resultChan := make(chan SourcePrepareApprovalResult, 1)
+		m.sourcePrepareApprovalChan = resultChan
+		m.sourcePrepareConfirmModel = NewSourcePrepareConfirmModel(msg.Request, resultChan)
+
+		if m.width > 0 && m.height > 0 {
+			spModel, _ := m.sourcePrepareConfirmModel.Update(tea.WindowSizeMsg{
+				Width:  m.width,
+				Height: m.height,
+			})
+			m.sourcePrepareConfirmModel = spModel.(SourcePrepareConfirmModel)
+		}
+
+		return m, nil
+
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
@@ -973,6 +1027,11 @@ func (m Model) View() string {
 	// Show network approval dialog if in confirmation mode
 	if m.inNetworkConfirm {
 		return m.networkConfirmModel.View()
+	}
+
+	// Show source prepare approval dialog if in confirmation mode
+	if m.inSourcePrepareConfirm {
+		return m.sourcePrepareConfirmModel.View()
 	}
 
 	// Show settings screen if in settings mode

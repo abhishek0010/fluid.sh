@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
 	"github.com/aspectrr/fluid.sh/fluid/internal/llm"
+	"github.com/aspectrr/fluid.sh/fluid/internal/readonly"
 	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 	"github.com/aspectrr/fluid.sh/fluid/internal/telemetry"
 	"github.com/aspectrr/fluid.sh/fluid/internal/vm"
@@ -65,6 +67,12 @@ type FluidAgent struct {
 	// Pending approval for network access
 	pendingNetworkApproval *PendingNetworkApproval
 
+	// Pending approval for source VM preparation
+	pendingSourcePrepareApproval *PendingSourcePrepareApproval
+
+	// Track VMs that have been prepared during this session (avoid re-prompting)
+	preparedSourceVMs map[string]bool
+
 	// Read-only mode: only query tools are available to the LLM
 	readOnly bool
 }
@@ -72,6 +80,12 @@ type FluidAgent struct {
 // PendingNetworkApproval represents a network access request waiting for approval
 type PendingNetworkApproval struct {
 	Request      NetworkApprovalRequest
+	ResponseChan chan bool
+}
+
+// PendingSourcePrepareApproval represents a source prepare request waiting for approval
+type PendingSourcePrepareApproval struct {
+	Request      SourcePrepareApprovalRequest
 	ResponseChan chan bool
 }
 
@@ -234,7 +248,7 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 			tools := llm.GetTools()
 			if a.readOnly {
 				tools = llm.GetReadOnlyTools()
-				systemPrompt += "\n\nYou are in READ-ONLY mode. You can only query and observe - you cannot create, modify, or destroy any resources.  Available tools: list_sandboxes, get_sandbox, list_vms, read_file, list_playbooks, get_playbook."
+				systemPrompt += "\n\nYou are in READ-ONLY mode. You can only query and observe - you cannot create, modify, or destroy any resources. Available tools: list_sandboxes, get_sandbox, list_vms, read_file, list_playbooks, get_playbook, run_source_command, read_source_file. Use run_source_command and read_source_file to inspect golden/source VMs directly."
 			}
 
 			req := llm.ChatRequest{
@@ -463,6 +477,24 @@ func (a *FluidAgent) executeTool(ctx context.Context, tc llm.ToolCall) (any, err
 			return nil, err
 		}
 		return a.getPlaybook(ctx, args.PlaybookID)
+	case "run_source_command":
+		var args struct {
+			SourceVM string `json:"source_vm"`
+			Command  string `json:"command"`
+		}
+		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+			return nil, err
+		}
+		return a.runSourceCommand(ctx, args.SourceVM, args.Command)
+	case "read_source_file":
+		var args struct {
+			SourceVM string `json:"source_vm"`
+			Path     string `json:"path"`
+		}
+		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+			return nil, err
+		}
+		return a.readSourceFile(ctx, args.SourceVM, args.Path)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", tc.Function.Name)
 	}
@@ -797,6 +829,13 @@ func (a *FluidAgent) HandleApprovalResponse(approved bool) {
 func (a *FluidAgent) HandleNetworkApprovalResponse(approved bool) {
 	if a.pendingNetworkApproval != nil && a.pendingNetworkApproval.ResponseChan != nil {
 		a.pendingNetworkApproval.ResponseChan <- approved
+	}
+}
+
+// HandleSourcePrepareApprovalResponse handles the response from the source prepare approval dialog
+func (a *FluidAgent) HandleSourcePrepareApprovalResponse(approved bool) {
+	if a.pendingSourcePrepareApproval != nil && a.pendingSourcePrepareApproval.ResponseChan != nil {
+		a.pendingSourcePrepareApproval.ResponseChan <- approved
 	}
 }
 
@@ -1672,6 +1711,107 @@ func (a *FluidAgent) formatPlaybooksResult(result map[string]any, err error) str
 	return b.String()
 }
 
+// runSourceCommand executes a read-only command on a source/golden VM.
+func (a *FluidAgent) runSourceCommand(ctx context.Context, sourceVM, command string) (map[string]any, error) {
+	// Create output callback for streaming.
+	outputCallback := func(chunk vm.OutputChunk) {
+		if chunk.IsRetry && chunk.Retry != nil {
+			a.sendStatus(CommandOutputResetMsg{SandboxID: sourceVM})
+			a.sendStatus(RetryAttemptMsg{
+				SandboxID: sourceVM,
+				Attempt:   chunk.Retry.Attempt,
+				Max:       chunk.Retry.Max,
+				Delay:     chunk.Retry.Delay,
+				Error:     chunk.Retry.Error,
+			})
+			return
+		}
+		if chunk.Data == nil {
+			a.sendStatus(CommandOutputResetMsg{SandboxID: sourceVM})
+			return
+		}
+		a.sendStatus(CommandOutputChunkMsg{
+			SandboxID: sourceVM,
+			IsStderr:  chunk.IsStderr,
+			Chunk:     string(chunk.Data),
+		})
+	}
+
+	result, err := a.vmService.RunSourceVMCommandWithCallback(ctx, sourceVM, command, 0, outputCallback)
+	a.sendStatus(CommandOutputDoneMsg{SandboxID: sourceVM})
+
+	if err != nil && isSourceVMConnectionError(err) {
+		// Connection failed - offer to prepare the source VM
+		if a.requestSourcePrepareApproval(sourceVM, err) {
+			if prepErr := a.prepareSourceVM(ctx, sourceVM); prepErr != nil {
+				return nil, fmt.Errorf("source prepare failed: %w (original error: %v)", prepErr, err)
+			}
+			// Retry the command after prepare
+			result, err = a.vmService.RunSourceVMCommandWithCallback(ctx, sourceVM, command, 0, outputCallback)
+			a.sendStatus(CommandOutputDoneMsg{SandboxID: sourceVM})
+		}
+	}
+
+	if err != nil {
+		if result != nil {
+			return map[string]any{
+				"source_vm": sourceVM,
+				"exit_code": result.ExitCode,
+				"stdout":    result.Stdout,
+				"stderr":    result.Stderr,
+				"error":     err.Error(),
+			}, nil
+		}
+		return nil, err
+	}
+
+	return map[string]any{
+		"source_vm": sourceVM,
+		"exit_code": result.ExitCode,
+		"stdout":    result.Stdout,
+		"stderr":    result.Stderr,
+	}, nil
+}
+
+// readSourceFile reads a file from a source/golden VM.
+func (a *FluidAgent) readSourceFile(ctx context.Context, sourceVM, path string) (map[string]any, error) {
+	if !filepath.IsAbs(path) {
+		return nil, fmt.Errorf("path must be absolute: %s", path)
+	}
+
+	cmd := fmt.Sprintf("base64 '%s'", path)
+	result, err := a.vmService.RunSourceVMCommand(ctx, sourceVM, cmd, 0)
+
+	if err != nil && isSourceVMConnectionError(err) {
+		// Connection failed - offer to prepare the source VM
+		if a.requestSourcePrepareApproval(sourceVM, err) {
+			if prepErr := a.prepareSourceVM(ctx, sourceVM); prepErr != nil {
+				return nil, fmt.Errorf("source prepare failed: %w (original error: %v)", prepErr, err)
+			}
+			// Retry after prepare
+			result, err = a.vmService.RunSourceVMCommand(ctx, sourceVM, cmd, 0)
+		}
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file from source VM: %w", err)
+	}
+	if result.ExitCode != 0 {
+		return nil, fmt.Errorf("failed to read file: %s", result.Stderr)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(result.Stdout))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode file content: %w", err)
+	}
+
+	return map[string]any{
+		"source_vm": sourceVM,
+		"path":      path,
+		"content":   string(decoded),
+	}, nil
+}
+
 // Cleanup destroys all sandboxes created during this session.
 // This is called when the TUI exits to ensure no orphaned VMs are left running.
 func (a *FluidAgent) Cleanup(ctx context.Context) error {
@@ -1794,4 +1934,139 @@ func (a *FluidAgent) GetCurrentSandbox() (id string, host string) {
 func (a *FluidAgent) SetCurrentSandbox(id string, host string) {
 	a.currentSandboxID = id
 	a.currentSandboxHost = host
+}
+
+// isSourceVMConnectionError checks if an error is a connection/auth failure to a source VM.
+func isSourceVMConnectionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	patterns := []string{
+		"Permission denied",
+		"Connection refused",
+		"Connection timed out",
+		"No route to host",
+		"Could not resolve hostname",
+		"ssh: connect to host",
+		"Host key verification failed",
+		"ssh: handshake failed",
+		"certificate",
+	}
+	for _, p := range patterns {
+		if strings.Contains(msg, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// requestSourcePrepareApproval prompts the user to approve source VM preparation.
+// Returns true if approved, false otherwise.
+func (a *FluidAgent) requestSourcePrepareApproval(sourceVM string, connErr error) bool {
+	// Skip if already prepared this session
+	if a.preparedSourceVMs[sourceVM] {
+		return false
+	}
+
+	request := SourcePrepareApprovalRequest{
+		SourceVM: sourceVM,
+		Error:    connErr.Error(),
+	}
+
+	responseChan := make(chan bool, 1)
+	a.pendingSourcePrepareApproval = &PendingSourcePrepareApproval{
+		Request:      request,
+		ResponseChan: responseChan,
+	}
+
+	a.sendStatus(SourcePrepareApprovalRequestMsg{Request: request})
+
+	approved := <-responseChan
+	a.pendingSourcePrepareApproval = nil
+	return approved
+}
+
+// prepareSourceVM runs the readonly.Prepare flow for a source VM.
+func (a *FluidAgent) prepareSourceVM(ctx context.Context, sourceVM string) error {
+	// Read CA pub key
+	caPubKeyPath := a.cfg.SSH.CAPubPath
+	if caPubKeyPath == "" {
+		caPubKeyPath = a.cfg.SSH.CAKeyPath + ".pub"
+	}
+	caPubKeyBytes, err := os.ReadFile(caPubKeyPath)
+	if err != nil {
+		return fmt.Errorf("read CA pub key from %s: %w", caPubKeyPath, err)
+	}
+
+	// Discover VM IP
+	var ip string
+	if a.multiHostMgr != nil {
+		host, err := a.multiHostMgr.FindHostForVM(ctx, sourceVM)
+		if err == nil && host != nil {
+			ip, err = a.discoverVMIPOnHost(ctx, sourceVM, host)
+			if err != nil {
+				return fmt.Errorf("discover IP for %s on %s: %w", sourceVM, host.Name, err)
+			}
+		}
+	}
+	if ip == "" {
+		// Try local virsh
+		cmd := exec.CommandContext(ctx, "virsh", "domifaddr", sourceVM)
+		var stdout bytes.Buffer
+		cmd.Stdout = &stdout
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("discover IP for %s: %w", sourceVM, err)
+		}
+		ip = parseIPFromVirshOutput(stdout.String())
+		if ip == "" {
+			return fmt.Errorf("could not discover IP for %s", sourceVM)
+		}
+	}
+
+	// Create SSH run function using root (prepare needs root access)
+	proxyJump := a.cfg.SSH.ProxyJump
+	sshRun := makeSSHRunFunc(ip, "root", proxyJump)
+
+	// Run prepare
+	result, err := readonly.Prepare(ctx, sshRun, string(caPubKeyBytes))
+	if err != nil {
+		return fmt.Errorf("prepare failed: %w", err)
+	}
+
+	// Track as prepared
+	if a.preparedSourceVMs == nil {
+		a.preparedSourceVMs = make(map[string]bool)
+	}
+	a.preparedSourceVMs[sourceVM] = true
+
+	_ = result // All steps succeeded if no error
+	return nil
+}
+
+// discoverVMIPOnHost discovers a VM's IP address on a remote host via virsh.
+func (a *FluidAgent) discoverVMIPOnHost(ctx context.Context, vmName string, host *config.HostConfig) (string, error) {
+	sshTarget := fmt.Sprintf("%s@%s", host.SSHUser, host.Address)
+	args := []string{
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "ConnectTimeout=15",
+	}
+	if a.cfg.SSH.ProxyJump != "" {
+		args = append(args, "-J", a.cfg.SSH.ProxyJump)
+	}
+	args = append(args, sshTarget, "virsh", "domifaddr", vmName)
+
+	cmd := exec.CommandContext(ctx, "ssh", args...)
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+
+	ip := parseIPFromVirshOutput(stdout.String())
+	if ip == "" {
+		return "", fmt.Errorf("no IP found for %s on %s", vmName, host.Name)
+	}
+	return ip, nil
 }

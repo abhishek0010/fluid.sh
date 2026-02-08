@@ -24,6 +24,10 @@ type KeyProvider interface {
 	// Otherwise, new credentials are generated.
 	GetCredentials(ctx context.Context, sandboxID, username string) (*Credentials, error)
 
+	// GetSourceVMCredentials returns read-only SSH credentials for a source/golden VM.
+	// Uses the "fluid-readonly" principal instead of "sandbox".
+	GetSourceVMCredentials(ctx context.Context, sourceVMName string) (*Credentials, error)
+
 	// CleanupSandbox removes all cached credentials for a sandbox.
 	// Called when sandbox is destroyed.
 	CleanupSandbox(ctx context.Context, sandboxID string) error
@@ -332,5 +336,110 @@ func (m *KeyManager) generateCredentials(ctx context.Context, sandboxID, usernam
 		Username:        username,
 		ValidUntil:      cert.ValidBefore,
 		SandboxID:       sandboxID,
+	}, nil
+}
+
+// GetSourceVMCredentials implements KeyProvider.
+// Issues a cert with principal "fluid-readonly" for read-only access to golden VMs.
+func (m *KeyManager) GetSourceVMCredentials(ctx context.Context, sourceVMName string) (*Credentials, error) {
+	if sourceVMName == "" {
+		return nil, fmt.Errorf("sourceVMName is required")
+	}
+
+	username := "fluid-readonly"
+
+	// Use a virtual ID for locking and caching.
+	virtualID := "sourcevm:" + sourceVMName
+	lock := m.getSandboxLock(virtualID)
+	lock.Lock()
+	defer lock.Unlock()
+
+	// Check cache.
+	cacheKey := virtualID + ":" + username
+	m.mu.RLock()
+	creds, ok := m.credentials[cacheKey]
+	m.mu.RUnlock()
+
+	if ok && !creds.IsExpired(m.cfg.RefreshMargin) {
+		m.logger.Debug("using cached source VM credentials",
+			"source_vm", sourceVMName,
+			"valid_until", creds.ValidUntil,
+		)
+		return creds, nil
+	}
+
+	m.logger.Info("generating source VM read-only credentials",
+		"source_vm", sourceVMName,
+		"ttl", m.cfg.CertificateTTL,
+	)
+
+	newCreds, err := m.generateSourceVMCredentials(ctx, sourceVMName)
+	if err != nil {
+		return nil, fmt.Errorf("generate source VM credentials: %w", err)
+	}
+
+	m.mu.Lock()
+	m.credentials[cacheKey] = newCreds
+	m.mu.Unlock()
+
+	return newCreds, nil
+}
+
+// generateSourceVMCredentials creates read-only SSH credentials for a source VM.
+func (m *KeyManager) generateSourceVMCredentials(ctx context.Context, sourceVMName string) (*Credentials, error) {
+	keyDir := filepath.Join(m.cfg.KeyDir, "sourcevm-"+sourceVMName)
+	if err := os.MkdirAll(keyDir, 0o700); err != nil {
+		return nil, fmt.Errorf("create source VM key directory: %w", err)
+	}
+
+	comment := fmt.Sprintf("source-readonly-%s", sourceVMName)
+	privateKey, publicKey, err := sshca.GenerateUserKeyPair(comment)
+	if err != nil {
+		return nil, fmt.Errorf("generate keypair: %w", err)
+	}
+
+	privateKeyPath := filepath.Join(keyDir, "key")
+	certPath := filepath.Join(keyDir, "key-cert.pub")
+
+	if err := os.WriteFile(privateKeyPath, []byte(privateKey), 0o600); err != nil {
+		return nil, fmt.Errorf("write private key: %w", err)
+	}
+
+	certReq := sshca.CertificateRequest{
+		UserID:      fmt.Sprintf("source-readonly:%s", sourceVMName),
+		VMID:        sourceVMName,
+		SandboxID:   sourceVMName,
+		PublicKey:   publicKey,
+		TTL:         m.cfg.CertificateTTL,
+		Principals:  []string{"fluid-readonly"},
+		SourceIP:    "internal",
+		RequestTime: m.timeNowFn(),
+	}
+
+	cert, err := m.ca.IssueCertificate(ctx, &certReq)
+	if err != nil {
+		_ = os.Remove(privateKeyPath)
+		return nil, fmt.Errorf("issue certificate: %w", err)
+	}
+
+	if err := os.WriteFile(certPath, []byte(cert.Certificate), 0o644); err != nil {
+		_ = os.Remove(privateKeyPath)
+		return nil, fmt.Errorf("write certificate: %w", err)
+	}
+
+	m.logger.Debug("generated source VM credentials",
+		"source_vm", sourceVMName,
+		"private_key_path", privateKeyPath,
+		"cert_path", certPath,
+		"valid_until", cert.ValidBefore,
+	)
+
+	return &Credentials{
+		PrivateKeyPath:  privateKeyPath,
+		CertificatePath: certPath,
+		PublicKey:       publicKey,
+		Username:        "fluid-readonly",
+		ValidUntil:      cert.ValidBefore,
+		SandboxID:       sourceVMName,
 	}, nil
 }

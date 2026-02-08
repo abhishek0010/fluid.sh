@@ -1,7 +1,10 @@
 package tui
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -13,6 +16,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/aspectrr/fluid.sh/fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/readonly"
 )
 
 // OnboardingStep represents the current step in onboarding
@@ -26,6 +30,7 @@ const (
 	StepShowResources
 	StepAPIKey
 	StepSSHCA
+	StepSourcePrepare
 	StepHowItWorks
 	StepOfferDemo
 	StepRunningDemo
@@ -77,6 +82,12 @@ type OnboardingModel struct {
 	hostInputs     []textinput.Model // Multiple inputs for host config
 	hostInputFocus int               // Which input is focused
 
+	// Source prepare state
+	sourcePrepareVMs      []VMInfo // VMs to prepare
+	sourcePrepareResults  []SourcePrepareResult
+	sourcePrepareRunning  bool
+	sourcePrepareComplete bool
+
 	// Demo state
 	demoSteps        []DemoStep
 	demoIndex        int
@@ -103,6 +114,14 @@ type VMInfo struct {
 	Name  string
 	Host  string
 	State string
+}
+
+// SourcePrepareResult holds the result of preparing a single VM.
+type SourcePrepareResult struct {
+	VMName  string
+	Host    string
+	Success bool
+	Error   string
 }
 
 // NewOnboardingModel creates a new onboarding model
@@ -156,6 +175,10 @@ type sshCACheckDoneMsg struct {
 type sshCAGeneratedMsg struct {
 	success bool
 	err     string
+}
+
+type sourcePrepareDoneMsg struct {
+	results []SourcePrepareResult
 }
 
 type demoTickMsg struct{}
@@ -241,6 +264,11 @@ func (m OnboardingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.errorMsg = msg.err
 		}
 
+	case sourcePrepareDoneMsg:
+		m.sourcePrepareRunning = false
+		m.sourcePrepareComplete = true
+		m.sourcePrepareResults = msg.results
+
 	case demoTickMsg:
 		if m.step == StepRunningDemo {
 			return m.advanceDemo()
@@ -308,6 +336,10 @@ func (m OnboardingModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.selectedOption < 2 {
 				m.selectedOption++
 			}
+		case StepSourcePrepare:
+			if !m.sourcePrepareRunning && !m.sourcePrepareComplete && m.selectedOption < 1 {
+				m.selectedOption++
+			}
 		case StepOfferDemo:
 			if m.selectedOption < 1 {
 				m.selectedOption++
@@ -325,7 +357,7 @@ func (m OnboardingModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.hostInputs[m.hostInputFocus].Focus()
 			return m, nil
 		}
-		if m.step == StepInfraChoice || m.step == StepOfferDemo {
+		if m.step == StepInfraChoice || m.step == StepSourcePrepare || m.step == StepOfferDemo {
 			if m.selectedOption > 0 {
 				m.selectedOption--
 			}
@@ -399,8 +431,30 @@ func (m OnboardingModel) handleEnter() (tea.Model, tea.Cmd) {
 			m.testing = true
 			return m, m.generateSSHCA()
 		}
+		// If we have VMs discovered, offer source prepare
+		if len(m.availableVMs) > 0 && m.sshCAExists {
+			m.step = StepSourcePrepare
+			m.sourcePrepareVMs = m.availableVMs
+			m.selectedOption = 0
+			return m, nil
+		}
 		m.step = StepHowItWorks
 		return m, nil
+
+	case StepSourcePrepare:
+		if m.sourcePrepareComplete {
+			// Done, move on
+			m.step = StepHowItWorks
+			return m, nil
+		}
+		if m.selectedOption == 1 {
+			// Skip
+			m.step = StepHowItWorks
+			return m, nil
+		}
+		// Run source prepare
+		m.sourcePrepareRunning = true
+		return m, tea.Batch(m.spinner.Tick, m.runSourcePrepare())
 
 	case StepHowItWorks:
 		m.step = StepOfferDemo
@@ -458,6 +512,8 @@ func (m OnboardingModel) View() string {
 		content = m.viewAPIKey()
 	case StepSSHCA:
 		content = m.viewSSHCA()
+	case StepSourcePrepare:
+		content = m.viewSourcePrepare()
 	case StepHowItWorks:
 		content = m.viewHowItWorks()
 	case StepOfferDemo:
@@ -693,6 +749,106 @@ func (m OnboardingModel) viewSSHCA() string {
 		b.WriteString("\n\n")
 		errStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444"))
 		b.WriteString(errStyle.Render(m.errorMsg))
+	}
+
+	return b.String()
+}
+
+func (m OnboardingModel) viewSourcePrepare() string {
+	var b strings.Builder
+
+	title := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#3B82F6")).
+		Render("Prepare Source VMs for Read-Only Access")
+
+	b.WriteString(title)
+	b.WriteString("\n\n")
+
+	desc := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF")).Render(
+		"This sets up a read-only SSH user on your golden VMs so agents\ncan inspect them without modifying anything.",
+	)
+	b.WriteString(desc)
+	b.WriteString("\n\n")
+
+	if m.sourcePrepareRunning {
+		b.WriteString(m.spinner.View())
+		b.WriteString(" Preparing VMs...")
+		b.WriteString("\n\n")
+		// Show VMs being prepared
+		for _, vm := range m.sourcePrepareVMs {
+			hostInfo := ""
+			if vm.Host != "" {
+				hostInfo = fmt.Sprintf(" on %s", vm.Host)
+			}
+			b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF")).Render(
+				fmt.Sprintf("  - %s%s", vm.Name, hostInfo),
+			))
+			b.WriteString("\n")
+		}
+	} else if m.sourcePrepareComplete {
+		// Show results
+		for _, result := range m.sourcePrepareResults {
+			var icon, style string
+			if result.Success {
+				icon = "v"
+				style = "#10B981"
+			} else {
+				icon = "x"
+				style = "#EF4444"
+			}
+			hostInfo := ""
+			if result.Host != "" {
+				hostInfo = fmt.Sprintf(" on %s", result.Host)
+			}
+			line := lipgloss.NewStyle().Foreground(lipgloss.Color(style)).Render(
+				fmt.Sprintf("  %s %s%s", icon, result.VMName, hostInfo),
+			)
+			b.WriteString(line)
+			b.WriteString("\n")
+			if !result.Success && result.Error != "" {
+				errLine := lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444")).Render(
+					fmt.Sprintf("      Error: %s", result.Error),
+				)
+				b.WriteString(errLine)
+				b.WriteString("\n")
+			}
+		}
+		b.WriteString("\n")
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")).Render("Press Enter to continue..."))
+	} else {
+		// Show VMs that would be prepared
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF")).Render(
+			fmt.Sprintf("Found %d VM(s) to prepare:", len(m.sourcePrepareVMs)),
+		))
+		b.WriteString("\n")
+		for _, vm := range m.sourcePrepareVMs {
+			hostInfo := ""
+			if vm.Host != "" {
+				hostInfo = fmt.Sprintf(" on %s", vm.Host)
+			}
+			b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF")).Render(
+				fmt.Sprintf("  - %s%s", vm.Name, hostInfo),
+			))
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+
+		options := []string{
+			"Yes, prepare VMs for read-only access",
+			"Skip (can run `fluid source prepare` later)",
+		}
+		for i, opt := range options {
+			cursor := "  "
+			style := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
+			if i == m.selectedOption {
+				cursor = "> "
+				style = lipgloss.NewStyle().Foreground(lipgloss.Color("#3B82F6")).Bold(true)
+			}
+			b.WriteString(cursor)
+			b.WriteString(style.Render(opt))
+			b.WriteString("\n")
+		}
 	}
 
 	return b.String()
@@ -1125,6 +1281,169 @@ func (m OnboardingModel) generateSSHCA() tea.Cmd {
 
 		return sshCAGeneratedMsg{success: true}
 	}
+}
+
+func (m OnboardingModel) runSourcePrepare() tea.Cmd {
+	return func() tea.Msg {
+		var results []SourcePrepareResult
+
+		caPubPath := m.cfg.SSH.CAPubPath
+		if caPubPath == "" {
+			return sourcePrepareDoneMsg{results: []SourcePrepareResult{
+				{VMName: "(all)", Success: false, Error: "SSH CA public key path not configured"},
+			}}
+		}
+
+		caPubKeyBytes, err := os.ReadFile(caPubPath)
+		if err != nil {
+			return sourcePrepareDoneMsg{results: []SourcePrepareResult{
+				{VMName: "(all)", Success: false, Error: fmt.Sprintf("read CA pub key: %v", err)},
+			}}
+		}
+		caPubKey := string(caPubKeyBytes)
+
+		for _, vmInfo := range m.sourcePrepareVMs {
+			result := SourcePrepareResult{
+				VMName: vmInfo.Name,
+				Host:   vmInfo.Host,
+			}
+
+			// Discover the VM IP
+			var ip string
+
+			if vmInfo.Host != "" && vmInfo.Host != "local" {
+				// Find host config
+				var host *config.HostConfig
+				for i := range m.cfg.Hosts {
+					if m.cfg.Hosts[i].Name == vmInfo.Host {
+						host = &m.cfg.Hosts[i]
+						break
+					}
+				}
+				if host == nil {
+					result.Error = fmt.Sprintf("host %q not found in config", vmInfo.Host)
+					results = append(results, result)
+					continue
+				}
+
+				// Discover IP via remote virsh
+				uri := fmt.Sprintf("qemu+ssh://%s@%s/system", host.SSHUser, host.Address)
+				if host.SSHUser == "" {
+					uri = fmt.Sprintf("qemu+ssh://root@%s/system", host.Address)
+				}
+				ctx := context.Background()
+				cmd := exec.CommandContext(ctx, "virsh", "-c", uri, "domifaddr", vmInfo.Name, "--source", "agent")
+				var stdout bytes.Buffer
+				cmd.Stdout = &stdout
+				if err := cmd.Run(); err != nil {
+					// Try lease method
+					cmd = exec.CommandContext(ctx, "virsh", "-c", uri, "domifaddr", vmInfo.Name, "--source", "lease")
+					stdout.Reset()
+					cmd.Stdout = &stdout
+					if err := cmd.Run(); err != nil {
+						result.Error = fmt.Sprintf("cannot discover IP: %v", err)
+						results = append(results, result)
+						continue
+					}
+				}
+				ip = parseIPFromVirshOutput(stdout.String())
+				if ip == "" {
+					result.Error = "could not discover VM IP address"
+					results = append(results, result)
+					continue
+				}
+
+				// Create SSH run func through the remote host
+				sshUser := host.SSHUser
+				if sshUser == "" {
+					sshUser = "root"
+				}
+				sshRunFunc := makeSSHRunFunc(ip, "root", fmt.Sprintf("%s@%s", sshUser, host.Address))
+				prepResult, err := readonly.Prepare(context.Background(), sshRunFunc, caPubKey)
+				if err != nil {
+					result.Error = err.Error()
+				} else {
+					result.Success = prepResult.SSHDRestarted
+				}
+			} else {
+				// Local VM
+				ctx := context.Background()
+				cmd := exec.CommandContext(ctx, "virsh", "-c", "qemu:///system", "domifaddr", vmInfo.Name, "--source", "agent")
+				var stdout bytes.Buffer
+				cmd.Stdout = &stdout
+				if err := cmd.Run(); err != nil {
+					cmd = exec.CommandContext(ctx, "virsh", "-c", "qemu:///system", "domifaddr", vmInfo.Name, "--source", "lease")
+					stdout.Reset()
+					cmd.Stdout = &stdout
+					if err := cmd.Run(); err != nil {
+						result.Error = fmt.Sprintf("cannot discover IP: %v", err)
+						results = append(results, result)
+						continue
+					}
+				}
+				ip = parseIPFromVirshOutput(stdout.String())
+				if ip == "" {
+					result.Error = "could not discover VM IP address"
+					results = append(results, result)
+					continue
+				}
+				sshRunFunc := makeSSHRunFunc(ip, "root", "")
+				prepResult, err := readonly.Prepare(context.Background(), sshRunFunc, caPubKey)
+				if err != nil {
+					result.Error = err.Error()
+				} else {
+					result.Success = prepResult.SSHDRestarted
+				}
+			}
+
+			results = append(results, result)
+		}
+
+		return sourcePrepareDoneMsg{results: results}
+	}
+}
+
+// makeSSHRunFunc creates an SSHRunFunc that executes commands via ssh.
+func makeSSHRunFunc(ip, user, proxyJump string) readonly.SSHRunFunc {
+	return func(ctx context.Context, command string) (string, string, int, error) {
+		args := []string{
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "ConnectTimeout=15",
+		}
+		if proxyJump != "" {
+			args = append(args, "-J", proxyJump)
+		}
+		args = append(args, fmt.Sprintf("%s@%s", user, ip), "--", command)
+
+		cmd := exec.CommandContext(ctx, "ssh", args...)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			return stdout.String(), stderr.String(), 1, err
+		}
+		return stdout.String(), stderr.String(), 0, nil
+	}
+}
+
+// parseIPFromVirshOutput extracts the first IP address from virsh domifaddr output.
+func parseIPFromVirshOutput(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "Name") || strings.HasPrefix(line, "-") {
+			continue
+		}
+		fields := strings.Fields(line)
+		for _, f := range fields {
+			// Look for IP/mask format like "192.168.122.45/24"
+			if strings.Contains(f, ".") && strings.Contains(f, "/") {
+				parts := strings.SplitN(f, "/", 2)
+				return parts[0]
+			}
+		}
+	}
+	return ""
 }
 
 func (m OnboardingModel) advanceDemo() (tea.Model, tea.Cmd) {
