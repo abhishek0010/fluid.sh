@@ -56,7 +56,7 @@ func Prepare(ctx context.Context, sshRun SSHRunFunc, caPubKey string) (*PrepareR
 	result.UserCreated = true
 
 	// 3. Copy CA pub key to /etc/ssh/fluid_ca.pub
-	caCmd := fmt.Sprintf("echo '%s' > /etc/ssh/fluid_ca.pub && chmod 644 /etc/ssh/fluid_ca.pub", strings.TrimSpace(caPubKey))
+	caCmd := fmt.Sprintf("cat > /etc/ssh/fluid_ca.pub << 'FLUID_CA_EOF'\n%s\nFLUID_CA_EOF\nchmod 644 /etc/ssh/fluid_ca.pub", strings.TrimSpace(caPubKey))
 	stdout, stderr, code, err = sshRun(ctx, caCmd)
 	if err != nil || code != 0 {
 		return result, fmt.Errorf("install CA pub key: exit=%d stdout=%q stderr=%q err=%v", code, stdout, stderr, err)
