@@ -490,3 +490,307 @@ func TestCredentials_IsExpired(t *testing.T) {
 		})
 	}
 }
+
+func TestGetSourceVMCredentials_GeneratesNewKeys(t *testing.T) {
+	ca, cleanup := testCA(t)
+	defer cleanup()
+
+	tempDir, err := os.MkdirTemp("", "keymanager-test-")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	km, err := NewKeyManager(ca, Config{KeyDir: tempDir, CertificateTTL: 5 * time.Minute}, nil)
+	if err != nil {
+		t.Fatalf("NewKeyManager failed: %v", err)
+	}
+	defer func() { _ = km.Close() }()
+
+	ctx := context.Background()
+	creds, err := km.GetSourceVMCredentials(ctx, "golden-ubuntu-22.04")
+	if err != nil {
+		t.Fatalf("GetSourceVMCredentials failed: %v", err)
+	}
+
+	// Check credentials.
+	if creds.SandboxID != "golden-ubuntu-22.04" {
+		t.Errorf("SandboxID mismatch: got %s, want golden-ubuntu-22.04", creds.SandboxID)
+	}
+	if creds.Username != "fluid-readonly" {
+		t.Errorf("Username mismatch: got %s, want fluid-readonly", creds.Username)
+	}
+	if creds.PrivateKeyPath == "" {
+		t.Error("PrivateKeyPath is empty")
+	}
+	if creds.CertificatePath == "" {
+		t.Error("CertificatePath is empty")
+	}
+	if creds.ValidUntil.IsZero() {
+		t.Error("ValidUntil is zero")
+	}
+
+	// Check files exist.
+	if _, err := os.Stat(creds.PrivateKeyPath); os.IsNotExist(err) {
+		t.Error("private key file does not exist")
+	}
+	if _, err := os.Stat(creds.CertificatePath); os.IsNotExist(err) {
+		t.Error("certificate file does not exist")
+	}
+}
+
+func TestGetSourceVMCredentials_ReturnsCached(t *testing.T) {
+	ca, cleanup := testCA(t)
+	defer cleanup()
+
+	tempDir, err := os.MkdirTemp("", "keymanager-test-")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	km, err := NewKeyManager(ca, Config{KeyDir: tempDir, CertificateTTL: 5 * time.Minute}, nil)
+	if err != nil {
+		t.Fatalf("NewKeyManager failed: %v", err)
+	}
+	defer func() { _ = km.Close() }()
+
+	ctx := context.Background()
+
+	// First call generates.
+	creds1, err := km.GetSourceVMCredentials(ctx, "golden-ubuntu-22.04")
+	if err != nil {
+		t.Fatalf("GetSourceVMCredentials (1) failed: %v", err)
+	}
+
+	// Second call should return cached.
+	creds2, err := km.GetSourceVMCredentials(ctx, "golden-ubuntu-22.04")
+	if err != nil {
+		t.Fatalf("GetSourceVMCredentials (2) failed: %v", err)
+	}
+
+	// Should be the same credentials.
+	if creds1.PrivateKeyPath != creds2.PrivateKeyPath {
+		t.Error("expected cached credentials to be returned")
+	}
+	if creds1.ValidUntil != creds2.ValidUntil {
+		t.Error("expected cached credentials to have same expiry")
+	}
+}
+
+func TestGetSourceVMCredentials_RegeneratesOnExpiry(t *testing.T) {
+	ca, cleanup := testCA(t)
+	defer cleanup()
+
+	tempDir, err := os.MkdirTemp("", "keymanager-test-")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	km, err := NewKeyManager(ca, Config{
+		KeyDir:         tempDir,
+		CertificateTTL: 5 * time.Minute,
+		RefreshMargin:  30 * time.Second,
+	}, nil)
+	if err != nil {
+		t.Fatalf("NewKeyManager failed: %v", err)
+	}
+	defer func() { _ = km.Close() }()
+
+	ctx := context.Background()
+	// First call generates.
+	creds1, err := km.GetSourceVMCredentials(ctx, "golden-ubuntu-22.04")
+	if err != nil {
+		t.Fatalf("GetSourceVMCredentials (1) failed: %v", err)
+	}
+
+	// Simulate time passing by modifying cached credentials to be expired.
+	km.mu.Lock()
+	for key, creds := range km.credentials {
+		if key == "sourcevm:golden-ubuntu-22.04:fluid-readonly" {
+			creds.ValidUntil = time.Now().Add(-1 * time.Minute) // Already expired
+			km.credentials[key] = creds
+		}
+	}
+	km.mu.Unlock()
+
+	// Second call should regenerate.
+	creds2, err := km.GetSourceVMCredentials(ctx, "golden-ubuntu-22.04")
+	if err != nil {
+		t.Fatalf("GetSourceVMCredentials (2) failed: %v", err)
+	}
+
+	// ValidUntil should be different (new certificate was issued).
+	if creds2.ValidUntil.Before(time.Now()) {
+		t.Error("expected new credentials with valid expiry after regeneration")
+	}
+	// New expiry should be after the old (expired) one.
+	if !creds2.ValidUntil.After(creds1.ValidUntil) {
+		t.Error("expected new credentials to have later expiry than expired ones")
+	}
+}
+
+func TestGetSourceVMCredentials_FilesystemLayout(t *testing.T) {
+	ca, cleanup := testCA(t)
+	defer cleanup()
+
+	tempDir, err := os.MkdirTemp("", "keymanager-test-")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	km, err := NewKeyManager(ca, Config{KeyDir: tempDir}, nil)
+	if err != nil {
+		t.Fatalf("NewKeyManager failed: %v", err)
+	}
+	defer func() { _ = km.Close() }()
+
+	ctx := context.Background()
+
+	testCases := []struct {
+		name             string
+		sourceVMName     string
+		expectedDirName  string
+	}{
+		{
+			name:            "simple name",
+			sourceVMName:    "ubuntu-22.04",
+			expectedDirName: "sourcevm-ubuntu-22.04",
+		},
+		{
+			name:            "name with dots",
+			sourceVMName:    "golden.ubuntu.22.04",
+			expectedDirName: "sourcevm-golden.ubuntu.22.04",
+		},
+		{
+			name:            "name with hyphens",
+			sourceVMName:    "my-golden-vm",
+			expectedDirName: "sourcevm-my-golden-vm",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			creds, err := km.GetSourceVMCredentials(ctx, tc.sourceVMName)
+			if err != nil {
+				t.Fatalf("GetSourceVMCredentials failed: %v", err)
+			}
+
+			// Verify the directory structure.
+			expectedDir := filepath.Join(tempDir, tc.expectedDirName)
+			expectedKeyPath := filepath.Join(expectedDir, "key")
+			expectedCertPath := filepath.Join(expectedDir, "key-cert.pub")
+
+			if creds.PrivateKeyPath != expectedKeyPath {
+				t.Errorf("PrivateKeyPath mismatch: got %s, want %s", creds.PrivateKeyPath, expectedKeyPath)
+			}
+			if creds.CertificatePath != expectedCertPath {
+				t.Errorf("CertificatePath mismatch: got %s, want %s", creds.CertificatePath, expectedCertPath)
+			}
+
+			// Verify directory exists with correct permissions.
+			info, err := os.Stat(expectedDir)
+			if err != nil {
+				t.Fatalf("failed to stat directory: %v", err)
+			}
+			if !info.IsDir() {
+				t.Error("expected directory, got file")
+			}
+			perm := info.Mode().Perm()
+			if perm != 0o700 {
+				t.Errorf("directory has wrong permissions: %o, expected 0700", perm)
+			}
+
+			// Verify private key has correct permissions.
+			keyInfo, err := os.Stat(creds.PrivateKeyPath)
+			if err != nil {
+				t.Fatalf("failed to stat private key: %v", err)
+			}
+			keyPerm := keyInfo.Mode().Perm()
+			if keyPerm != 0o600 {
+				t.Errorf("private key has wrong permissions: %o, expected 0600", keyPerm)
+			}
+		})
+	}
+}
+
+func TestGetSourceVMCredentials_EmptySourceVMName(t *testing.T) {
+	ca, cleanup := testCA(t)
+	defer cleanup()
+
+	tempDir, err := os.MkdirTemp("", "keymanager-test-")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	km, err := NewKeyManager(ca, Config{KeyDir: tempDir}, nil)
+	if err != nil {
+		t.Fatalf("NewKeyManager failed: %v", err)
+	}
+	defer func() { _ = km.Close() }()
+
+	_, err = km.GetSourceVMCredentials(context.Background(), "")
+	if err == nil {
+		t.Error("expected error for empty sourceVMName")
+	}
+}
+
+func TestGetSourceVMCredentials_ConcurrentSafety(t *testing.T) {
+	ca, cleanup := testCA(t)
+	defer cleanup()
+
+	tempDir, err := os.MkdirTemp("", "keymanager-test-")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	km, err := NewKeyManager(ca, Config{KeyDir: tempDir}, nil)
+	if err != nil {
+		t.Fatalf("NewKeyManager failed: %v", err)
+	}
+	defer func() { _ = km.Close() }()
+
+	ctx := context.Background()
+	sourceVMName := "golden-concurrent"
+
+	// Launch multiple goroutines requesting the same source VM's credentials.
+	var wg sync.WaitGroup
+	results := make(chan *Credentials, 10)
+	errors := make(chan error, 10)
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			creds, err := km.GetSourceVMCredentials(ctx, sourceVMName)
+			if err != nil {
+				errors <- err
+				return
+			}
+			results <- creds
+		}()
+	}
+
+	wg.Wait()
+	close(results)
+	close(errors)
+
+	// Check for errors.
+	for err := range errors {
+		t.Errorf("GetSourceVMCredentials error: %v", err)
+	}
+
+	// All results should have the same private key path (cached).
+	var firstPath string
+	for creds := range results {
+		if firstPath == "" {
+			firstPath = creds.PrivateKeyPath
+		} else if creds.PrivateKeyPath != firstPath {
+			t.Error("concurrent calls returned different credentials")
+		}
+	}
+}
