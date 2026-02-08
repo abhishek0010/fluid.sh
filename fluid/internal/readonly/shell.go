@@ -153,10 +153,18 @@ parse_and_validate_segments() {
         
         # Track quote state
         if [[ "$char" == "'" && "$in_double_quote" == false && "$prev_char" != "\\" ]]; then
-            in_single_quote=$( [[ "$in_single_quote" == true ]] && echo false || echo true )
+            if [[ "$in_single_quote" == true ]]; then
+                in_single_quote=false
+            else
+                in_single_quote=true
+            fi
             segment+="$char"
         elif [[ "$char" == '"' && "$in_single_quote" == false && "$prev_char" != "\\" ]]; then
-            in_double_quote=$( [[ "$in_double_quote" == true ]] && echo false || echo true )
+            if [[ "$in_double_quote" == true ]]; then
+                in_double_quote=false
+            else
+                in_double_quote=true
+            fi
             segment+="$char"
         # Check for separators outside quotes
         elif [[ "$in_single_quote" == false && "$in_double_quote" == false ]]; then

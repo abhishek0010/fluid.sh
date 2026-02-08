@@ -145,14 +145,15 @@ func TestRestrictedShell_CommandChaining(t *testing.T) {
 						tt.description, tt.command, output)
 				}
 			} else {
-				// Command should succeed
-				if exitCode != 0 && exitCode != 1 {
-					// Exit code 1 is acceptable for commands that legitimately fail
-					// (e.g., grep with no matches), but 126 means blocked by shell
-					if exitCode == 126 {
-						t.Errorf("%s: expected command to succeed but it was blocked\nCommand: %s\nOutput: %s",
-							tt.description, tt.command, output)
-					}
+				// Command should succeed (exit code 0) or fail legitimately (exit code 1)
+				// Exit code 126 means blocked by shell, which is incorrect for allowed commands
+				if exitCode == 126 {
+					t.Errorf("%s: expected command to succeed but it was blocked by shell\nCommand: %s\nOutput: %s",
+						tt.description, tt.command, output)
+				} else if exitCode != 0 && exitCode != 1 {
+					// Any other non-zero exit code is unexpected
+					t.Logf("%s: command exited with unexpected code %d (not 0, 1, or 126)\nCommand: %s\nOutput: %s",
+						tt.description, exitCode, tt.command, output)
 				}
 			}
 		})
