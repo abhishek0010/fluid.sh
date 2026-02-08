@@ -794,3 +794,219 @@ func TestGetSourceVMCredentials_ConcurrentSafety(t *testing.T) {
 		}
 	}
 }
+
+// TestSanitizeVMName tests the VM name sanitization function.
+func TestSanitizeVMName(t *testing.T) {
+testCases := []struct {
+name     string
+input    string
+expected string
+}{
+{
+name:     "simple alphanumeric",
+input:    "ubuntu2204",
+expected: "ubuntu2204",
+},
+{
+name:     "with dots",
+input:    "ubuntu.22.04",
+expected: "ubuntu.22.04",
+},
+{
+name:     "with hyphens",
+input:    "my-golden-vm",
+expected: "my-golden-vm",
+},
+{
+name:     "with underscores",
+input:    "test_vm_123",
+expected: "test_vm_123",
+},
+{
+name:     "path traversal with ..",
+input:    "../../../etc/passwd",
+expected: ".._.._.._etc_passwd",
+},
+{
+name:     "path traversal with /",
+input:    "/etc/passwd",
+expected: "_etc_passwd",
+},
+{
+name:     "path traversal complex",
+input:    "../../vm/../config",
+expected: ".._.._vm_.._config",
+},
+{
+name:     "special characters",
+input:    "vm@#$%^&*()name",
+expected: "vm_________name",
+},
+{
+name:     "spaces",
+input:    "my vm name",
+expected: "my_vm_name",
+},
+{
+name:     "mixed valid and invalid",
+input:    "vm-123.test/path",
+expected: "vm-123.test_path",
+},
+{
+name:     "unicode characters",
+input:    "vm-名前",
+expected: "vm-__",
+},
+{
+name:     "backslash (Windows path)",
+input:    "C:\\Users\\test",
+expected: "C__Users_test",
+},
+}
+
+for _, tc := range testCases {
+t.Run(tc.name, func(t *testing.T) {
+result := sanitizeVMName(tc.input)
+if result != tc.expected {
+t.Errorf("sanitizeVMName(%q) = %q, want %q", tc.input, result, tc.expected)
+}
+})
+}
+}
+
+// TestSourceVMCredentialsPathTraversal tests that path traversal attacks are prevented.
+func TestSourceVMCredentialsPathTraversal(t *testing.T) {
+ca, cleanup := testCA(t)
+defer cleanup()
+
+tmpDir, err := os.MkdirTemp("", "sshkeys-traversal-test-")
+if err != nil {
+t.Fatalf("failed to create temp dir: %v", err)
+}
+defer os.RemoveAll(tmpDir)
+
+cfg := DefaultConfig()
+cfg.KeyDir = tmpDir
+cfg.CertificateTTL = 5 * time.Minute
+
+km, err := NewKeyManager(ca, cfg, nil)
+if err != nil {
+t.Fatalf("NewKeyManager failed: %v", err)
+}
+defer km.Close()
+
+ctx := context.Background()
+
+// Test cases that attempt path traversal
+testCases := []struct {
+name         string
+vmName       string
+shouldCreate bool // whether the directory should be created
+}{
+{
+name:         "path traversal with ..",
+vmName:       "../../etc/passwd",
+shouldCreate: true, // should create sanitized directory
+},
+{
+name:         "absolute path",
+vmName:       "/tmp/evil",
+shouldCreate: true,
+},
+{
+name:         "complex traversal",
+vmName:       "../../../root/.ssh/id_rsa",
+shouldCreate: true,
+},
+{
+name:         "normal name",
+vmName:       "ubuntu-22.04",
+shouldCreate: true,
+},
+}
+
+for _, tc := range testCases {
+t.Run(tc.name, func(t *testing.T) {
+creds, err := km.GetSourceVMCredentials(ctx, tc.vmName)
+if err != nil {
+t.Fatalf("GetSourceVMCredentials failed: %v", err)
+}
+
+// Verify that the private key path is within the expected directory
+if !filepath.HasPrefix(creds.PrivateKeyPath, tmpDir) {
+t.Errorf("private key path %q is not within base directory %q", creds.PrivateKeyPath, tmpDir)
+}
+
+// Verify that the certificate path is within the expected directory
+if !filepath.HasPrefix(creds.CertificatePath, tmpDir) {
+t.Errorf("certificate path %q is not within base directory %q", creds.CertificatePath, tmpDir)
+}
+
+// Verify that files were actually created
+if _, err := os.Stat(creds.PrivateKeyPath); os.IsNotExist(err) {
+t.Errorf("private key file does not exist: %s", creds.PrivateKeyPath)
+}
+if _, err := os.Stat(creds.CertificatePath); os.IsNotExist(err) {
+t.Errorf("certificate file does not exist: %s", creds.CertificatePath)
+}
+
+// Verify that the parent directory name contains the sanitized VM name
+parentDir := filepath.Base(filepath.Dir(creds.PrivateKeyPath))
+expectedPrefix := "sourcevm-"
+if !filepath.HasPrefix(parentDir, expectedPrefix) {
+t.Errorf("parent directory %q does not start with expected prefix %q", parentDir, expectedPrefix)
+}
+
+// Verify no path traversal occurred - the directory should be directly under tmpDir
+expectedDir := filepath.Join(tmpDir, parentDir)
+actualDir := filepath.Dir(creds.PrivateKeyPath)
+if actualDir != expectedDir {
+t.Errorf("directory mismatch: got %q, want %q", actualDir, expectedDir)
+}
+})
+}
+}
+
+// TestSourceVMCredentialsSanitizationInPath tests that the directory name is sanitized.
+func TestSourceVMCredentialsSanitizationInPath(t *testing.T) {
+ca, cleanup := testCA(t)
+defer cleanup()
+
+tmpDir, err := os.MkdirTemp("", "sshkeys-sanitize-test-")
+if err != nil {
+t.Fatalf("failed to create temp dir: %v", err)
+}
+defer os.RemoveAll(tmpDir)
+
+cfg := DefaultConfig()
+cfg.KeyDir = tmpDir
+cfg.CertificateTTL = 5 * time.Minute
+
+km, err := NewKeyManager(ca, cfg, nil)
+if err != nil {
+t.Fatalf("NewKeyManager failed: %v", err)
+}
+defer km.Close()
+
+ctx := context.Background()
+
+// Test that the directory name is properly sanitized
+vmName := "../../../evil/../../path"
+creds, err := km.GetSourceVMCredentials(ctx, vmName)
+if err != nil {
+t.Fatalf("GetSourceVMCredentials failed: %v", err)
+}
+
+// The directory should be named with the sanitized version
+dirName := filepath.Base(filepath.Dir(creds.PrivateKeyPath))
+expectedDirName := "sourcevm-" + sanitizeVMName(vmName)
+
+if dirName != expectedDirName {
+t.Errorf("directory name = %q, want %q", dirName, expectedDirName)
+}
+
+// Verify the directory doesn't contain any path separators
+if filepath.Base(dirName) != dirName {
+t.Errorf("directory name %q contains path separators", dirName)
+}
+}
