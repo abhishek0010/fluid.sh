@@ -174,6 +174,60 @@ Read only mode will give access to the model to only tools that are not potentia
 | `get_playbook` | `No` | `No` | `No`| Get playbook contents |
 
 
+## Source VM Read-Only Access
+
+In addition to read-only mode within sandboxes, Fluid supports reading source/golden VMs directly -- no sandbox required. This lets the agent inspect production VMs for debugging and investigation without any risk of modification.
+
+### Preparing a Source VM
+
+To enable read-only access on a source VM:
+
+```bash
+fluid source prepare <vm-name>
+```
+
+This sets up a defense-in-depth security model on the VM:
+
+1. Installs a restricted shell script at `/usr/local/bin/fluid-readonly-shell`
+2. Creates a `fluid-readonly` user with the restricted shell (no interactive login)
+3. Configures SSH CA trust so the agent authenticates with ephemeral certificates
+4. Sets up authorized principals for the `fluid-readonly` user
+5. Restarts sshd to apply changes
+
+All steps are idempotent -- running `prepare` multiple times is safe. This is also run automatically during onboarding or when investigating a VM in read-only mode.
+
+### Source VM Tools
+
+When in read-only mode, the agent has access to these source VM tools:
+
+| Tool | Only Usable in Sandbox | Only Can Act on Sandboxes | Potentially Destructive | Description |
+|--------|----------|------|----|---|
+| `run_source_command` | `No` | `No` | `No` | Execute a read-only diagnostic command on a source VM |
+| `read_source_file` | `No` | `No` | `No` | Read the contents of a file on a source VM |
+
+### Allowed Read-Only Commands
+
+Commands are validated against an allowlist before execution. Allowed categories include:
+
+| Category | Commands |
+|----------|----------|
+| File inspection | `cat`, `ls`, `find`, `head`, `tail`, `stat`, `file`, `wc`, `du`, `tree`, `strings`, `md5sum`, `sha256sum` |
+| Process/system | `ps`, `top`, `pgrep`, `systemctl status`, `journalctl`, `dmesg` |
+| Network | `ss`, `netstat`, `ip`, `ifconfig`, `dig`, `nslookup`, `ping` |
+| Disk | `df`, `lsblk`, `blkid` |
+| Package query | `dpkg -l`, `rpm -q`, `apt list`, `pip list` |
+| System info | `uname`, `hostname`, `uptime`, `free`, `lscpu`, `lsmod` |
+| Pipe targets | `grep`, `awk`, `sed`, `sort`, `uniq`, `cut`, `tr` |
+
+Subcommands are also restricted. For example, `systemctl` only allows `status`, `show`, `list-units`, `is-active`, and `is-enabled`.
+
+### Security Model
+
+Source VM access uses two layers of protection:
+
+- **Client-side validation** -- Commands are checked against the allowlist before being sent. Shell metacharacters (`$(...)`, backticks, process substitution, output redirection, newlines) are blocked. Piped and chained commands have each segment validated individually.
+- **Server-side restricted shell** -- The `fluid-readonly` user's login shell blocks destructive commands (`rm`, `kill`, `sudo`, `apt install`, etc.), prevents command substitution and output redirection, and denies interactive login.
+
 ## Issues
 
 Please reach out on Discord with any problems or questions you encounter!
