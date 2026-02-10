@@ -4,11 +4,12 @@
 # Copies and executes a specified local script on multiple remote hosts.
 # The local script is copied to /tmp/ on the remote machine and executed with sudo.
 #
-# Usage: ./run-on-remotes.sh <HOSTS_FILE> <SCRIPT_PATH>
+# Usage: ./run-on-remotes.sh <HOSTS_FILE> <SCRIPT_PATH> [SSH_USERS_FILE]
 #
 # Arguments:
-#   HOSTS_FILE   Path to a text file containing one "user@host" per line.
-#   SCRIPT_PATH  Path to the local script to execute remotely.
+#   HOSTS_FILE       Path to a text file containing one "user@host" per line.
+#   SCRIPT_PATH      Path to the local script to execute remotely.
+#   SSH_USERS_FILE   (Optional) Path to ssh-users.conf to copy and pass to the script.
 
 set -u
 
@@ -36,14 +37,15 @@ log_error() {
 }
 
 # Check arguments
-if [[ $# -ne 2 ]]; then
-    echo "Usage: $0 <HOSTS_FILE> <SCRIPT_PATH>"
-    echo "Example: $0 hosts.txt ./setup-ubuntu.sh"
+if [[ $# -lt 2 ]] || [[ $# -gt 3 ]]; then
+    echo "Usage: $0 <HOSTS_FILE> <SCRIPT_PATH> [SSH_USERS_FILE]"
+    echo "Example: $0 hosts.txt ./setup-ubuntu.sh ./ssh-users.conf"
     exit 1
 fi
 
 HOSTS_FILE="$1"
 SCRIPT_PATH="$2"
+SSH_USERS_FILE="${3:-}"
 
 # Validate inputs
 if [[ ! -f "$HOSTS_FILE" ]]; then
@@ -53,6 +55,11 @@ fi
 
 if [[ ! -f "$SCRIPT_PATH" ]]; then
     log_error "Script file not found: $SCRIPT_PATH"
+    exit 1
+fi
+
+if [[ -n "$SSH_USERS_FILE" ]] && [[ ! -f "$SSH_USERS_FILE" ]]; then
+    log_error "SSH users file not found: $SSH_USERS_FILE"
     exit 1
 fi
 
@@ -83,6 +90,19 @@ while IFS= read -r HOST <&3 || [[ -n "$HOST" ]]; do
         continue
     fi
 
+    # 1b. Copy SSH users file if provided
+    REMOTE_USERS_FILE="/tmp/ssh-users.conf"
+    EXTRA_ARGS=""
+    if [[ -n "$SSH_USERS_FILE" ]]; then
+        log_info "Copying SSH users file to $HOST:$REMOTE_USERS_FILE..."
+        if scp -o ConnectTimeout=5 "$SSH_USERS_FILE" "${HOST}:${REMOTE_USERS_FILE}"; then
+            log_success "SSH users file copied."
+            EXTRA_ARGS="--ssh-users-file $REMOTE_USERS_FILE"
+        else
+            log_warn "Failed to copy SSH users file to $HOST. Continuing without it."
+        fi
+    fi
+
     # 2. Make executable
     log_info "Setting executable permissions..."
     if ssh -o ConnectTimeout=5 "$HOST" "chmod +x $REMOTE_DEST"; then
@@ -96,9 +116,9 @@ while IFS= read -r HOST <&3 || [[ -n "$HOST" ]]; do
     log_info "Executing script (sudo required)..."
     # We use -t to force pseudo-terminal allocation for sudo prompts if needed
     # Pass the COUNT as the first argument to the script
-    if ssh -t -o ConnectTimeout=5 "$HOST" "sudo $REMOTE_DEST $COUNT"; then
+    if ssh -t -o ConnectTimeout=5 "$HOST" "sudo $REMOTE_DEST $COUNT $EXTRA_ARGS"; then
         log_success "Script execution completed successfully on $HOST."
-        
+
         # Optional: Cleanup
         # ssh "$HOST" "rm $REMOTE_DEST"
     else

@@ -516,3 +516,150 @@ func (m NetworkConfirmModel) View() string {
 
 	return content
 }
+
+// SourcePrepareApprovalRequest contains details about the source VM that needs preparation
+type SourcePrepareApprovalRequest struct {
+	SourceVM string
+	Error    string // The connection error that triggered this
+}
+
+// SourcePrepareApprovalResult is the response from the user
+type SourcePrepareApprovalResult struct {
+	Approved bool
+	Request  SourcePrepareApprovalRequest
+}
+
+// SourcePrepareApprovalRequestMsg is sent when the agent detects a source VM needs preparation
+type SourcePrepareApprovalRequestMsg struct {
+	Request SourcePrepareApprovalRequest
+}
+
+// SourcePrepareApprovalResponseMsg is sent when the user responds
+type SourcePrepareApprovalResponseMsg struct {
+	Result SourcePrepareApprovalResult
+}
+
+// SourcePrepareConfirmModel is a Bubble Tea model for confirming source VM preparation
+type SourcePrepareConfirmModel struct {
+	request  SourcePrepareApprovalRequest
+	selected int // 0 = No (default safe option), 1 = Yes
+	width    int
+	height   int
+	styles   confirmStyles
+
+	resultChan chan<- SourcePrepareApprovalResult
+}
+
+// NewSourcePrepareConfirmModel creates a new confirmation dialog for source prepare approval
+func NewSourcePrepareConfirmModel(request SourcePrepareApprovalRequest, resultChan chan<- SourcePrepareApprovalResult) SourcePrepareConfirmModel {
+	return SourcePrepareConfirmModel{
+		request:    request,
+		selected:   0,
+		styles:     newConfirmStyles(),
+		resultChan: resultChan,
+	}
+}
+
+// Init implements tea.Model
+func (m SourcePrepareConfirmModel) Init() tea.Cmd {
+	return nil
+}
+
+// Update implements tea.Model
+func (m SourcePrepareConfirmModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, confirmKeys.Left):
+			m.selected = 0
+		case key.Matches(msg, confirmKeys.Right):
+			m.selected = 1
+		case key.Matches(msg, confirmKeys.Tab):
+			m.selected = (m.selected + 1) % 2
+		case key.Matches(msg, confirmKeys.Yes):
+			m.selected = 1
+			return m.confirm()
+		case key.Matches(msg, confirmKeys.No), key.Matches(msg, confirmKeys.Escape):
+			m.selected = 0
+			return m.confirm()
+		case key.Matches(msg, confirmKeys.Enter):
+			return m.confirm()
+		}
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+	}
+	return m, nil
+}
+
+func (m SourcePrepareConfirmModel) confirm() (tea.Model, tea.Cmd) {
+	result := SourcePrepareApprovalResult{
+		Approved: m.selected == 1,
+		Request:  m.request,
+	}
+	if m.resultChan != nil {
+		m.resultChan <- result
+	}
+	return m, func() tea.Msg {
+		return SourcePrepareApprovalResponseMsg{Result: result}
+	}
+}
+
+// View implements tea.Model
+func (m SourcePrepareConfirmModel) View() string {
+	var b strings.Builder
+
+	b.WriteString(m.styles.title.Render("! Source VM Not Prepared"))
+	b.WriteString("\n\n")
+
+	b.WriteString(m.styles.info.Render(fmt.Sprintf("Source VM: %s", m.styles.highlight.Render(m.request.SourceVM))))
+	b.WriteString("\n\n")
+
+	b.WriteString(m.styles.warning.Render("Connection Error:"))
+	b.WriteString("\n")
+	errMsg := m.request.Error
+	if len(errMsg) > 120 {
+		errMsg = errMsg[:117] + "..."
+	}
+	b.WriteString(m.styles.error.Render(fmt.Sprintf("  %s", errMsg)))
+	b.WriteString("\n\n")
+
+	b.WriteString(m.styles.info.Render("The source VM may not be prepared for read-only access."))
+	b.WriteString("\n")
+	b.WriteString(m.styles.info.Render("Running 'source prepare' will:"))
+	b.WriteString("\n")
+	b.WriteString(m.styles.info.Render("  - Start the VM if it's not running"))
+	b.WriteString("\n")
+	b.WriteString(m.styles.info.Render("  - Create a 'fluid-readonly' user"))
+	b.WriteString("\n")
+	b.WriteString(m.styles.info.Render("  - Install a restricted shell"))
+	b.WriteString("\n")
+	b.WriteString(m.styles.info.Render("  - Configure SSH certificate authentication"))
+	b.WriteString("\n\n")
+
+	b.WriteString(m.styles.highlight.Render("Prepare this source VM for read-only access?"))
+	b.WriteString("\n\n")
+
+	var noBtn, yesBtn string
+	if m.selected == 0 {
+		noBtn = m.styles.buttonFocus.Render(" [ No ] ")
+		yesBtn = m.styles.button.Render("   Yes   ")
+	} else {
+		noBtn = m.styles.button.Render("   No   ")
+		yesBtn = m.styles.buttonFocus.Render(" [ Yes ] ")
+	}
+
+	buttons := lipgloss.JoinHorizontal(lipgloss.Center, noBtn, "    ", yesBtn)
+	b.WriteString(buttons)
+	b.WriteString("\n\n")
+
+	b.WriteString(m.styles.help.Render("  <-/-> or Tab: select | Enter: confirm | y/n: quick select | Esc: cancel"))
+
+	content := m.styles.dialog.Render(b.String())
+
+	if m.width > 0 && m.height > 0 {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+	}
+
+	return content
+}

@@ -785,6 +785,80 @@ func (s *sqliteStore) GetNextTaskPosition(ctx context.Context, playbookID string
 	return *maxPos + 1, nil
 }
 
+// --- SourceVM ---
+
+func (s *sqliteStore) GetSourceVM(ctx context.Context, name string) (*store.SourceVM, error) {
+	var model SourceVMModel
+	if err := s.db.WithContext(ctx).Where("name = ?", name).First(&model).Error; err != nil {
+		return nil, mapDBError(err)
+	}
+	return sourceVMFromModel(&model), nil
+}
+
+func (s *sqliteStore) UpsertSourceVM(ctx context.Context, svm *store.SourceVM) error {
+	if s.conf.ReadOnly {
+		return fmt.Errorf("sqlite: UpsertSourceVM: %w", store.ErrInvalid)
+	}
+	if svm == nil || svm.Name == "" {
+		return fmt.Errorf("sqlite: UpsertSourceVM: %w", store.ErrInvalid)
+	}
+
+	now := time.Now().UTC()
+	svm.UpdatedAt = now
+
+	// Check if exists
+	var existing SourceVMModel
+	err := s.db.WithContext(ctx).Where("name = ?", svm.Name).First(&existing).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return mapDBError(err)
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// Insert
+		if svm.ID == "" {
+			svm.ID = fmt.Sprintf("SVM-%d", now.UnixNano())
+		}
+		svm.CreatedAt = now
+		if err := s.db.WithContext(ctx).Create(sourceVMToModel(svm)).Error; err != nil {
+			return mapDBError(err)
+		}
+		return nil
+	}
+
+	// Update
+	svm.ID = existing.ID
+	svm.CreatedAt = existing.CreatedAt
+	model := sourceVMToModel(svm)
+	res := s.db.WithContext(ctx).
+		Model(&SourceVMModel{}).
+		Where("id = ?", existing.ID).
+		Updates(map[string]any{
+			"host_name":      model.HostName,
+			"host_address":   model.HostAddress,
+			"prepared":       model.Prepared,
+			"prepared_at":    model.PreparedAt,
+			"prepare_json":   model.PrepareJSON,
+			"ca_fingerprint": model.CAFingerprint,
+			"updated_at":     model.UpdatedAt,
+		})
+	if err := mapDBError(res.Error); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *sqliteStore) ListSourceVMs(ctx context.Context) ([]*store.SourceVM, error) {
+	var models []SourceVMModel
+	if err := s.db.WithContext(ctx).Order("name ASC").Find(&models).Error; err != nil {
+		return nil, mapDBError(err)
+	}
+	out := make([]*store.SourceVM, 0, len(models))
+	for i := range models {
+		out = append(out, sourceVMFromModel(&models[i]))
+	}
+	return out, nil
+}
+
 // --- Migration ---
 
 func (s *sqliteStore) autoMigrate(ctx context.Context) error {
@@ -798,6 +872,7 @@ func (s *sqliteStore) autoMigrate(ctx context.Context) error {
 		&PlaybookModel{},
 		&PlaybookTaskModel{},
 		&HostResourcesModel{},
+		&SourceVMModel{},
 	); err != nil {
 		return err
 	}
@@ -941,6 +1016,21 @@ type HostResourcesModel struct {
 }
 
 func (HostResourcesModel) TableName() string { return "host_resources" }
+
+type SourceVMModel struct {
+	ID            string     `gorm:"primaryKey;column:id"`
+	Name          string     `gorm:"column:name;not null;uniqueIndex"`
+	HostName      *string    `gorm:"column:host_name"`
+	HostAddress   *string    `gorm:"column:host_address"`
+	Prepared      bool       `gorm:"column:prepared;not null;default:false"`
+	PreparedAt    *time.Time `gorm:"column:prepared_at"`
+	PrepareJSON   *string    `gorm:"column:prepare_json;type:text"`
+	CAFingerprint *string    `gorm:"column:ca_fingerprint"`
+	CreatedAt     time.Time  `gorm:"column:created_at;not null"`
+	UpdatedAt     time.Time  `gorm:"column:updated_at;not null"`
+}
+
+func (SourceVMModel) TableName() string { return "source_vms" }
 
 // --- Converters ---
 
@@ -1180,6 +1270,36 @@ func playbookTaskFromModel(m *PlaybookTaskModel) (*store.PlaybookTask, error) {
 		Params:     params,
 		CreatedAt:  m.CreatedAt,
 	}, nil
+}
+
+func sourceVMToModel(svm *store.SourceVM) *SourceVMModel {
+	return &SourceVMModel{
+		ID:            svm.ID,
+		Name:          svm.Name,
+		HostName:      copyString(svm.HostName),
+		HostAddress:   copyString(svm.HostAddress),
+		Prepared:      svm.Prepared,
+		PreparedAt:    copyTime(svm.PreparedAt),
+		PrepareJSON:   copyString(svm.PrepareJSON),
+		CAFingerprint: copyString(svm.CAFingerprint),
+		CreatedAt:     svm.CreatedAt,
+		UpdatedAt:     svm.UpdatedAt,
+	}
+}
+
+func sourceVMFromModel(m *SourceVMModel) *store.SourceVM {
+	return &store.SourceVM{
+		ID:            m.ID,
+		Name:          m.Name,
+		HostName:      copyString(m.HostName),
+		HostAddress:   copyString(m.HostAddress),
+		Prepared:      m.Prepared,
+		PreparedAt:    copyTime(m.PreparedAt),
+		PrepareJSON:   copyString(m.PrepareJSON),
+		CAFingerprint: copyString(m.CAFingerprint),
+		CreatedAt:     m.CreatedAt,
+		UpdatedAt:     m.UpdatedAt,
+	}
 }
 
 // --- Helpers ---

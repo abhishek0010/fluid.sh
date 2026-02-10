@@ -18,6 +18,7 @@ import (
 
 	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid/internal/readonly"
 	"github.com/aspectrr/fluid.sh/fluid/internal/sshca"
 	"github.com/aspectrr/fluid.sh/fluid/internal/sshkeys"
 	"github.com/aspectrr/fluid.sh/fluid/internal/store"
@@ -92,6 +93,9 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(playbooksCmd)
 	rootCmd.AddCommand(tuiCmd)
+
+	sourceCmd.AddCommand(sourcePrepareCmd)
+	rootCmd.AddCommand(sourceCmd)
 }
 
 func initServices() error {
@@ -1137,16 +1141,27 @@ func runTUI() error {
 		}
 	}
 
-	// Create a silent logger for TUI mode to prevent stdout corruption
-	// slog output would corrupt the alternate screen buffer used by the TUI
-	silentLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	// Log to ~/.fluid/fluid.log instead of stdout to avoid corrupting the TUI
+	logPath := filepath.Join(filepath.Dir(configPath), "fluid.log")
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not open log file %s: %v\n", logPath, err)
+		logFile = nil
+	}
+	var fileLogger *slog.Logger
+	if logFile != nil {
+		defer func() { _ = logFile.Close() }()
+		fileLogger = slog.New(slog.NewTextHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	} else {
+		fileLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
 
-	// Initialize services with the loaded config and silent logger
-	if err := initServicesWithConfigAndLogger(cfg, silentLogger); err != nil {
+	// Initialize services with the loaded config and file logger
+	if err := initServicesWithConfigAndLogger(cfg, fileLogger); err != nil {
 		return fmt.Errorf("init services: %w", err)
 	}
 
-	agent := tui.NewFluidAgent(cfg, dataStore, vmService, libvirtMgr, telemetryService)
+	agent := tui.NewFluidAgent(cfg, dataStore, vmService, libvirtMgr, telemetryService, fileLogger)
 
 	// Cleanup now happens in the TUI cleanup page when user presses Ctrl+C twice
 
@@ -1269,4 +1284,94 @@ func outputError(err error) {
 	} else {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
 	}
+}
+
+// sourceCmd is the parent command for source VM operations.
+var sourceCmd = &cobra.Command{
+	Use:   "source",
+	Short: "Manage source/golden VMs",
+	Long:  "Commands for managing and preparing source/golden VMs for read-only access.",
+}
+
+// sourcePrepareCmd prepares a golden VM for read-only SSH access.
+var sourcePrepareCmd = &cobra.Command{
+	Use:   "prepare <vm-name>",
+	Short: "Prepare a golden VM for read-only SSH access",
+	Long:  "Sets up the fluid-readonly user, restricted shell, and SSH CA trust on a golden VM.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		vmName := args[0]
+
+		if err := initServices(); err != nil {
+			return err
+		}
+
+		sshUser, _ := cmd.Flags().GetString("user")
+		sshKey, _ := cmd.Flags().GetString("key")
+
+		if sshUser == "" {
+			sshUser = "root"
+		}
+
+		// Discover VM IP.
+		ctx := context.Background()
+		ip, _, err := libvirtMgr.GetIPAddress(ctx, vmName, 2*time.Minute)
+		if err != nil {
+			return fmt.Errorf("discover IP for VM %s: %w", vmName, err)
+		}
+
+		// Read CA public key.
+		caPubPath := cfg.SSH.CAPubPath
+		if caPubPath == "" {
+			return fmt.Errorf("SSH CA public key path not configured (ssh.ca_pub_path)")
+		}
+		caPubKey, err := os.ReadFile(caPubPath)
+		if err != nil {
+			return fmt.Errorf("read CA public key %s: %w", caPubPath, err)
+		}
+
+		// Create SSH run function.
+		sshRunFunc := func(ctx context.Context, command string) (string, string, int, error) {
+			sshArgs := []string{
+				"-i", sshKey,
+				"-o", "StrictHostKeyChecking=no",
+				"-o", "UserKnownHostsFile=/dev/null",
+				"-o", "ConnectTimeout=15",
+				fmt.Sprintf("%s@%s", sshUser, ip),
+				"--",
+				command,
+			}
+			sshCmd := exec.CommandContext(ctx, "ssh", sshArgs...)
+			var stdout, stderr bytes.Buffer
+			sshCmd.Stdout = &stdout
+			sshCmd.Stderr = &stderr
+			if err := sshCmd.Run(); err != nil {
+				return stdout.String(), stderr.String(), 1, err
+			}
+			return stdout.String(), stderr.String(), 0, nil
+		}
+
+		result, err := readonly.Prepare(ctx, sshRunFunc, string(caPubKey))
+		if err != nil {
+			return fmt.Errorf("prepare VM %s: %w", vmName, err)
+		}
+
+		output(map[string]any{
+			"vm":                 vmName,
+			"ip":                 ip,
+			"user_created":       result.UserCreated,
+			"shell_installed":    result.ShellInstalled,
+			"ca_key_installed":   result.CAKeyInstalled,
+			"sshd_configured":    result.SSHDConfigured,
+			"principals_created": result.PrincipalsCreated,
+			"sshd_restarted":     result.SSHDRestarted,
+		})
+		return nil
+	},
+}
+
+func init() {
+	sourcePrepareCmd.Flags().String("user", "root", "SSH user for connecting to the VM")
+	sourcePrepareCmd.Flags().String("key", "", "Path to SSH private key")
+	_ = sourcePrepareCmd.MarkFlagRequired("key")
 }

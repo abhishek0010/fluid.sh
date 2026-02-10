@@ -6,7 +6,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **ip_address** | **str** | populated when auto_start and wait_for_ip are true | [optional] 
-**sandbox** | [**FluidRemoteInternalStoreSandbox**](FluidRemoteInternalStoreSandbox.md) |  | [optional] 
+**sandbox** | [**GithubComAspectrrFluidShFluidRemoteInternalStoreSandbox**](GithubComAspectrrFluidShFluidRemoteInternalStoreSandbox.md) |  | [optional] 
 
 ## Example
 

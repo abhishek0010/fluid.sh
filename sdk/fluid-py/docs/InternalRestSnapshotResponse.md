@@ -5,7 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**snapshot** | [**FluidRemoteInternalStoreSnapshot**](FluidRemoteInternalStoreSnapshot.md) |  | [optional] 
+**snapshot** | [**GithubComAspectrrFluidShFluidRemoteInternalStoreSnapshot**](GithubComAspectrrFluidShFluidRemoteInternalStoreSnapshot.md) |  | [optional] 
 
 ## Example
 

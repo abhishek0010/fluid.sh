@@ -2,12 +2,14 @@ package llm
 
 // readOnlyTools is the set of tool names allowed in read-only mode.
 var readOnlyTools = map[string]bool{
-	"list_sandboxes": true,
-	"get_sandbox":    true,
-	"list_vms":       true,
-	"read_file":      true,
-	"list_playbooks": true,
-	"get_playbook":   true,
+	"list_sandboxes":     true,
+	"get_sandbox":        true,
+	"list_vms":           true,
+	"read_file":          true,
+	"list_playbooks":     true,
+	"get_playbook":       true,
+	"run_source_command": true,
+	"read_source_file":   true,
 }
 
 // GetReadOnlyTools returns only the tools that are safe for read-only mode.
@@ -314,6 +316,48 @@ func GetTools() []Tool {
 						},
 					},
 					Required: []string{"playbook_id"},
+				},
+			},
+		},
+		{
+			Type: "function",
+			Function: Function{
+				Name:        "run_source_command",
+				Description: "Execute a read-only command on a source/golden VM. Only diagnostic commands are allowed (ps, ls, cat, systemctl status, journalctl, etc.). This does NOT create or modify anything.",
+				Parameters: ParameterSchema{
+					Type: "object",
+					Properties: map[string]Property{
+						"source_vm": {
+							Type:        "string",
+							Description: "The name of the source VM to run the command on.",
+						},
+						"command": {
+							Type:        "string",
+							Description: "The read-only diagnostic command to execute.",
+						},
+					},
+					Required: []string{"source_vm", "command"},
+				},
+			},
+		},
+		{
+			Type: "function",
+			Function: Function{
+				Name:        "read_source_file",
+				Description: "Read the contents of a file on a source/golden VM. This is read-only and does not modify the VM.",
+				Parameters: ParameterSchema{
+					Type: "object",
+					Properties: map[string]Property{
+						"source_vm": {
+							Type:        "string",
+							Description: "The name of the source VM containing the file.",
+						},
+						"path": {
+							Type:        "string",
+							Description: "The absolute path to the file inside the source VM to read.",
+						},
+					},
+					Required: []string{"source_vm", "path"},
 				},
 			},
 		},

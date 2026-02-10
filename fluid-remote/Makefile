@@ -1,6 +1,6 @@
 # fluid-remote API Makefile
 
-.PHONY: all build run clean fmt lint vet test check generate-openapi help install-tools
+.PHONY: all build build-dev run clean fmt lint vet test check generate-openapi help install-tools
 
 # Go parameters
 GOCMD=go
@@ -30,6 +30,9 @@ all: check build
 
 build: ## Build the API binary
 	$(GOBUILD) $(BUILD_FLAGS) -o bin/$(BINARY_NAME) $(CMD_PATH)
+
+build-dev: POSTHOG_KEY=phc_QR3I1IKrEOqx5jIfJkBMfyznynIxRYd8kzmZM9o9fRZ
+build-dev: build ## Build with PostHog key
 
 run: ## Run the API server
 	$(GORUN) $(CMD_PATH)

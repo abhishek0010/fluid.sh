@@ -5,8 +5,8 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**commands** | [**List[FluidRemoteInternalStoreCommand]**](FluidRemoteInternalStoreCommand.md) |  | [optional] 
-**sandbox** | [**FluidRemoteInternalStoreSandbox**](FluidRemoteInternalStoreSandbox.md) |  | [optional] 
+**commands** | [**List[GithubComAspectrrFluidShFluidRemoteInternalStoreCommand]**](GithubComAspectrrFluidShFluidRemoteInternalStoreCommand.md) |  | [optional] 
+**sandbox** | [**GithubComAspectrrFluidShFluidRemoteInternalStoreSandbox**](GithubComAspectrrFluidShFluidRemoteInternalStoreSandbox.md) |  | [optional] 
 
 ## Example
 

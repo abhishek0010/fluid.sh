@@ -5,7 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**task** | [**FluidRemoteInternalStorePlaybookTask**](FluidRemoteInternalStorePlaybookTask.md) |  | [optional] 
+**task** | [**GithubComAspectrrFluidShFluidRemoteInternalStorePlaybookTask**](GithubComAspectrrFluidShFluidRemoteInternalStorePlaybookTask.md) |  | [optional] 
 
 ## Example
 

@@ -8,7 +8,7 @@ Method | HTTP request | Description
 
 
 # **get_health**
-> FluidRemoteInternalRestHealthResponse get_health()
+> GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse get_health()
 
 Health check
 
@@ -19,7 +19,7 @@ Returns service health status
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_health_response import FluidRemoteInternalRestHealthResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_health_response import GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -52,7 +52,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**FluidRemoteInternalRestHealthResponse**](FluidRemoteInternalRestHealthResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse.md)
 
 ### Authorization
 

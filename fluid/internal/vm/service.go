@@ -19,6 +19,7 @@ import (
 
 	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid/internal/readonly"
 	"github.com/aspectrr/fluid.sh/fluid/internal/sshkeys"
 	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 	"github.com/aspectrr/fluid.sh/fluid/internal/telemetry"
@@ -1632,6 +1633,117 @@ func (r *DefaultSSHRunner) RunWithCert(ctx context.Context, addr, user, privateK
 
 	// Should not reach here, but return last error if we do
 	return lastStdout, lastStderr, lastExitCode, fmt.Errorf("max retries (%d) exceeded: %w", maxRetries, lastErr)
+}
+
+// SourceCommandResult holds the output from a read-only command on a source VM.
+type SourceCommandResult struct {
+	SourceVM string
+	ExitCode int
+	Stdout   string
+	Stderr   string
+}
+
+// RunSourceVMCommand executes a validated read-only command on a golden/source VM.
+// The command is validated against the readonly allowlist before execution.
+// Results are NOT persisted to the store.
+func (s *Service) RunSourceVMCommand(ctx context.Context, sourceVMName, command string, timeout time.Duration) (*SourceCommandResult, error) {
+	return s.RunSourceVMCommandWithCallback(ctx, sourceVMName, command, timeout, nil)
+}
+
+// RunSourceVMCommandWithCallback executes a validated read-only command on a golden/source VM with streaming.
+func (s *Service) RunSourceVMCommandWithCallback(ctx context.Context, sourceVMName, command string, timeout time.Duration, outputCallback OutputCallback) (*SourceCommandResult, error) {
+	if strings.TrimSpace(sourceVMName) == "" {
+		return nil, fmt.Errorf("sourceVMName is required")
+	}
+	if strings.TrimSpace(command) == "" {
+		return nil, fmt.Errorf("command is required")
+	}
+
+	// Validate command against the read-only allowlist.
+	if err := readonly.ValidateCommand(command); err != nil {
+		s.logger.Warn("source VM command blocked by allowlist",
+			"source_vm", sourceVMName,
+			"command", command,
+			"reason", err.Error(),
+		)
+		s.telemetry.Track("source_vm_command_blocked", map[string]any{
+			"source_vm": sourceVMName,
+			"reason":    err.Error(),
+		})
+		return nil, fmt.Errorf("command not allowed in read-only mode: %w", err)
+	}
+
+	if timeout <= 0 {
+		timeout = s.cfg.CommandTimeout
+	}
+
+	// Require key manager for source VM access.
+	if s.keyMgr == nil {
+		return nil, fmt.Errorf("key manager is required for source VM access")
+	}
+
+	// Discover VM IP.
+	ip, _, err := s.mgr.GetIPAddress(ctx, sourceVMName, s.cfg.IPDiscoveryTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("discover IP for source VM %s: %w", sourceVMName, err)
+	}
+
+	// Get read-only credentials.
+	creds, err := s.keyMgr.GetSourceVMCredentials(ctx, sourceVMName)
+	if err != nil {
+		return nil, fmt.Errorf("get source VM credentials: %w", err)
+	}
+
+	// Determine proxy jump.
+	proxyJump := s.cfg.SSHProxyJump
+
+	// Pass command directly - the restricted shell on source VMs handles execution.
+	var stdout, stderr string
+	var code int
+	var runErr error
+
+	if outputCallback != nil {
+		outputChan := make(chan OutputChunk, 100)
+		go func() {
+			for chunk := range outputChan {
+				outputCallback(chunk)
+			}
+		}()
+		stdout, stderr, code, runErr = s.ssh.RunWithCertStreaming(ctx, ip, creds.Username, creds.PrivateKeyPath, creds.CertificatePath, command, timeout, nil, proxyJump, outputChan)
+		close(outputChan)
+	} else {
+		stdout, stderr, code, runErr = s.ssh.RunWithCert(ctx, ip, creds.Username, creds.PrivateKeyPath, creds.CertificatePath, command, timeout, nil, proxyJump)
+	}
+
+	result := &SourceCommandResult{
+		SourceVM: sourceVMName,
+		ExitCode: code,
+		Stdout:   stdout,
+		Stderr:   stderr,
+	}
+
+	if code == 126 {
+		s.logger.Warn("source VM command blocked by restricted shell",
+			"source_vm", sourceVMName,
+			"command", command,
+			"stderr", stderr,
+		)
+		s.telemetry.Track("source_vm_command_blocked", map[string]any{
+			"source_vm": sourceVMName,
+			"reason":    "restricted_shell",
+		})
+	}
+
+	if runErr != nil {
+		return result, fmt.Errorf("ssh run on source VM: %w", runErr)
+	}
+
+	s.telemetry.Track("source_vm_command", map[string]any{
+		"source_vm": sourceVMName,
+		"exit_code": code,
+	})
+
+	return result, nil
 }
 
 // Helpers

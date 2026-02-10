@@ -3,11 +3,13 @@ package tui
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -19,6 +21,7 @@ import (
 	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
 	"github.com/aspectrr/fluid.sh/fluid/internal/llm"
+	"github.com/aspectrr/fluid.sh/fluid/internal/readonly"
 	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 	"github.com/aspectrr/fluid.sh/fluid/internal/telemetry"
 	"github.com/aspectrr/fluid.sh/fluid/internal/vm"
@@ -42,6 +45,7 @@ type FluidAgent struct {
 	llmClient       llm.Client
 	playbookService *ansible.PlaybookService
 	telemetry       telemetry.Service
+	logger          *slog.Logger
 
 	// Multi-host support
 	multiHostMgr *libvirt.MultiHostDomainManager
@@ -65,6 +69,12 @@ type FluidAgent struct {
 	// Pending approval for network access
 	pendingNetworkApproval *PendingNetworkApproval
 
+	// Pending approval for source VM preparation
+	pendingSourcePrepareApproval *PendingSourcePrepareApproval
+
+	// Track VMs that have been prepared during this session (avoid re-prompting)
+	preparedSourceVMs map[string]bool
+
 	// Read-only mode: only query tools are available to the LLM
 	readOnly bool
 }
@@ -75,8 +85,18 @@ type PendingNetworkApproval struct {
 	ResponseChan chan bool
 }
 
+// PendingSourcePrepareApproval represents a source prepare request waiting for approval
+type PendingSourcePrepareApproval struct {
+	Request      SourcePrepareApprovalRequest
+	ResponseChan chan bool
+}
+
 // NewFluidAgent creates a new fluid agent
-func NewFluidAgent(cfg *config.Config, store store.Store, vmService *vm.Service, manager libvirt.Manager, tele telemetry.Service) *FluidAgent {
+func NewFluidAgent(cfg *config.Config, store store.Store, vmService *vm.Service, manager libvirt.Manager, tele telemetry.Service, logger *slog.Logger) *FluidAgent {
+	if logger == nil {
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+
 	var llmClient llm.Client
 	if cfg.AIAgent.Provider == "openrouter" {
 		llmClient = llm.NewOpenRouterClient(cfg.AIAgent)
@@ -90,14 +110,13 @@ func NewFluidAgent(cfg *config.Config, store store.Store, vmService *vm.Service,
 		llmClient:       llmClient,
 		playbookService: ansible.NewPlaybookService(store, cfg.Ansible.PlaybooksDir),
 		telemetry:       tele,
+		logger:          logger,
 		history:         make([]llm.Message, 0),
 	}
 
 	// Initialize multi-host manager if hosts are configured
 	if len(cfg.Hosts) > 0 {
-		// Use a silent logger for multi-host manager to avoid TUI corruption
-		silentLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
-		agent.multiHostMgr = libvirt.NewMultiHostDomainManager(cfg.Hosts, silentLogger)
+		agent.multiHostMgr = libvirt.NewMultiHostDomainManager(cfg.Hosts, logger)
 	}
 
 	return agent
@@ -193,6 +212,8 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 				b.WriteString("- **/settings**: Open configuration settings\n")
 				b.WriteString("- **/clear**: Clear conversation history\n")
 				b.WriteString("- **/help**: Show this help message\n")
+				b.WriteString("\n## Keyboard Shortcuts\n\n")
+				b.WriteString("- **PgUp/PgDn**: Scroll conversation history\n")
 				return AgentResponseMsg{Response: AgentResponse{
 					Content: b.String(),
 					Done:    true,
@@ -221,6 +242,7 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 			compactResult, err := a.Compact(ctx)
 			if err != nil {
 				// Log warning but continue - don't fail the request
+				a.logger.Warn("auto-compaction failed", "error", err)
 				a.sendStatus(CompactErrorMsg{Err: fmt.Errorf("auto-compact failed, continuing with full context: %w", err)})
 			} else {
 				// Send compact complete to TUI so user knows it happened
@@ -229,12 +251,13 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 		}
 
 		// LLM-driven execution loop
-		for {
+		for iteration := 0; ; iteration++ {
+			a.logger.Debug("LLM loop iteration", "iteration", iteration, "history_len", len(a.history))
 			systemPrompt := a.cfg.AIAgent.DefaultSystem
 			tools := llm.GetTools()
 			if a.readOnly {
 				tools = llm.GetReadOnlyTools()
-				systemPrompt += "\n\nYou are in READ-ONLY mode. You can only query and observe - you cannot create, modify, or destroy any resources.  Available tools: list_sandboxes, get_sandbox, list_vms, read_file, list_playbooks, get_playbook."
+				systemPrompt += "\n\nYou are in READ-ONLY mode. You can only query and observe - you cannot create, modify, or destroy any resources. Available tools: list_sandboxes, get_sandbox, list_vms, read_file, list_playbooks, get_playbook, run_source_command, read_source_file. Use run_source_command and read_source_file to inspect golden/source VMs directly."
 			}
 
 			req := llm.ChatRequest{
@@ -255,11 +278,13 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 
 			resp, err := a.llmClient.Chat(ctx, req)
 			if err != nil {
+				a.logger.Error("LLM chat failed", "error", err)
 				a.sendStatus(AgentDoneMsg{})
 				return AgentErrorMsg{Err: fmt.Errorf("llm chat: %w", err)}
 			}
 
 			if len(resp.Choices) == 0 {
+				a.logger.Error("LLM returned no choices")
 				a.sendStatus(AgentDoneMsg{})
 				return AgentErrorMsg{Err: fmt.Errorf("llm returned no choices")}
 			}
@@ -268,6 +293,7 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 			a.history = append(a.history, msg)
 
 			if len(msg.ToolCalls) > 0 {
+				a.logger.Debug("LLM response contains tool calls", "tool_count", len(msg.ToolCalls))
 				// Send intermediate response if there's content
 				if msg.Content != "" {
 					a.sendStatus(AgentResponseMsg{Response: AgentResponse{
@@ -278,6 +304,7 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 
 				// Handle tool calls
 				for _, tc := range msg.ToolCalls {
+					a.logger.Debug("executing tool call", "tool", tc.Function.Name, "call_id", tc.ID)
 					result, err := a.executeTool(ctx, tc)
 
 					var toolResultContent string
@@ -286,6 +313,7 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 					errMsg := ""
 
 					if err != nil {
+						a.logger.Error("tool execution failed", "tool", tc.Function.Name, "error", err)
 						success = false
 						errMsg = err.Error()
 						toolResultContent = fmt.Sprintf("Error: %v", err)
@@ -333,6 +361,8 @@ func (a *FluidAgent) executeTool(ctx context.Context, tc llm.ToolCall) (any, err
 	// Parse args for status message
 	var args map[string]any
 	_ = json.Unmarshal([]byte(tc.Function.Arguments), &args)
+
+	a.logger.Debug("tool dispatch", "tool", tc.Function.Name, "args", args)
 
 	// Send tool start status
 	a.sendStatus(ToolStartMsg{
@@ -463,13 +493,33 @@ func (a *FluidAgent) executeTool(ctx context.Context, tc llm.ToolCall) (any, err
 			return nil, err
 		}
 		return a.getPlaybook(ctx, args.PlaybookID)
+	case "run_source_command":
+		var args struct {
+			SourceVM string `json:"source_vm"`
+			Command  string `json:"command"`
+		}
+		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+			return nil, err
+		}
+		return a.runSourceCommand(ctx, args.SourceVM, args.Command)
+	case "read_source_file":
+		var args struct {
+			SourceVM string `json:"source_vm"`
+			Path     string `json:"path"`
+		}
+		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+			return nil, err
+		}
+		return a.readSourceFile(ctx, args.SourceVM, args.Path)
 	default:
+		a.logger.Error("unknown tool name", "tool", tc.Function.Name)
 		return nil, fmt.Errorf("unknown tool: %s", tc.Function.Name)
 	}
 }
 
 // Reset clears the conversation history
 func (a *FluidAgent) Reset() {
+	a.logger.Debug("conversation reset", "previous_message_count", len(a.history))
 	a.history = make([]llm.Message, 0)
 }
 
@@ -522,6 +572,7 @@ func (a *FluidAgent) Compact(ctx context.Context) (CompactCompleteMsg, error) {
 	}
 
 	previousTokens := a.EstimateTokens()
+	a.logger.Info("compaction starting", "previous_tokens", previousTokens, "message_count", len(a.history))
 
 	// Build the conversation text for summarization
 	var convText strings.Builder
@@ -570,10 +621,12 @@ func (a *FluidAgent) Compact(ctx context.Context) (CompactCompleteMsg, error) {
 
 	resp, err := a.llmClient.Chat(ctx, req)
 	if err != nil {
+		a.logger.Error("compaction LLM call failed", "error", err)
 		return CompactCompleteMsg{}, fmt.Errorf("compaction LLM call failed: %w", err)
 	}
 
 	if len(resp.Choices) == 0 {
+		a.logger.Error("compaction LLM returned no choices")
 		return CompactCompleteMsg{}, fmt.Errorf("compaction LLM returned no choices")
 	}
 
@@ -592,6 +645,7 @@ func (a *FluidAgent) Compact(ctx context.Context) (CompactCompleteMsg, error) {
 	}
 
 	newTokens := a.EstimateTokens()
+	a.logger.Info("compaction complete", "previous_tokens", previousTokens, "new_tokens", newTokens)
 
 	return CompactCompleteMsg{
 		PreviousTokens: previousTokens,
@@ -620,9 +674,11 @@ func (a *FluidAgent) RunCompact() tea.Cmd {
 func (a *FluidAgent) listSandboxes(ctx context.Context) (map[string]any, error) {
 	sandboxes, err := a.vmService.GetSandboxes(ctx, store.SandboxFilter{}, nil)
 	if err != nil {
+		a.logger.Error("list sandboxes query failed", "error", err)
 		return nil, err
 	}
 
+	a.logger.Debug("list sandboxes", "count", len(sandboxes))
 	result := make([]map[string]any, 0, len(sandboxes))
 	for _, sb := range sandboxes {
 		item := map[string]any{
@@ -654,6 +710,8 @@ func (a *FluidAgent) createSandbox(ctx context.Context, sourceVM, hostName strin
 	if sourceVM == "" {
 		return nil, fmt.Errorf("source-vm is required (e.g., create ubuntu-base)")
 	}
+
+	a.logger.Info("sandbox creation attempt", "source_vm", sourceVM, "host", hostName, "cpu", cpu, "memory_mb", memoryMB)
 
 	// Determine target host and manager
 	var host *config.HostConfig
@@ -694,6 +752,7 @@ func (a *FluidAgent) createSandbox(ctx context.Context, sourceVM, hostName strin
 
 	// If resources are insufficient, request human approval
 	if validation.NeedsApproval {
+		a.logger.Warn("resource validation needs approval", "source_vm", sourceVM, "required_mb", validation.ResourceCheck.RequiredMemoryMB, "available_mb", validation.ResourceCheck.AvailableMemoryMB)
 		hostNameStr := "local"
 		if host != nil {
 			hostNameStr = host.Name
@@ -727,6 +786,7 @@ func (a *FluidAgent) createSandbox(ctx context.Context, sourceVM, hostName strin
 		// Wait for response (this blocks the agent until user responds)
 		approved := <-responseChan
 		a.pendingApproval = nil
+		a.logger.Info("memory approval response", "approved", approved, "source_vm", sourceVM)
 
 		if !approved {
 			return nil, fmt.Errorf("sandbox creation denied: insufficient memory (need %d MB, have %d MB available) - human approval was not granted",
@@ -739,8 +799,10 @@ func (a *FluidAgent) createSandbox(ctx context.Context, sourceVM, hostName strin
 		// Create on remote host
 		sb, ip, err := a.vmService.CreateSandboxOnHost(ctx, host, sourceVM, "tui-agent", "", cpuCount, memMB, nil, true, true)
 		if err != nil {
+			a.logger.Error("sandbox creation failed", "source_vm", sourceVM, "host", host.Name, "error", err)
 			return nil, err
 		}
+		a.logger.Info("sandbox created", "sandbox_id", sb.ID, "host", host.Name, "ip", ip)
 
 		// Track the created sandbox for cleanup on exit
 		a.createdSandboxes = append(a.createdSandboxes, sb.ID)
@@ -764,8 +826,10 @@ func (a *FluidAgent) createSandbox(ctx context.Context, sourceVM, hostName strin
 	// Fall back to local creation
 	sb, ip, err := a.vmService.CreateSandbox(ctx, sourceVM, "tui-agent", "", cpuCount, memMB, nil, true, true)
 	if err != nil {
+		a.logger.Error("sandbox creation failed", "source_vm", sourceVM, "host", "local", "error", err)
 		return nil, err
 	}
+	a.logger.Info("sandbox created", "sandbox_id", sb.ID, "host", "local", "ip", ip)
 
 	// Track the created sandbox for cleanup on exit
 	a.createdSandboxes = append(a.createdSandboxes, sb.ID)
@@ -788,6 +852,7 @@ func (a *FluidAgent) createSandbox(ctx context.Context, sourceVM, hostName strin
 
 // HandleApprovalResponse handles the response from the memory approval dialog
 func (a *FluidAgent) HandleApprovalResponse(approved bool) {
+	a.logger.Info("memory approval response", "approved", approved)
 	if a.pendingApproval != nil && a.pendingApproval.ResponseChan != nil {
 		a.pendingApproval.ResponseChan <- approved
 	}
@@ -795,8 +860,17 @@ func (a *FluidAgent) HandleApprovalResponse(approved bool) {
 
 // HandleNetworkApprovalResponse handles the response from the network approval dialog
 func (a *FluidAgent) HandleNetworkApprovalResponse(approved bool) {
+	a.logger.Info("network approval response", "approved", approved)
 	if a.pendingNetworkApproval != nil && a.pendingNetworkApproval.ResponseChan != nil {
 		a.pendingNetworkApproval.ResponseChan <- approved
+	}
+}
+
+// HandleSourcePrepareApprovalResponse handles the response from the source prepare approval dialog
+func (a *FluidAgent) HandleSourcePrepareApprovalResponse(approved bool) {
+	a.logger.Info("source prepare approval response", "approved", approved)
+	if a.pendingSourcePrepareApproval != nil && a.pendingSourcePrepareApproval.ResponseChan != nil {
+		a.pendingSourcePrepareApproval.ResponseChan <- approved
 	}
 }
 
@@ -808,6 +882,8 @@ func (a *FluidAgent) findHostForSourceVM(ctx context.Context, sourceVM, hostName
 		return nil, nil
 	}
 
+	a.logger.Debug("finding host for source VM", "source_vm", sourceVM, "host_name", hostName)
+
 	// If specific host requested, check only that host
 	if hostName != "" {
 		hosts := a.multiHostMgr.GetHosts()
@@ -816,6 +892,7 @@ func (a *FluidAgent) findHostForSourceVM(ctx context.Context, sourceVM, hostName
 				return &hosts[i], nil
 			}
 		}
+		a.logger.Error("host not found in configuration", "host", hostName)
 		return nil, fmt.Errorf("host %q not found in configuration", hostName)
 	}
 
@@ -832,8 +909,10 @@ func (a *FluidAgent) findHostForSourceVM(ctx context.Context, sourceVM, hostName
 func (a *FluidAgent) destroySandbox(ctx context.Context, id string) (map[string]any, error) {
 	_, err := a.vmService.DestroySandbox(ctx, id)
 	if err != nil {
+		a.logger.Error("destroy sandbox failed", "sandbox_id", id, "error", err)
 		return nil, err
 	}
+	a.logger.Info("sandbox destroyed", "sandbox_id", id)
 
 	// Clear current sandbox if this was the one being destroyed
 	if id == a.currentSandboxID {
@@ -848,6 +927,12 @@ func (a *FluidAgent) destroySandbox(ctx context.Context, id string) (map[string]
 }
 
 func (a *FluidAgent) runCommand(ctx context.Context, sandboxID, command string) (map[string]any, error) {
+	truncCmd := command
+	if len(truncCmd) > 120 {
+		truncCmd = truncCmd[:120] + "..."
+	}
+	a.logger.Debug("run command", "sandbox_id", sandboxID, "command", truncCmd)
+
 	// Update current sandbox if different (user is working with this sandbox)
 	if sandboxID != "" && sandboxID != a.currentSandboxID {
 		a.currentSandboxID = sandboxID
@@ -862,6 +947,7 @@ func (a *FluidAgent) runCommand(ctx context.Context, sandboxID, command string) 
 	// Check if command requires network access and request approval
 	networkTool, urls := detectNetworkAccess(command)
 	if networkTool != "" {
+		a.logger.Warn("network access detected, requesting approval", "tool", networkTool, "urls", urls, "sandbox_id", sandboxID)
 		request := NetworkApprovalRequest{
 			Command:     command,
 			SandboxID:   sandboxID,
@@ -884,6 +970,7 @@ func (a *FluidAgent) runCommand(ctx context.Context, sandboxID, command string) 
 		// Wait for response (this blocks the agent until user responds)
 		approved := <-responseChan
 		a.pendingNetworkApproval = nil
+		a.logger.Info("network approval result", "approved", approved, "tool", networkTool, "sandbox_id", sandboxID)
 
 		if !approved {
 			return map[string]any{
@@ -929,6 +1016,7 @@ func (a *FluidAgent) runCommand(ctx context.Context, sandboxID, command string) 
 	a.sendStatus(CommandOutputDoneMsg{SandboxID: sandboxID})
 
 	if err != nil {
+		a.logger.Error("command execution failed", "sandbox_id", sandboxID, "error", err)
 		// Return partial result if available
 		if result != nil {
 			return map[string]any{
@@ -1019,6 +1107,7 @@ func (a *FluidAgent) editFile(ctx context.Context, sandboxID, path, oldStr, newS
 
 	// If old_str is empty, create/overwrite the file
 	if oldStr == "" {
+		a.logger.Debug("creating file", "sandbox_id", sandboxID, "path", path)
 		// Use base64 encoding to safely transfer content over SSH
 		// This avoids issues with heredocs, special characters, and shell escaping
 		encoded := base64.StdEncoding.EncodeToString([]byte(newStr))
@@ -1026,9 +1115,11 @@ func (a *FluidAgent) editFile(ctx context.Context, sandboxID, path, oldStr, newS
 
 		result, err := a.vmService.RunCommand(ctx, sandboxID, user, "", cmd, 0, nil)
 		if err != nil {
+			a.logger.Error("failed to create file", "sandbox_id", sandboxID, "path", path, "error", err)
 			return nil, fmt.Errorf("failed to create file: %w", err)
 		}
 		if result.ExitCode != 0 {
+			a.logger.Error("failed to create file", "sandbox_id", sandboxID, "path", path, "stderr", result.Stderr)
 			return nil, fmt.Errorf("failed to create file: %s", result.Stderr)
 		}
 		return map[string]any{
@@ -1038,12 +1129,15 @@ func (a *FluidAgent) editFile(ctx context.Context, sandboxID, path, oldStr, newS
 		}, nil
 	}
 
+	a.logger.Debug("editing file", "sandbox_id", sandboxID, "path", path)
 	// Read the original file using base64 to handle binary/special chars
 	readResult, err := a.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 '%s'", path), 0, nil)
 	if err != nil {
+		a.logger.Error("failed to read file for edit", "sandbox_id", sandboxID, "path", path, "error", err)
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 	if readResult.ExitCode != 0 {
+		a.logger.Error("failed to read file for edit", "sandbox_id", sandboxID, "path", path, "stderr", readResult.Stderr)
 		return nil, fmt.Errorf("failed to read file: %s", readResult.Stderr)
 	}
 
@@ -1072,9 +1166,11 @@ func (a *FluidAgent) editFile(ctx context.Context, sandboxID, path, oldStr, newS
 
 	writeResult, err := a.vmService.RunCommand(ctx, sandboxID, user, "", writeCmd, 0, nil)
 	if err != nil {
+		a.logger.Error("failed to write file", "sandbox_id", sandboxID, "path", path, "error", err)
 		return nil, fmt.Errorf("failed to write file: %w", err)
 	}
 	if writeResult.ExitCode != 0 {
+		a.logger.Error("failed to write file", "sandbox_id", sandboxID, "path", path, "stderr", writeResult.Stderr)
 		return nil, fmt.Errorf("failed to write file: %s", writeResult.Stderr)
 	}
 
@@ -1097,19 +1193,23 @@ func (a *FluidAgent) readFile(ctx context.Context, sandboxID, path string) (map[
 		return nil, fmt.Errorf("path must be absolute: %s", path)
 	}
 
+	a.logger.Debug("read file", "sandbox_id", sandboxID, "path", path)
 	user := a.cfg.SSH.DefaultUser
 	// Use base64 to safely transfer content that may contain special characters
 	result, err := a.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 '%s'", path), 0, nil)
 	if err != nil {
+		a.logger.Error("failed to read file", "sandbox_id", sandboxID, "path", path, "error", err)
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 	if result.ExitCode != 0 {
+		a.logger.Error("failed to read file", "sandbox_id", sandboxID, "path", path, "stderr", result.Stderr)
 		return nil, fmt.Errorf("failed to read file: %s", result.Stderr)
 	}
 
 	// Decode the base64 content
 	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(result.Stdout))
 	if err != nil {
+		a.logger.Error("failed to decode file content", "sandbox_id", sandboxID, "path", path, "error", err)
 		return nil, fmt.Errorf("failed to decode file content: %w", err)
 	}
 
@@ -1130,12 +1230,14 @@ func (a *FluidAgent) getPlaybook(ctx context.Context, playbookID string) (map[st
 	// Get playbook with tasks
 	pbWithTasks, err := a.playbookService.GetPlaybookWithTasks(ctx, playbookID)
 	if err != nil {
+		a.logger.Error("failed to get playbook", "playbook_id", playbookID, "error", err)
 		return nil, fmt.Errorf("failed to get playbook: %w", err)
 	}
 
 	// Export the YAML content
 	yamlContent, err := a.playbookService.ExportPlaybook(ctx, playbookID)
 	if err != nil {
+		a.logger.Error("failed to export playbook", "playbook_id", playbookID, "error", err)
 		return nil, fmt.Errorf("failed to export playbook: %w", err)
 	}
 
@@ -1171,8 +1273,10 @@ func (a *FluidAgent) getPlaybook(ctx context.Context, playbookID string) (map[st
 func (a *FluidAgent) startSandbox(ctx context.Context, id string) (map[string]any, error) {
 	ip, err := a.vmService.StartSandbox(ctx, id, true)
 	if err != nil {
+		a.logger.Error("start sandbox failed", "sandbox_id", id, "error", err)
 		return nil, err
 	}
+	a.logger.Info("sandbox started", "sandbox_id", id, "ip", ip)
 
 	result := map[string]any{
 		"started":    true,
@@ -1188,8 +1292,10 @@ func (a *FluidAgent) startSandbox(ctx context.Context, id string) (map[string]an
 func (a *FluidAgent) stopSandbox(ctx context.Context, id string) (map[string]any, error) {
 	err := a.vmService.StopSandbox(ctx, id, false)
 	if err != nil {
+		a.logger.Error("stop sandbox failed", "sandbox_id", id, "error", err)
 		return nil, err
 	}
+	a.logger.Info("sandbox stopped", "sandbox_id", id)
 
 	return map[string]any{
 		"stopped":    true,
@@ -1200,6 +1306,7 @@ func (a *FluidAgent) stopSandbox(ctx context.Context, id string) (map[string]any
 func (a *FluidAgent) getSandbox(ctx context.Context, id string) (map[string]any, error) {
 	sb, err := a.vmService.GetSandbox(ctx, id)
 	if err != nil {
+		a.logger.Error("get sandbox failed", "sandbox_id", id, "error", err)
 		return nil, err
 	}
 
@@ -1240,6 +1347,7 @@ func (a *FluidAgent) listVMs(ctx context.Context) (map[string]any, error) {
 func (a *FluidAgent) listVMsFromHosts(ctx context.Context) (map[string]any, error) {
 	listResult, err := a.multiHostMgr.ListDomains(ctx)
 	if err != nil {
+		a.logger.Error("list domains from hosts failed", "error", err)
 		return nil, fmt.Errorf("list domains from hosts: %w", err)
 	}
 
@@ -1268,6 +1376,9 @@ func (a *FluidAgent) listVMsFromHosts(ctx context.Context) (map[string]any, erro
 	}
 
 	if len(listResult.HostErrors) > 0 {
+		for _, he := range listResult.HostErrors {
+			a.logger.Warn("host error listing VMs", "host", he.HostName, "address", he.HostAddress, "error", he.Error)
+		}
 		errors := make([]map[string]any, 0, len(listResult.HostErrors))
 		for _, he := range listResult.HostErrors {
 			errors = append(errors, map[string]any{
@@ -1291,6 +1402,7 @@ func (a *FluidAgent) listVMsLocal(ctx context.Context) (map[string]any, error) {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
+		a.logger.Error("virsh list command failed", "error", err, "stderr", stderr.String())
 		return nil, fmt.Errorf("virsh list: %w: %s", err, stderr.String())
 	}
 
@@ -1324,8 +1436,10 @@ func (a *FluidAgent) createSnapshot(ctx context.Context, sandboxID, name string)
 
 	snap, err := a.vmService.CreateSnapshot(ctx, sandboxID, name, false)
 	if err != nil {
+		a.logger.Error("create snapshot failed", "sandbox_id", sandboxID, "name", name, "error", err)
 		return nil, err
 	}
+	a.logger.Info("snapshot created", "sandbox_id", sandboxID, "snapshot_id", snap.ID, "name", snap.Name)
 
 	return map[string]any{
 		"snapshot_id": snap.ID,
@@ -1441,6 +1555,7 @@ func (a *FluidAgent) listHostsWithVMs(ctx context.Context) (map[string]any, erro
 	// Get sandboxes from database
 	sandboxes, err := a.vmService.GetSandboxes(ctx, store.SandboxFilter{}, nil)
 	if err != nil {
+		a.logger.Error("list sandboxes for host view failed", "error", err)
 		return nil, fmt.Errorf("list sandboxes: %w", err)
 	}
 
@@ -1457,6 +1572,7 @@ func (a *FluidAgent) listHostsWithVMs(ctx context.Context) (map[string]any, erro
 	if a.multiHostMgr != nil {
 		listResult, err := a.multiHostMgr.ListDomains(ctx)
 		if err != nil {
+			a.logger.Error("list domains from hosts failed", "error", err)
 			return nil, fmt.Errorf("list domains from hosts: %w", err)
 		}
 		for _, domain := range listResult.Domains {
@@ -1622,6 +1738,7 @@ func (a *FluidAgent) formatHostsResult(result map[string]any, err error) string 
 func (a *FluidAgent) listPlaybooks(ctx context.Context) (map[string]any, error) {
 	playbooks, err := a.playbookService.ListPlaybooks(ctx, nil)
 	if err != nil {
+		a.logger.Error("list playbooks failed", "error", err)
 		return nil, err
 	}
 
@@ -1672,12 +1789,118 @@ func (a *FluidAgent) formatPlaybooksResult(result map[string]any, err error) str
 	return b.String()
 }
 
+// runSourceCommand executes a read-only command on a source/golden VM.
+func (a *FluidAgent) runSourceCommand(ctx context.Context, sourceVM, command string) (map[string]any, error) {
+	truncCmd := command
+	if len(truncCmd) > 120 {
+		truncCmd = truncCmd[:120] + "..."
+	}
+	a.logger.Debug("run source command", "source_vm", sourceVM, "command", truncCmd)
+
+	// Proactive check: ensure source VM is prepared before attempting command
+	if err := a.ensureSourceVMPrepared(ctx, sourceVM); err != nil {
+		return nil, err
+	}
+
+	// Create output callback for streaming.
+	outputCallback := func(chunk vm.OutputChunk) {
+		if chunk.IsRetry && chunk.Retry != nil {
+			a.sendStatus(CommandOutputResetMsg{SandboxID: sourceVM})
+			a.sendStatus(RetryAttemptMsg{
+				SandboxID: sourceVM,
+				Attempt:   chunk.Retry.Attempt,
+				Max:       chunk.Retry.Max,
+				Delay:     chunk.Retry.Delay,
+				Error:     chunk.Retry.Error,
+			})
+			return
+		}
+		if chunk.Data == nil {
+			a.sendStatus(CommandOutputResetMsg{SandboxID: sourceVM})
+			return
+		}
+		a.sendStatus(CommandOutputChunkMsg{
+			SandboxID: sourceVM,
+			IsStderr:  chunk.IsStderr,
+			Chunk:     string(chunk.Data),
+		})
+	}
+
+	result, err := a.vmService.RunSourceVMCommandWithCallback(ctx, sourceVM, command, 0, outputCallback)
+	a.sendStatus(CommandOutputDoneMsg{SandboxID: sourceVM})
+
+	if err != nil {
+		a.logger.Error("source command failed", "source_vm", sourceVM, "error", err)
+		if result != nil {
+			return map[string]any{
+				"source_vm": sourceVM,
+				"exit_code": result.ExitCode,
+				"stdout":    result.Stdout,
+				"stderr":    result.Stderr,
+				"error":     err.Error(),
+			}, nil
+		}
+		return nil, err
+	}
+
+	return map[string]any{
+		"source_vm": sourceVM,
+		"exit_code": result.ExitCode,
+		"stdout":    result.Stdout,
+		"stderr":    result.Stderr,
+	}, nil
+}
+
+// shellEscape safely escapes a string for use in a shell command.
+// It uses POSIX single-quote escaping: wrap in single quotes and replace
+// any single quotes with '\” (end quote, escaped quote, start quote).
+func shellEscape(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}
+
+// readSourceFile reads a file from a source/golden VM.
+func (a *FluidAgent) readSourceFile(ctx context.Context, sourceVM, path string) (map[string]any, error) {
+	if !filepath.IsAbs(path) {
+		return nil, fmt.Errorf("path must be absolute: %s", path)
+	}
+
+	a.logger.Debug("read source file", "source_vm", sourceVM, "path", path)
+
+	// Proactive check: ensure source VM is prepared before attempting read
+	if err := a.ensureSourceVMPrepared(ctx, sourceVM); err != nil {
+		return nil, err
+	}
+
+	cmd := fmt.Sprintf("base64 %s", shellEscape(path))
+	result, err := a.vmService.RunSourceVMCommand(ctx, sourceVM, cmd, 0)
+	if err != nil {
+		a.logger.Error("failed to read file from source VM", "source_vm", sourceVM, "path", path, "error", err)
+		return nil, fmt.Errorf("failed to read file from source VM: %w", err)
+	}
+	if result.ExitCode != 0 {
+		return nil, fmt.Errorf("failed to read file: %s", result.Stderr)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(result.Stdout))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode file content: %w", err)
+	}
+
+	return map[string]any{
+		"source_vm": sourceVM,
+		"path":      path,
+		"content":   string(decoded),
+	}, nil
+}
+
 // Cleanup destroys all sandboxes created during this session.
 // This is called when the TUI exits to ensure no orphaned VMs are left running.
 func (a *FluidAgent) Cleanup(ctx context.Context) error {
 	if len(a.createdSandboxes) == 0 {
 		return nil
 	}
+
+	a.logger.Info("cleanup starting", "sandbox_count", len(a.createdSandboxes))
 
 	var errs []error
 	for _, id := range a.createdSandboxes {
@@ -1688,6 +1911,7 @@ func (a *FluidAgent) Cleanup(ctx context.Context) error {
 		}
 
 		if _, err := a.vmService.DestroySandbox(ctx, id); err != nil {
+			a.logger.Warn("cleanup: failed to destroy sandbox", "sandbox_id", id, "error", err)
 			errs = append(errs, fmt.Errorf("destroy sandbox %s: %w", id, err))
 			// Continue trying to destroy others even if one fails
 		}
@@ -1696,6 +1920,7 @@ func (a *FluidAgent) Cleanup(ctx context.Context) error {
 	// Clear the list
 	a.createdSandboxes = nil
 
+	a.logger.Info("cleanup complete", "errors", len(errs))
 	if len(errs) > 0 {
 		return fmt.Errorf("cleanup errors: %v", errs)
 	}
@@ -1723,6 +1948,7 @@ func (a *FluidAgent) ClearCreatedSandboxes() {
 // Each sandbox gets its own 60-second timeout to avoid one slow destroy blocking others.
 func (a *FluidAgent) CleanupWithProgress(sandboxIDs []string) {
 	total := len(sandboxIDs)
+	a.logger.Info("cleanup with progress starting", "total", total)
 	destroyed := 0
 	failed := 0
 	skipped := 0
@@ -1748,6 +1974,7 @@ func (a *FluidAgent) CleanupWithProgress(sandboxIDs []string) {
 			// Already destroyed
 			cancel()
 			skipped++
+			a.logger.Debug("cleanup: sandbox already gone", "sandbox_id", id)
 			a.sendStatus(CleanupProgressMsg{
 				SandboxID: id,
 				Status:    CleanupStatusSkipped,
@@ -1758,6 +1985,7 @@ func (a *FluidAgent) CleanupWithProgress(sandboxIDs []string) {
 		// Destroy the sandbox
 		if _, err := a.vmService.DestroySandbox(ctx, id); err != nil {
 			failed++
+			a.logger.Warn("cleanup: failed to destroy sandbox", "sandbox_id", id, "error", err)
 			a.sendStatus(CleanupProgressMsg{
 				SandboxID: id,
 				Status:    CleanupStatusFailed,
@@ -1765,6 +1993,7 @@ func (a *FluidAgent) CleanupWithProgress(sandboxIDs []string) {
 			})
 		} else {
 			destroyed++
+			a.logger.Debug("cleanup: sandbox destroyed", "sandbox_id", id)
 			a.sendStatus(CleanupProgressMsg{
 				SandboxID: id,
 				Status:    CleanupStatusDestroyed,
@@ -1775,6 +2004,8 @@ func (a *FluidAgent) CleanupWithProgress(sandboxIDs []string) {
 
 	// Clear the created sandboxes list
 	a.createdSandboxes = nil
+
+	a.logger.Info("cleanup with progress complete", "total", total, "destroyed", destroyed, "failed", failed, "skipped", skipped)
 
 	// Send completion message
 	a.sendStatus(CleanupCompleteMsg{
@@ -1794,4 +2025,331 @@ func (a *FluidAgent) GetCurrentSandbox() (id string, host string) {
 func (a *FluidAgent) SetCurrentSandbox(id string, host string) {
 	a.currentSandboxID = id
 	a.currentSandboxHost = host
+}
+
+// isSourceVMPrepared checks the DB (with in-memory cache) to determine if a source VM is prepared.
+func (a *FluidAgent) isSourceVMPrepared(ctx context.Context, sourceVM string) bool {
+	// Fast path: session cache
+	if a.preparedSourceVMs[sourceVM] {
+		a.logger.Debug("source VM prepared (cache hit)", "source_vm", sourceVM)
+		return true
+	}
+
+	svm, err := a.store.GetSourceVM(ctx, sourceVM)
+	if err != nil || !svm.Prepared {
+		a.logger.Debug("source VM not prepared in DB", "source_vm", sourceVM, "error", err)
+		return false
+	}
+
+	// Verify CA fingerprint still matches
+	currentFP := a.caFingerprint()
+	if currentFP != "" && svm.CAFingerprint != nil && *svm.CAFingerprint != currentFP {
+		// CA was rotated - preparation is stale
+		a.logger.Warn("source VM CA fingerprint mismatch (stale preparation)", "source_vm", sourceVM)
+		return false
+	}
+
+	// Populate session cache
+	if a.preparedSourceVMs == nil {
+		a.preparedSourceVMs = make(map[string]bool)
+	}
+	a.preparedSourceVMs[sourceVM] = true
+	return true
+}
+
+// caFingerprint returns the SHA256 fingerprint of the CA public key file.
+func (a *FluidAgent) caFingerprint() string {
+	caPubKeyPath := a.cfg.SSH.CAPubPath
+	if caPubKeyPath == "" {
+		caPubKeyPath = a.cfg.SSH.CAKeyPath + ".pub"
+	}
+	data, err := os.ReadFile(caPubKeyPath)
+	if err != nil {
+		return ""
+	}
+	h := sha256.Sum256(data)
+	return fmt.Sprintf("%x", h)
+}
+
+// ensureSourceVMPrepared proactively checks if a source VM is prepared and prompts if not.
+// Returns nil if prepared (or preparation succeeded), error if denied or failed.
+func (a *FluidAgent) ensureSourceVMPrepared(ctx context.Context, sourceVM string) error {
+	if a.isSourceVMPrepared(ctx, sourceVM) {
+		a.logger.Debug("source VM already prepared", "source_vm", sourceVM)
+		return nil
+	}
+
+	a.logger.Warn("source VM not prepared, requesting approval", "source_vm", sourceVM)
+	// Not prepared - prompt the user proactively
+	if !a.requestSourcePrepareApproval(sourceVM, fmt.Errorf("source VM %q has not been prepared for read-only access", sourceVM)) {
+		a.logger.Info("source VM preparation denied", "source_vm", sourceVM)
+		return fmt.Errorf("source VM %q is not prepared for read-only access and preparation was denied", sourceVM)
+	}
+	a.logger.Info("source VM preparation approved", "source_vm", sourceVM)
+
+	a.sendStatus(ToolStartMsg{ToolName: "source_prepare", Args: map[string]any{"source_vm": sourceVM}})
+	if err := a.prepareSourceVM(ctx, sourceVM); err != nil {
+		a.sendStatus(ToolCompleteMsg{ToolName: "source_prepare", Success: false, Error: err.Error()})
+		return fmt.Errorf("source prepare failed: %w", err)
+	}
+	a.sendStatus(ToolCompleteMsg{ToolName: "source_prepare", Success: true, Result: map[string]any{"source_vm": sourceVM, "status": "prepared"}})
+	return nil
+}
+
+// requestSourcePrepareApproval prompts the user to approve source VM preparation.
+// Returns true if approved, false otherwise.
+func (a *FluidAgent) requestSourcePrepareApproval(sourceVM string, connErr error) bool {
+	// Skip if already prepared this session
+	if a.preparedSourceVMs[sourceVM] {
+		a.logger.Debug("source prepare approval skipped (session cache)", "source_vm", sourceVM)
+		return false
+	}
+
+	a.logger.Info("requesting source prepare approval", "source_vm", sourceVM, "error", connErr)
+	request := SourcePrepareApprovalRequest{
+		SourceVM: sourceVM,
+		Error:    connErr.Error(),
+	}
+
+	responseChan := make(chan bool, 1)
+	a.pendingSourcePrepareApproval = &PendingSourcePrepareApproval{
+		Request:      request,
+		ResponseChan: responseChan,
+	}
+
+	a.sendStatus(SourcePrepareApprovalRequestMsg{Request: request})
+
+	approved := <-responseChan
+	a.pendingSourcePrepareApproval = nil
+	a.logger.Info("source prepare approval result", "source_vm", sourceVM, "approved", approved)
+	return approved
+}
+
+// prepareSourceVM runs the readonly.Prepare flow for a source VM.
+func (a *FluidAgent) prepareSourceVM(ctx context.Context, sourceVM string) error {
+	a.logger.Info("prepareSourceVM starting", "source_vm", sourceVM)
+
+	// Read CA pub key
+	caPubKeyPath := a.cfg.SSH.CAPubPath
+	if caPubKeyPath == "" {
+		caPubKeyPath = a.cfg.SSH.CAKeyPath + ".pub"
+	}
+	caPubKeyBytes, err := os.ReadFile(caPubKeyPath)
+	if err != nil {
+		a.logger.Error("failed to read CA pub key", "path", caPubKeyPath, "error", err)
+		return fmt.Errorf("read CA pub key from %s: %w", caPubKeyPath, err)
+	}
+
+	// Find host once for multihost mode
+	var host *config.HostConfig
+	if a.multiHostMgr != nil {
+		h, err := a.multiHostMgr.FindHostForVM(ctx, sourceVM)
+		if err == nil && h != nil {
+			host = h
+			a.logger.Info("found host for source VM", "source_vm", sourceVM, "host", host.Name, "address", host.Address)
+		} else if err != nil {
+			a.logger.Warn("failed to find host for source VM", "source_vm", sourceVM, "error", err)
+		}
+	}
+
+	// Ensure VM is running before IP discovery
+	if host != nil {
+		if err := a.ensureVMRunningOnHost(ctx, sourceVM, host); err != nil {
+			a.logger.Error("failed to ensure VM running on host", "source_vm", sourceVM, "host", host.Name, "error", err)
+			return fmt.Errorf("ensure VM running on %s: %w", host.Name, err)
+		}
+	} else {
+		state, err := a.manager.GetVMState(ctx, sourceVM)
+		if err == nil && (state == libvirt.VMStateShutOff || state == libvirt.VMStatePaused) {
+			a.logger.Info("starting source VM", "source_vm", sourceVM, "state", state)
+			if err := a.manager.StartVM(ctx, sourceVM); err != nil {
+				a.logger.Error("failed to start source VM", "source_vm", sourceVM, "error", err)
+				return fmt.Errorf("start source VM %s: %w", sourceVM, err)
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}
+
+	// Discover VM IP
+	var ip string
+	if host != nil {
+		ip, err = a.discoverVMIPOnHost(ctx, sourceVM, host)
+		if err != nil {
+			a.logger.Error("failed to discover IP on host", "source_vm", sourceVM, "host", host.Name, "error", err)
+			return fmt.Errorf("discover IP for %s on %s: %w", sourceVM, host.Name, err)
+		}
+	}
+	if ip == "" {
+		// Try local libvirt manager with retry/timeout
+		discoveredIP, _, err := a.manager.GetIPAddress(ctx, sourceVM, 60*time.Second)
+		if err != nil {
+			a.logger.Error("failed to discover IP locally", "source_vm", sourceVM, "error", err)
+			return fmt.Errorf("discover IP for %s: %w", sourceVM, err)
+		}
+		ip = discoveredIP
+	}
+	a.logger.Info("discovered VM IP", "source_vm", sourceVM, "ip", ip)
+
+	// Create SSH run function using configured VM user (prepare needs privileged access)
+	// In multihost mode, use the host as ProxyJump since the VM is on the host's private network
+	proxyJump := a.cfg.SSH.ProxyJump
+	vmUser := "root"
+	if host != nil {
+		sshUser := host.SSHUser
+		if sshUser == "" {
+			sshUser = "root"
+		}
+		proxyJump = fmt.Sprintf("%s@%s", sshUser, host.Address)
+		if host.SSHVMUser != "" {
+			vmUser = host.SSHVMUser
+		}
+	}
+	a.logger.Debug("SSH config for prepare", "source_vm", sourceVM, "ip", ip, "user", vmUser, "proxy_jump", proxyJump)
+	sshRun := makeSSHRunFunc(ip, vmUser, proxyJump)
+
+	// Run prepare
+	prepResult, err := readonly.Prepare(ctx, sshRun, string(caPubKeyBytes))
+	if err != nil {
+		a.logger.Error("readonly.Prepare failed", "source_vm", sourceVM, "ip", ip, "proxy_jump", proxyJump, "error", err)
+		sshCmd := fmt.Sprintf("ssh %s@%s \"whoami\"", vmUser, ip)
+		if proxyJump != "" {
+			sshCmd = fmt.Sprintf("ssh -J %s %s@%s \"whoami\"", proxyJump, vmUser, ip)
+		}
+		return fmt.Errorf("prepare failed (debug: test SSH with `%s`, check /settings for SSHVMUser): %w", sshCmd, err)
+	}
+	a.logger.Info("prepareSourceVM completed", "source_vm", sourceVM, "result", prepResult)
+
+	// Track as prepared in session cache
+	if a.preparedSourceVMs == nil {
+		a.preparedSourceVMs = make(map[string]bool)
+	}
+	a.preparedSourceVMs[sourceVM] = true
+
+	// Persist to store
+	now := time.Now().UTC()
+	fp := a.caFingerprint()
+	prepJSON, _ := json.Marshal(prepResult)
+	prepJSONStr := string(prepJSON)
+
+	svm := &store.SourceVM{
+		Name:          sourceVM,
+		Prepared:      true,
+		PreparedAt:    &now,
+		PrepareJSON:   &prepJSONStr,
+		CAFingerprint: &fp,
+	}
+
+	// Attach host info if available
+	if host != nil {
+		svm.HostName = &host.Name
+		svm.HostAddress = &host.Address
+	}
+
+	if err := a.store.UpsertSourceVM(ctx, svm); err != nil {
+		// Log but don't fail - preparation itself succeeded
+		a.logger.Warn("failed to persist source VM preparation state", "vm", sourceVM, "error", err)
+	}
+
+	return nil
+}
+
+// sshArgsForHost builds the common SSH arguments for connecting to a remote host,
+// including the port flag which is required for non-default SSH ports.
+func (a *FluidAgent) sshArgsForHost(host *config.HostConfig) []string {
+	args := []string{
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "ConnectTimeout=15",
+		"-o", "BatchMode=yes",
+	}
+	port := host.SSHPort
+	if port == 0 {
+		port = 22
+	}
+	args = append(args, "-p", fmt.Sprintf("%d", port))
+	// No ProxyJump here - this SSHes directly to the host
+	return args
+}
+
+// discoverVMIPOnHost discovers a VM's IP address on a remote host via virsh.
+// Retries every 2 seconds up to 60 seconds to allow time for IP assignment after boot.
+func (a *FluidAgent) discoverVMIPOnHost(ctx context.Context, vmName string, host *config.HostConfig) (string, error) {
+	sshUser := host.SSHUser
+	if sshUser == "" {
+		sshUser = "root"
+	}
+	sshTarget := fmt.Sprintf("%s@%s", sshUser, host.Address)
+	baseArgs := a.sshArgsForHost(host)
+
+	timeout := 60 * time.Second
+	if a.cfg.VM.IPDiscoveryTimeout > 0 {
+		timeout = a.cfg.VM.IPDiscoveryTimeout
+	}
+	deadline := time.Now().Add(timeout)
+
+	var lastErr error
+	for time.Now().Before(deadline) {
+		args := append(append([]string{}, baseArgs...), sshTarget, "virsh", "domifaddr", vmName)
+		cmd := exec.CommandContext(ctx, "ssh", args...)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			a.logger.Debug("VM IP discovery attempt failed", "vm", vmName, "host", host.Name, "error", err, "stderr", stderr.String())
+			lastErr = fmt.Errorf("%w (stderr: %s)", err, strings.TrimSpace(stderr.String()))
+		} else {
+			ip := parseIPFromVirshOutput(stdout.String())
+			if ip != "" {
+				a.logger.Info("discovered VM IP on host", "vm", vmName, "host", host.Name, "ip", ip)
+				return ip, nil
+			}
+			lastErr = fmt.Errorf("no IP in virsh output for %s", vmName)
+		}
+
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(2 * time.Second):
+		}
+	}
+	return "", fmt.Errorf("timeout discovering IP for %s on %s after %s: %w", vmName, host.Name, timeout, lastErr)
+}
+
+// ensureVMRunningOnHost checks if a VM is running on a remote host and starts it if needed.
+func (a *FluidAgent) ensureVMRunningOnHost(ctx context.Context, vmName string, host *config.HostConfig) error {
+	sshUser := host.SSHUser
+	if sshUser == "" {
+		sshUser = "root"
+	}
+	sshTarget := fmt.Sprintf("%s@%s", sshUser, host.Address)
+	baseArgs := a.sshArgsForHost(host)
+
+	// Check VM state
+	stateArgs := append(append([]string{}, baseArgs...), sshTarget, "virsh", "domstate", vmName)
+	cmd := exec.CommandContext(ctx, "ssh", stateArgs...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		a.logger.Error("SSH to host failed", "host", host.Name, "error", err, "stderr", stderr.String())
+		return fmt.Errorf("check VM state for %s on %s: %w (stderr: %s)", vmName, host.Name, err, strings.TrimSpace(stderr.String()))
+	}
+
+	state := strings.TrimSpace(stdout.String())
+	a.logger.Debug("VM state check", "vm", vmName, "host", host.Name, "state", state)
+	if state == "shut off" || state == "paused" {
+		startArgs := append(append([]string{}, baseArgs...), sshTarget, "virsh", "start", vmName)
+		startCmd := exec.CommandContext(ctx, "ssh", startArgs...)
+		var startStderr bytes.Buffer
+		startCmd.Stderr = &startStderr
+		if err := startCmd.Run(); err != nil {
+			a.logger.Error("SSH virsh start failed", "host", host.Name, "vm", vmName, "error", err, "stderr", startStderr.String())
+			return fmt.Errorf("start VM %s on %s: %w (stderr: %s)", vmName, host.Name, err, strings.TrimSpace(startStderr.String()))
+		}
+		a.logger.Info("VM started on host", "vm", vmName, "host", host.Name)
+		time.Sleep(10 * time.Second)
+	} else {
+		a.logger.Debug("VM already running on host", "vm", vmName, "host", host.Name, "state", state)
+	}
+	return nil
 }

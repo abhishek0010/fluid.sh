@@ -235,6 +235,20 @@ type Publication struct {
 	UpdatedAt time.Time         `json:"updated_at" db:"updated_at"`
 }
 
+// SourceVM tracks preparation state for source/golden VMs used for cloning.
+type SourceVM struct {
+	ID            string     `json:"id" db:"id"`
+	Name          string     `json:"name" db:"name"`                           // VM name (unique key)
+	HostName      *string    `json:"host_name,omitempty" db:"host_name"`       // display name of the host
+	HostAddress   *string    `json:"host_address,omitempty" db:"host_address"` // IP or hostname of the host
+	Prepared      bool       `json:"prepared" db:"prepared"`
+	PreparedAt    *time.Time `json:"prepared_at,omitempty" db:"prepared_at"`
+	PrepareJSON   *string    `json:"prepare_json,omitempty" db:"prepare_json"`     // JSON of PrepareResult
+	CAFingerprint *string    `json:"ca_fingerprint,omitempty" db:"ca_fingerprint"` // detect CA rotation
+	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
+}
+
 // Playbook represents an Ansible playbook stored in the database.
 type Playbook struct {
 	ID        string    `json:"id" db:"id"`
@@ -302,6 +316,11 @@ type DataStore interface {
 	ListPlaybooks(ctx context.Context, opt *ListOptions) ([]*Playbook, error)
 	UpdatePlaybook(ctx context.Context, pb *Playbook) error
 	DeletePlaybook(ctx context.Context, id string) error
+
+	// SourceVM
+	GetSourceVM(ctx context.Context, name string) (*SourceVM, error)
+	UpsertSourceVM(ctx context.Context, svm *SourceVM) error
+	ListSourceVMs(ctx context.Context) ([]*SourceVM, error)
 
 	// PlaybookTask
 	CreatePlaybookTask(ctx context.Context, task *PlaybookTask) error

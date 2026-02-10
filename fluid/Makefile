@@ -1,6 +1,6 @@
 # Fluid CLI Makefile
 
-.PHONY: all build build-cli build-api run clean fmt vet test test-coverage check deps tidy help
+.PHONY: all build build-dev build-cli build-api run clean fmt vet test test-coverage check deps tidy help
 
 # Go parameters
 GOCMD=go
@@ -36,6 +36,9 @@ build:
 	@rm -f bin/$(CLI_BINARY)
 	@mkdir -p bin
 	$(GOBUILD) $(BUILD_FLAGS) -o bin/$(CLI_BINARY) $(CLI_PATH)
+
+build-dev: POSTHOG_KEY=phc_QR3I1IKrEOqx5jIfJkBMfyznynIxRYd8kzmZM9o9fRZ
+build-dev: build ## Build with PostHog key
 
 
 run: build-cli ## Build and run the CLI

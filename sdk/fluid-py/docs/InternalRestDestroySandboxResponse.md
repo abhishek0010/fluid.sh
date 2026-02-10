@@ -7,7 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **base_image** | **str** |  | [optional] 
 **sandbox_name** | **str** |  | [optional] 
-**state** | [**FluidRemoteInternalStoreSandboxState**](FluidRemoteInternalStoreSandboxState.md) |  | [optional] 
+**state** | [**GithubComAspectrrFluidShFluidRemoteInternalStoreSandboxState**](GithubComAspectrrFluidShFluidRemoteInternalStoreSandboxState.md) |  | [optional] 
 **ttl_seconds** | **int** |  | [optional] 
 
 ## Example

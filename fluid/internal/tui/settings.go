@@ -102,7 +102,7 @@ func NewSettingsModel(cfg *config.Config, configPath string) SettingsModel {
 	m.hostCount = len(cfg.Hosts)
 
 	for i, h := range cfg.Hosts {
-		m.addHostInput(i+1, h.Name, h.Address)
+		m.addHostInput(i+1, h.Name, h.Address, h.SSHVMUser)
 	}
 
 	// 2. Initialize Static Inputs
@@ -163,8 +163,8 @@ func NewSettingsModel(cfg *config.Config, configPath string) SettingsModel {
 	return m
 }
 
-func (m *SettingsModel) addHostInput(num int, name, addr string) {
-	// Create two inputs: Name and Address
+func (m *SettingsModel) addHostInput(num int, name, addr, vmUser string) {
+	// Create three inputs: Name, Address, VM User
 	tName := textinput.New()
 	tName.Prompt = ""
 	tName.CharLimit = 512
@@ -175,10 +175,15 @@ func (m *SettingsModel) addHostInput(num int, name, addr string) {
 	tAddr.CharLimit = 512
 	tAddr.SetValue(addr)
 
+	tVMUser := textinput.New()
+	tVMUser.Prompt = ""
+	tVMUser.CharLimit = 512
+	tVMUser.SetValue(vmUser)
+
 	// Append to lists
-	m.inputs = append(m.inputs, tName, tAddr)
-	m.labels = append(m.labels, fmt.Sprintf("Host %d Name:", num), fmt.Sprintf("Host %d Address:", num))
-	m.sections = append(m.sections, "Hosts", "Hosts")
+	m.inputs = append(m.inputs, tName, tAddr, tVMUser)
+	m.labels = append(m.labels, fmt.Sprintf("Host %d Name:", num), fmt.Sprintf("Host %d Address:", num), fmt.Sprintf("Host %d VM User:", num))
+	m.sections = append(m.sections, "Hosts", "Hosts", "Hosts")
 }
 
 // Helper to get static config value by enum
@@ -271,9 +276,13 @@ func (m *SettingsModel) addNewHost() {
 	tAddr.Prompt = ""
 	tAddr.CharLimit = 512
 
+	tVMUser := textinput.New()
+	tVMUser.Prompt = ""
+	tVMUser.CharLimit = 512
+
 	// Insert before static fields
-	// Current host inputs end at (num-1)*2
-	insertIdx := (num - 1) * 2
+	// Current host inputs end at (num-1)*3
+	insertIdx := (num - 1) * 3
 
 	// Helper to insert into slice
 	insertInput := func(slice []textinput.Model, idx int, items ...textinput.Model) []textinput.Model {
@@ -283,13 +292,13 @@ func (m *SettingsModel) addNewHost() {
 		return append(slice[:idx], append(items, slice[idx:]...)...)
 	}
 
-	m.inputs = insertInput(m.inputs, insertIdx, tName, tAddr)
-	m.labels = insertString(m.labels, insertIdx, fmt.Sprintf("Host %d Name:", num), fmt.Sprintf("Host %d Address:", num))
-	m.sections = insertString(m.sections, insertIdx, "Hosts", "Hosts")
+	m.inputs = insertInput(m.inputs, insertIdx, tName, tAddr, tVMUser)
+	m.labels = insertString(m.labels, insertIdx, fmt.Sprintf("Host %d Name:", num), fmt.Sprintf("Host %d Address:", num), fmt.Sprintf("Host %d VM User:", num))
+	m.sections = insertString(m.sections, insertIdx, "Hosts", "Hosts", "Hosts")
 
 	// If focus was after insertion point, shift it
 	if m.focused >= insertIdx {
-		m.focused += 2
+		m.focused += 3
 	}
 	// Focus the new name field
 	m.inputs[m.focused].Blur()
@@ -528,15 +537,17 @@ func (m SettingsModel) renderField(idx int) string {
 func (m *SettingsModel) saveConfig() error {
 	// 1. Save Hosts
 	m.cfg.Hosts = make([]config.HostConfig, 0, m.hostCount)
-	hostInputCount := m.hostCount * 2
+	hostInputCount := m.hostCount * 3
 
-	for i := 0; i < hostInputCount; i += 2 {
+	for i := 0; i < hostInputCount; i += 3 {
 		name := m.inputs[i].Value()
 		addr := m.inputs[i+1].Value()
+		vmUser := m.inputs[i+2].Value()
 		if name != "" || addr != "" {
 			m.cfg.Hosts = append(m.cfg.Hosts, config.HostConfig{
-				Name:    name,
-				Address: addr,
+				Name:      name,
+				Address:   addr,
+				SSHVMUser: vmUser,
 			})
 		}
 	}

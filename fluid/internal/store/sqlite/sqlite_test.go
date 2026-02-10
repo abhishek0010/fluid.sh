@@ -357,6 +357,94 @@ func TestTransaction(t *testing.T) {
 	assert.ErrorIs(t, err, store.ErrNotFound)
 }
 
+func TestSourceVMCRUD(t *testing.T) {
+	s, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Get non-existent
+	_, err := s.GetSourceVM(ctx, "nonexistent")
+	assert.ErrorIs(t, err, store.ErrNotFound)
+
+	// Upsert (insert)
+	now := time.Now().UTC()
+	hostName := "kvm-01"
+	hostAddr := "192.168.1.10"
+	prepJSON := `{"user_created":true}`
+	caFP := "abc123"
+	svm := &store.SourceVM{
+		Name:          "ubuntu-base",
+		HostName:      &hostName,
+		HostAddress:   &hostAddr,
+		Prepared:      true,
+		PreparedAt:    &now,
+		PrepareJSON:   &prepJSON,
+		CAFingerprint: &caFP,
+	}
+
+	err = s.UpsertSourceVM(ctx, svm)
+	require.NoError(t, err)
+	assert.NotEmpty(t, svm.ID)
+
+	// Get by name
+	got, err := s.GetSourceVM(ctx, "ubuntu-base")
+	require.NoError(t, err)
+	assert.Equal(t, "ubuntu-base", got.Name)
+	assert.True(t, got.Prepared)
+	require.NotNil(t, got.HostName)
+	assert.Equal(t, "kvm-01", *got.HostName)
+	require.NotNil(t, got.CAFingerprint)
+	assert.Equal(t, "abc123", *got.CAFingerprint)
+
+	// Upsert (update) - change fingerprint
+	newFP := "def456"
+	svm.CAFingerprint = &newFP
+	err = s.UpsertSourceVM(ctx, svm)
+	require.NoError(t, err)
+
+	got, err = s.GetSourceVM(ctx, "ubuntu-base")
+	require.NoError(t, err)
+	require.NotNil(t, got.CAFingerprint)
+	assert.Equal(t, "def456", *got.CAFingerprint)
+
+	// List
+	svms, err := s.ListSourceVMs(ctx)
+	require.NoError(t, err)
+	assert.Len(t, svms, 1)
+	assert.Equal(t, "ubuntu-base", svms[0].Name)
+
+	// Insert another
+	svm2 := &store.SourceVM{
+		Name:     "debian-base",
+		Prepared: false,
+	}
+	err = s.UpsertSourceVM(ctx, svm2)
+	require.NoError(t, err)
+
+	svms, err = s.ListSourceVMs(ctx)
+	require.NoError(t, err)
+	assert.Len(t, svms, 2)
+	// Should be alphabetically ordered
+	assert.Equal(t, "debian-base", svms[0].Name)
+	assert.Equal(t, "ubuntu-base", svms[1].Name)
+}
+
+func TestSourceVMUpsertValidation(t *testing.T) {
+	s, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Nil svm
+	err := s.UpsertSourceVM(ctx, nil)
+	assert.ErrorIs(t, err, store.ErrInvalid)
+
+	// Empty name
+	err = s.UpsertSourceVM(ctx, &store.SourceVM{})
+	assert.ErrorIs(t, err, store.ErrInvalid)
+}
+
 func TestPing(t *testing.T) {
 	s, cleanup := setupTestStore(t)
 	defer cleanup()

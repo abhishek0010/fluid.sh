@@ -2,7 +2,7 @@
 
 """
     fluid-remote API
-    API for managing virtual machine sandboxes using libvirt
+    API for managing AI Agent VM sandboxes using libvirt
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from fluid.api_client import ApiClient, RequestSerialized
 from fluid.api_response import ApiResponse
 from fluid.exceptions import ApiException
-from fluid.models.fluid_remote_internal_rest_health_response import \
-    FluidRemoteInternalRestHealthResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_health_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse
 
 
 class HealthApi:
@@ -29,7 +29,7 @@ class HealthApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestHealthResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse:
         """Health check
 
         Returns service health status
@@ -58,7 +58,7 @@ class HealthApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestHealthResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -76,7 +76,7 @@ class HealthApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestHealthResponse]:
+    ) -> ApiResponse[GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse]:
         """Health check
 
         Returns service health status
@@ -105,7 +105,7 @@ class HealthApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestHealthResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -152,7 +152,7 @@ class HealthApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestHealthResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout

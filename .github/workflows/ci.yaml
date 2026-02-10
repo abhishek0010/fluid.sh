@@ -116,33 +116,33 @@ jobs:
 
       - name: Install SDK
         run: |
-          cd sdk/fluid-sdk-py
+          cd sdk/fluid-py
           pip install -e ".[test]" || pip install -e .
           pip install -r test-requirements.txt || true
 
       - name: Lint (ruff)
         run: |
-          cd sdk/fluid-sdk-py
+          cd sdk/fluid-py
           ruff check . || true  # Generated code may have lint issues
 
       - name: Type check (mypy)
         run: |
-          cd sdk/fluid-sdk-py
+          cd sdk/fluid-py
           mypy virsh_sandbox || true  # Allow mypy to pass with warnings for generated code
 
       - name: Test
         run: |
-          cd sdk/fluid-sdk-py
+          cd sdk/fluid-py
           pytest test/ -v || true  # Generated tests may not all pass
 
       - name: Build package
         run: |
-          cd sdk/fluid-sdk-py
+          cd sdk/fluid-py
           python -m build
 
       - name: Check package
         run: |
-          cd sdk/fluid-sdk-py
+          cd sdk/fluid-py
           twine check dist/*
 
   # Web frontend

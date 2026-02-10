@@ -2,7 +2,7 @@
 
 """
     fluid-remote API
-    API for managing virtual machine sandboxes using libvirt
+    API for managing AI Agent VM sandboxes using libvirt
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -13,12 +13,12 @@ from typing_extensions import Annotated
 from fluid.api_client import ApiClient, RequestSerialized
 from fluid.api_response import ApiResponse
 from fluid.exceptions import ApiException
-from fluid.models.fluid_remote_internal_ansible_job import \
-    FluidRemoteInternalAnsibleJob
-from fluid.models.fluid_remote_internal_ansible_job_request import \
-    FluidRemoteInternalAnsibleJobRequest
-from fluid.models.fluid_remote_internal_ansible_job_response import \
-    FluidRemoteInternalAnsibleJobResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_job import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_job_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_job_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse
 
 
 class AnsibleApi:
@@ -31,19 +31,19 @@ class AnsibleApi:
 
     def create_ansible_job(
         self,
-        request: FluidRemoteInternalAnsibleJobRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalAnsibleJobResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse:
         """Create Ansible job
 
         Creates a new Ansible playbook execution job
 
         :param request: Job creation parameters (required)
-        :type request: FluidRemoteInternalAnsibleJobRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -69,8 +69,8 @@ class AnsibleApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalAnsibleJobResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -83,19 +83,19 @@ class AnsibleApi:
 
     def create_ansible_job_with_http_info(
         self,
-        request: FluidRemoteInternalAnsibleJobRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalAnsibleJobResponse]:
+    ) -> ApiResponse[GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse]:
         """Create Ansible job
 
         Creates a new Ansible playbook execution job
 
         :param request: Job creation parameters (required)
-        :type request: FluidRemoteInternalAnsibleJobRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -121,8 +121,8 @@ class AnsibleApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalAnsibleJobResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -135,7 +135,7 @@ class AnsibleApi:
 
     def create_ansible_job_without_preload_content(
         self,
-        request: FluidRemoteInternalAnsibleJobRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -147,7 +147,7 @@ class AnsibleApi:
         Creates a new Ansible playbook execution job
 
         :param request: Job creation parameters (required)
-        :type request: FluidRemoteInternalAnsibleJobRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -173,8 +173,8 @@ class AnsibleApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalAnsibleJobResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -183,7 +183,7 @@ class AnsibleApi:
 
     def _create_ansible_job_serialize(
         self,
-        request: FluidRemoteInternalAnsibleJobRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -252,7 +252,7 @@ class AnsibleApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalAnsibleJob:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob:
         """Get Ansible job
 
         Gets the status of an Ansible job
@@ -284,8 +284,8 @@ class AnsibleApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalAnsibleJob",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -304,7 +304,7 @@ class AnsibleApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalAnsibleJob]:
+    ) -> ApiResponse[GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob]:
         """Get Ansible job
 
         Gets the status of an Ansible job
@@ -336,8 +336,8 @@ class AnsibleApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalAnsibleJob",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -388,8 +388,8 @@ class AnsibleApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalAnsibleJob",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout

@@ -92,8 +92,9 @@ type LoggingConfig struct {
 type HostConfig struct {
 	Name         string        `yaml:"name"`          // Display name (e.g., "kvm-01")
 	Address      string        `yaml:"address"`       // IP or hostname
-	SSHUser      string        `yaml:"ssh_user"`      // SSH user (default: root)
+	SSHUser      string        `yaml:"ssh_user"`      // SSH user for host (default: root)
 	SSHPort      int           `yaml:"ssh_port"`      // SSH port (default: 22)
+	SSHVMUser    string        `yaml:"ssh_vm_user"`   // SSH user for VMs on this host (default: root)
 	QueryTimeout time.Duration `yaml:"query_timeout"` // Per-host query timeout (default: 30s)
 }
 
@@ -138,7 +139,7 @@ func DefaultConfig() *Config {
 		},
 		AIAgent: AIAgentConfig{
 			Provider: "openrouter",
-			Model:    "anthropic/claude-opus-4.5",
+			Model:    "anthropic/claude-opus-4.6",
 			Endpoint: "https://openrouter.ai/api/v1",
 			DefaultSystem: "You are Fluid, an infrastructure automation agent." +
 				"- Your goal is to complete the user's task by generating an Ansible playbook that recreates the task on a production machine." +
@@ -147,7 +148,7 @@ func DefaultConfig() *Config {
 				"- Do not add an extension to the playbook name like .yml or .yaml" +
 				"- Add any steps to the playbook that are necessary to fully recreate the intended output on the production system." +
 				"- You CANNOT UNDER ANY CIRCUMSTANCES make a sandbox from a VM if asked to work on a different VM. For example if asked to make a sandbox of VM-1, you CANNOT make a sandbox from VM-2 if the sandbox does not work. If that happens, please stop at once.",
-			TotalContextTokens: 200000,
+			TotalContextTokens: 1000000,
 			CompactModel:       "anthropic/claude-haiku-4.5",
 			CompactThreshold:   0.90,
 			TokensPerChar:      0.33,

@@ -101,6 +101,7 @@ The TUI accepts natural commands:
 |-----|--------|
 | `Enter` | Send message |
 | `/settings` | Open settings editor |
+| `PgUp/PgDn` | Scroll conversation history |
 | `Ctrl+R` | Reset conversation |
 | `Ctrl+C` | Quit |
 

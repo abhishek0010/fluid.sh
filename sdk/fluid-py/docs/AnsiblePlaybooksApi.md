@@ -16,7 +16,7 @@ Method | HTTP request | Description
 
 
 # **add_playbook_task**
-> InternalAnsibleAddTaskResponse add_playbook_task(playbook_name, request)
+> GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse add_playbook_task(playbook_name, request)
 
 Add task to playbook
 
@@ -27,8 +27,8 @@ Adds a new task to an existing playbook
 
 ```python
 import fluid
-from fluid.models.internal_ansible_add_task_request import InternalAnsibleAddTaskRequest
-from fluid.models.internal_ansible_add_task_response import InternalAnsibleAddTaskResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_add_task_request import GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_add_task_response import GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -44,7 +44,7 @@ with fluid.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = fluid.AnsiblePlaybooksApi(api_client)
     playbook_name = 'playbook_name_example' # str | Playbook name
-    request = fluid.InternalAnsibleAddTaskRequest() # InternalAnsibleAddTaskRequest | Task parameters
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest() # GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest | Task parameters
 
     try:
         # Add task to playbook
@@ -63,11 +63,11 @@ with fluid.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **playbook_name** | **str**| Playbook name | 
- **request** | [**InternalAnsibleAddTaskRequest**](InternalAnsibleAddTaskRequest.md)| Task parameters | 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest.md)| Task parameters | 
 
 ### Return type
 
-[**InternalAnsibleAddTaskResponse**](InternalAnsibleAddTaskResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse.md)
 
 ### Authorization
 
@@ -89,7 +89,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **create_playbook**
-> InternalAnsibleCreatePlaybookResponse create_playbook(request)
+> GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse create_playbook(request)
 
 Create playbook
 
@@ -100,8 +100,8 @@ Creates a new Ansible playbook
 
 ```python
 import fluid
-from fluid.models.internal_ansible_create_playbook_request import InternalAnsibleCreatePlaybookRequest
-from fluid.models.internal_ansible_create_playbook_response import InternalAnsibleCreatePlaybookResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_create_playbook_request import GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_create_playbook_response import GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -116,7 +116,7 @@ configuration = fluid.Configuration(
 with fluid.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = fluid.AnsiblePlaybooksApi(api_client)
-    request = fluid.InternalAnsibleCreatePlaybookRequest() # InternalAnsibleCreatePlaybookRequest | Playbook creation parameters
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest() # GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest | Playbook creation parameters
 
     try:
         # Create playbook
@@ -134,11 +134,11 @@ with fluid.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request** | [**InternalAnsibleCreatePlaybookRequest**](InternalAnsibleCreatePlaybookRequest.md)| Playbook creation parameters | 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest.md)| Playbook creation parameters | 
 
 ### Return type
 
-[**InternalAnsibleCreatePlaybookResponse**](InternalAnsibleCreatePlaybookResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse.md)
 
 ### Authorization
 
@@ -294,7 +294,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **export_playbook**
-> InternalAnsibleExportPlaybookResponse export_playbook(playbook_name)
+> GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse export_playbook(playbook_name)
 
 Export playbook
 
@@ -305,7 +305,7 @@ Exports a playbook as raw YAML
 
 ```python
 import fluid
-from fluid.models.internal_ansible_export_playbook_response import InternalAnsibleExportPlaybookResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_export_playbook_response import GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -342,7 +342,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**InternalAnsibleExportPlaybookResponse**](InternalAnsibleExportPlaybookResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse.md)
 
 ### Authorization
 
@@ -363,7 +363,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_playbook**
-> InternalAnsibleGetPlaybookResponse get_playbook(playbook_name)
+> GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse get_playbook(playbook_name)
 
 Get playbook
 
@@ -374,7 +374,7 @@ Gets a playbook and its tasks by name
 
 ```python
 import fluid
-from fluid.models.internal_ansible_get_playbook_response import InternalAnsibleGetPlaybookResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_get_playbook_response import GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -411,7 +411,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**InternalAnsibleGetPlaybookResponse**](InternalAnsibleGetPlaybookResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse.md)
 
 ### Authorization
 
@@ -432,7 +432,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_playbooks**
-> InternalAnsibleListPlaybooksResponse list_playbooks()
+> GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse list_playbooks()
 
 List playbooks
 
@@ -443,7 +443,7 @@ Lists all Ansible playbooks
 
 ```python
 import fluid
-from fluid.models.internal_ansible_list_playbooks_response import InternalAnsibleListPlaybooksResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_list_playbooks_response import GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -476,7 +476,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**InternalAnsibleListPlaybooksResponse**](InternalAnsibleListPlaybooksResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse.md)
 
 ### Authorization
 
@@ -507,7 +507,7 @@ Reorders tasks in a playbook
 
 ```python
 import fluid
-from fluid.models.internal_ansible_reorder_tasks_request import InternalAnsibleReorderTasksRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_reorder_tasks_request import GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -523,7 +523,7 @@ with fluid.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = fluid.AnsiblePlaybooksApi(api_client)
     playbook_name = 'playbook_name_example' # str | Playbook name
-    request = fluid.InternalAnsibleReorderTasksRequest() # InternalAnsibleReorderTasksRequest | New task order
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest() # GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest | New task order
 
     try:
         # Reorder tasks
@@ -540,7 +540,7 @@ with fluid.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **playbook_name** | **str**| Playbook name | 
- **request** | [**InternalAnsibleReorderTasksRequest**](InternalAnsibleReorderTasksRequest.md)| New task order | 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest.md)| New task order | 
 
 ### Return type
 
@@ -566,7 +566,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **update_playbook_task**
-> InternalAnsibleUpdateTaskResponse update_playbook_task(playbook_name, task_id, request)
+> GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse update_playbook_task(playbook_name, task_id, request)
 
 Update task
 
@@ -577,8 +577,8 @@ Updates an existing task in a playbook
 
 ```python
 import fluid
-from fluid.models.internal_ansible_update_task_request import InternalAnsibleUpdateTaskRequest
-from fluid.models.internal_ansible_update_task_response import InternalAnsibleUpdateTaskResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_update_task_request import GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_update_task_response import GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -595,7 +595,7 @@ with fluid.ApiClient(configuration) as api_client:
     api_instance = fluid.AnsiblePlaybooksApi(api_client)
     playbook_name = 'playbook_name_example' # str | Playbook name
     task_id = 'task_id_example' # str | Task ID
-    request = fluid.InternalAnsibleUpdateTaskRequest() # InternalAnsibleUpdateTaskRequest | Task update parameters
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest() # GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest | Task update parameters
 
     try:
         # Update task
@@ -615,11 +615,11 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **playbook_name** | **str**| Playbook name | 
  **task_id** | **str**| Task ID | 
- **request** | [**InternalAnsibleUpdateTaskRequest**](InternalAnsibleUpdateTaskRequest.md)| Task update parameters | 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest.md)| Task update parameters | 
 
 ### Return type
 
-[**InternalAnsibleUpdateTaskResponse**](InternalAnsibleUpdateTaskResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse.md)
 
 ### Authorization
 

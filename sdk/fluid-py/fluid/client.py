@@ -28,70 +28,70 @@ from fluid.api.sandbox_api import SandboxApi
 from fluid.api.vms_api import VMsApi
 from fluid.api_client import ApiClient
 from fluid.configuration import Configuration
-from fluid.models.fluid_remote_internal_ansible_job import \
-    FluidRemoteInternalAnsibleJob
-from fluid.models.fluid_remote_internal_ansible_job_request import \
-    FluidRemoteInternalAnsibleJobRequest
-from fluid.models.fluid_remote_internal_ansible_job_response import \
-    FluidRemoteInternalAnsibleJobResponse
-from fluid.models.fluid_remote_internal_rest_create_sandbox_request import \
-    FluidRemoteInternalRestCreateSandboxRequest
-from fluid.models.fluid_remote_internal_rest_create_sandbox_response import \
-    FluidRemoteInternalRestCreateSandboxResponse
-from fluid.models.fluid_remote_internal_rest_destroy_sandbox_response import \
-    FluidRemoteInternalRestDestroySandboxResponse
-from fluid.models.fluid_remote_internal_rest_diff_request import \
-    FluidRemoteInternalRestDiffRequest
-from fluid.models.fluid_remote_internal_rest_diff_response import \
-    FluidRemoteInternalRestDiffResponse
-from fluid.models.fluid_remote_internal_rest_discover_ip_response import \
-    FluidRemoteInternalRestDiscoverIPResponse
-from fluid.models.fluid_remote_internal_rest_get_sandbox_response import \
-    FluidRemoteInternalRestGetSandboxResponse
-from fluid.models.fluid_remote_internal_rest_health_response import \
-    FluidRemoteInternalRestHealthResponse
-from fluid.models.fluid_remote_internal_rest_inject_ssh_key_request import \
-    FluidRemoteInternalRestInjectSSHKeyRequest
-from fluid.models.fluid_remote_internal_rest_list_sandbox_commands_response import \
-    FluidRemoteInternalRestListSandboxCommandsResponse
-from fluid.models.fluid_remote_internal_rest_list_sandboxes_response import \
-    FluidRemoteInternalRestListSandboxesResponse
-from fluid.models.fluid_remote_internal_rest_list_vms_response import \
-    FluidRemoteInternalRestListVMsResponse
-from fluid.models.fluid_remote_internal_rest_publish_request import \
-    FluidRemoteInternalRestPublishRequest
-from fluid.models.fluid_remote_internal_rest_run_command_request import \
-    FluidRemoteInternalRestRunCommandRequest
-from fluid.models.fluid_remote_internal_rest_run_command_response import \
-    FluidRemoteInternalRestRunCommandResponse
-from fluid.models.fluid_remote_internal_rest_snapshot_request import \
-    FluidRemoteInternalRestSnapshotRequest
-from fluid.models.fluid_remote_internal_rest_snapshot_response import \
-    FluidRemoteInternalRestSnapshotResponse
-from fluid.models.fluid_remote_internal_rest_start_sandbox_request import \
-    FluidRemoteInternalRestStartSandboxRequest
-from fluid.models.fluid_remote_internal_rest_start_sandbox_response import \
-    FluidRemoteInternalRestStartSandboxResponse
-from fluid.models.internal_ansible_add_task_request import \
-    InternalAnsibleAddTaskRequest
-from fluid.models.internal_ansible_add_task_response import \
-    InternalAnsibleAddTaskResponse
-from fluid.models.internal_ansible_create_playbook_request import \
-    InternalAnsibleCreatePlaybookRequest
-from fluid.models.internal_ansible_create_playbook_response import \
-    InternalAnsibleCreatePlaybookResponse
-from fluid.models.internal_ansible_export_playbook_response import \
-    InternalAnsibleExportPlaybookResponse
-from fluid.models.internal_ansible_get_playbook_response import \
-    InternalAnsibleGetPlaybookResponse
-from fluid.models.internal_ansible_list_playbooks_response import \
-    InternalAnsibleListPlaybooksResponse
-from fluid.models.internal_ansible_reorder_tasks_request import \
-    InternalAnsibleReorderTasksRequest
-from fluid.models.internal_ansible_update_task_request import \
-    InternalAnsibleUpdateTaskRequest
-from fluid.models.internal_ansible_update_task_response import \
-    InternalAnsibleUpdateTaskResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_add_task_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_add_task_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_create_playbook_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_create_playbook_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_export_playbook_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_get_playbook_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_job import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_job_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_job_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_list_playbooks_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_reorder_tasks_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_update_task_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_update_task_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_create_sandbox_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_create_sandbox_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_destroy_sandbox_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_diff_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_diff_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_discover_ip_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_get_sandbox_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_health_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_inject_ssh_key_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_list_sandbox_commands_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_list_sandboxes_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_list_vms_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_publish_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_run_command_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_run_command_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_snapshot_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_snapshot_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_start_sandbox_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_start_sandbox_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse
 from fluid.models.internal_rest_ca_public_key_response import \
     InternalRestCaPublicKeyResponse
 from fluid.models.internal_rest_certificate_response import \
@@ -313,7 +313,7 @@ class AnsibleOperations:
         check: Optional[bool] = None,
         playbook: Optional[str] = None,
         vm_name: Optional[str] = None,
-    ) -> FluidRemoteInternalAnsibleJobResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse:
         """Create Ansible job
 
         Args:
@@ -322,10 +322,10 @@ class AnsibleOperations:
             vm_name: vm_name
 
         Returns:
-            FluidRemoteInternalAnsibleJobResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = FluidRemoteInternalAnsibleJobRequest(
+        request = GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest(
             check=check,
             playbook=playbook,
             vm_name=vm_name,
@@ -335,14 +335,14 @@ class AnsibleOperations:
     def get_ansible_job(
         self,
         job_id: str,
-    ) -> FluidRemoteInternalAnsibleJob:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob:
         """Get Ansible job
 
         Args:
             job_id: str
 
         Returns:
-            FluidRemoteInternalAnsibleJob: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.get_ansible_job(job_id=job_id)
@@ -371,7 +371,7 @@ class AnsiblePlaybooksOperations:
         module: Optional[str] = None,
         name: Optional[str] = None,
         params: Optional[Dict[str, Any]] = None,
-    ) -> InternalAnsibleAddTaskResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse:
         """Add task to playbook
 
         Args:
@@ -381,10 +381,10 @@ class AnsiblePlaybooksOperations:
             params: params
 
         Returns:
-            InternalAnsibleAddTaskResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = InternalAnsibleAddTaskRequest(
+        request = GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest(
             module=module,
             name=name,
             params=params,
@@ -396,7 +396,7 @@ class AnsiblePlaybooksOperations:
         become: Optional[bool] = None,
         hosts: Optional[str] = None,
         name: Optional[str] = None,
-    ) -> InternalAnsibleCreatePlaybookResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse:
         """Create playbook
 
         Args:
@@ -405,13 +405,15 @@ class AnsiblePlaybooksOperations:
             name: name
 
         Returns:
-            InternalAnsibleCreatePlaybookResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = InternalAnsibleCreatePlaybookRequest(
-            become=become,
-            hosts=hosts,
-            name=name,
+        request = (
+            GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest(
+                become=become,
+                hosts=hosts,
+                name=name,
+            )
         )
         return self._api.create_playbook(request=request)
 
@@ -444,14 +446,14 @@ class AnsiblePlaybooksOperations:
     def export_playbook(
         self,
         playbook_name: str,
-    ) -> InternalAnsibleExportPlaybookResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse:
         """Export playbook
 
         Args:
             playbook_name: str
 
         Returns:
-            InternalAnsibleExportPlaybookResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.export_playbook(playbook_name=playbook_name)
@@ -459,23 +461,25 @@ class AnsiblePlaybooksOperations:
     def get_playbook(
         self,
         playbook_name: str,
-    ) -> InternalAnsibleGetPlaybookResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse:
         """Get playbook
 
         Args:
             playbook_name: str
 
         Returns:
-            InternalAnsibleGetPlaybookResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.get_playbook(playbook_name=playbook_name)
 
-    def list_playbooks(self) -> InternalAnsibleListPlaybooksResponse:
+    def list_playbooks(
+        self,
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse:
         """List playbooks
 
         Returns:
-            InternalAnsibleListPlaybooksResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.list_playbooks()
@@ -491,7 +495,7 @@ class AnsiblePlaybooksOperations:
             playbook_name: str
             task_ids: task_ids
         """
-        request = InternalAnsibleReorderTasksRequest(
+        request = GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest(
             task_ids=task_ids,
         )
         return self._api.reorder_playbook_tasks(
@@ -505,7 +509,7 @@ class AnsiblePlaybooksOperations:
         module: Optional[str] = None,
         name: Optional[str] = None,
         params: Optional[Dict[str, Any]] = None,
-    ) -> InternalAnsibleUpdateTaskResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse:
         """Update task
 
         Args:
@@ -516,10 +520,10 @@ class AnsiblePlaybooksOperations:
             params: params
 
         Returns:
-            InternalAnsibleUpdateTaskResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = InternalAnsibleUpdateTaskRequest(
+        request = GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest(
             module=module,
             name=name,
             params=params,
@@ -535,11 +539,13 @@ class HealthOperations:
     def __init__(self, api: HealthApi):
         self._api = api
 
-    def get_health(self) -> FluidRemoteInternalRestHealthResponse:
+    def get_health(
+        self,
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse:
         """Health check
 
         Returns:
-            FluidRemoteInternalRestHealthResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestHealthResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.get_health()
@@ -559,10 +565,9 @@ class SandboxOperations:
         memory_mb: Optional[int] = None,
         source_vm_name: Optional[str] = None,
         ttl_seconds: Optional[int] = None,
-        vm_name: Optional[str] = None,
         wait_for_ip: Optional[bool] = None,
         request_timeout: Union[None, float, Tuple[float, float]] = None,
-    ) -> FluidRemoteInternalRestCreateSandboxResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse:
         """Create a new sandbox
 
         Args:
@@ -572,22 +577,20 @@ class SandboxOperations:
             memory_mb: optional; default from service config if <=0
             source_vm_name: required; name of existing VM in libvirt to clone from
             ttl_seconds: optional; TTL for auto garbage collection
-            vm_name: optional; generated if empty
             wait_for_ip: optional; if true and auto_start, wait for IP discovery. When True, consider setting request_timeout to accommodate IP discovery (server default is 120s)
             request_timeout: HTTP request timeout in seconds. Can be a single float for total timeout, or a tuple (connect_timeout, read_timeout). For operations with wait_for_ip=True, set this to at least 180 seconds.
 
         Returns:
-            FluidRemoteInternalRestCreateSandboxResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = FluidRemoteInternalRestCreateSandboxRequest(
+        request = GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest(
             agent_id=agent_id,
             auto_start=auto_start,
             cpu=cpu,
             memory_mb=memory_mb,
             source_vm_name=source_vm_name,
             ttl_seconds=ttl_seconds,
-            vm_name=vm_name,
             wait_for_ip=wait_for_ip,
         )
         return self._api.create_sandbox(
@@ -599,7 +602,7 @@ class SandboxOperations:
         id: str,
         external: Optional[bool] = None,
         name: Optional[str] = None,
-    ) -> FluidRemoteInternalRestSnapshotResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse:
         """Create snapshot
 
         Args:
@@ -608,10 +611,10 @@ class SandboxOperations:
             name: required
 
         Returns:
-            FluidRemoteInternalRestSnapshotResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = FluidRemoteInternalRestSnapshotRequest(
+        request = GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest(
             external=external,
             name=name,
         )
@@ -620,14 +623,14 @@ class SandboxOperations:
     def destroy_sandbox(
         self,
         id: str,
-    ) -> FluidRemoteInternalRestDestroySandboxResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse:
         """Destroy sandbox
 
         Args:
             id: str
 
         Returns:
-            FluidRemoteInternalRestDestroySandboxResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.destroy_sandbox(id=id)
@@ -637,7 +640,7 @@ class SandboxOperations:
         id: str,
         from_snapshot: Optional[str] = None,
         to_snapshot: Optional[str] = None,
-    ) -> FluidRemoteInternalRestDiffResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse:
         """Diff snapshots
 
         Args:
@@ -646,10 +649,10 @@ class SandboxOperations:
             to_snapshot: required
 
         Returns:
-            FluidRemoteInternalRestDiffResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = FluidRemoteInternalRestDiffRequest(
+        request = GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest(
             from_snapshot=from_snapshot,
             to_snapshot=to_snapshot,
         )
@@ -658,14 +661,14 @@ class SandboxOperations:
     def discover_sandbox_ip(
         self,
         id: str,
-    ) -> FluidRemoteInternalRestDiscoverIPResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse:
         """Discover sandbox IP
 
         Args:
             id: str
 
         Returns:
-            FluidRemoteInternalRestDiscoverIPResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.discover_sandbox_ip(id=id)
@@ -687,7 +690,7 @@ class SandboxOperations:
         self,
         id: str,
         include_commands: Optional[bool] = None,
-    ) -> FluidRemoteInternalRestGetSandboxResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse:
         """Get sandbox details
 
         Args:
@@ -695,7 +698,7 @@ class SandboxOperations:
             include_commands: Optional[bool]
 
         Returns:
-            FluidRemoteInternalRestGetSandboxResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.get_sandbox(id=id, include_commands=include_commands)
@@ -713,7 +716,7 @@ class SandboxOperations:
             public_key: required
             username: required (explicit); typical: \
         """
-        request = FluidRemoteInternalRestInjectSSHKeyRequest(
+        request = GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest(
             public_key=public_key,
             username=username,
         )
@@ -724,7 +727,7 @@ class SandboxOperations:
         id: str,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-    ) -> FluidRemoteInternalRestListSandboxCommandsResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse:
         """List sandbox commands
 
         Args:
@@ -733,7 +736,7 @@ class SandboxOperations:
             offset: Optional[int]
 
         Returns:
-            FluidRemoteInternalRestListSandboxCommandsResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.list_sandbox_commands(id=id, limit=limit, offset=offset)
@@ -747,7 +750,7 @@ class SandboxOperations:
         vm_name: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-    ) -> FluidRemoteInternalRestListSandboxesResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse:
         """List sandboxes
 
         Args:
@@ -760,7 +763,7 @@ class SandboxOperations:
             offset: Optional[int]
 
         Returns:
-            FluidRemoteInternalRestListSandboxesResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.list_sandboxes(
@@ -788,7 +791,7 @@ class SandboxOperations:
             message: optional commit/PR message
             reviewers: optional
         """
-        request = FluidRemoteInternalRestPublishRequest(
+        request = GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest(
             job_id=job_id,
             message=message,
             reviewers=reviewers,
@@ -804,7 +807,7 @@ class SandboxOperations:
         timeout_sec: Optional[int] = None,
         user: Optional[str] = None,
         request_timeout: Union[None, float, Tuple[float, float]] = None,
-    ) -> FluidRemoteInternalRestRunCommandResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse:
         """Run command in sandbox
 
         Args:
@@ -817,10 +820,10 @@ class SandboxOperations:
             request_timeout: HTTP request timeout in seconds. Can be a single float for total timeout, or a tuple (connect_timeout, read_timeout). For operations with wait_for_ip=True, set this to at least 180 seconds.
 
         Returns:
-            FluidRemoteInternalRestRunCommandResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = FluidRemoteInternalRestRunCommandRequest(
+        request = GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest(
             command=command,
             env=env,
             private_key_path=private_key_path,
@@ -836,7 +839,7 @@ class SandboxOperations:
         id: str,
         wait_for_ip: Optional[bool] = None,
         request_timeout: Union[None, float, Tuple[float, float]] = None,
-    ) -> FluidRemoteInternalRestStartSandboxResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse:
         """Start sandbox
 
         Args:
@@ -845,10 +848,10 @@ class SandboxOperations:
             request_timeout: HTTP request timeout in seconds. Can be a single float for total timeout, or a tuple (connect_timeout, read_timeout). For operations with wait_for_ip=True, set this to at least 180 seconds.
 
         Returns:
-            FluidRemoteInternalRestStartSandboxResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
-        request = FluidRemoteInternalRestStartSandboxRequest(
+        request = GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest(
             wait_for_ip=wait_for_ip,
         )
         return self._api.start_sandbox(
@@ -873,11 +876,13 @@ class VMsOperations:
     def __init__(self, api: VMsApi):
         self._api = api
 
-    def list_virtual_machines(self) -> FluidRemoteInternalRestListVMsResponse:
-        """List all VMs
+    def list_virtual_machines(
+        self,
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse:
+        """List all host VMs
 
         Returns:
-            FluidRemoteInternalRestListVMsResponse: Pydantic model with full IDE autocomplete.
+            GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse: Pydantic model with full IDE autocomplete.
             Call .model_dump() to convert to dict if needed.
         """
         return self._api.list_virtual_machines()

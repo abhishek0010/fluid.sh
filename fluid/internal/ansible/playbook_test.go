@@ -225,6 +225,18 @@ func (m *mockStore) GetPublication(ctx context.Context, id string) (*store.Publi
 	return nil, store.ErrNotFound
 }
 
+func (m *mockStore) GetSourceVM(ctx context.Context, name string) (*store.SourceVM, error) {
+	return nil, store.ErrNotFound
+}
+
+func (m *mockStore) UpsertSourceVM(ctx context.Context, svm *store.SourceVM) error {
+	return nil
+}
+
+func (m *mockStore) ListSourceVMs(ctx context.Context) ([]*store.SourceVM, error) {
+	return nil, nil
+}
+
 func TestCreatePlaybook(t *testing.T) {
 	ms := newMockStore()
 	tmpDir := t.TempDir()
