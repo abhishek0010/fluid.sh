@@ -1150,7 +1150,7 @@ func runTUI() error {
 	}
 	var fileLogger *slog.Logger
 	if logFile != nil {
-		defer logFile.Close()
+		defer func() { _ = logFile.Close() }()
 		fileLogger = slog.New(slog.NewTextHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	} else {
 		fileLogger = slog.New(slog.NewTextHandler(io.Discard, nil))

@@ -24,7 +24,7 @@ func LoadHistory(path string) []string {
 	if err != nil {
 		return nil
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var lines []string
 	scanner := bufio.NewScanner(f)
@@ -59,7 +59,7 @@ func AppendHistory(path string, entry string) {
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, _ = f.WriteString(entry + "\n")
 }
 
@@ -69,7 +69,7 @@ func writeLines(path string, lines []string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, err = f.WriteString(strings.Join(lines, "\n") + "\n")
 	return err
 }
