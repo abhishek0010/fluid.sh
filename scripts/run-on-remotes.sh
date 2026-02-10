@@ -66,6 +66,25 @@ fi
 SCRIPT_NAME=$(basename "$SCRIPT_PATH")
 REMOTE_DEST="/tmp/$SCRIPT_NAME"
 
+# SSH credential overrides from environment variables
+# SSH_PASSWORD: if set, use sshpass for password-based authentication
+# SSH_USER: if set, override the user portion of host entries in hosts.txt
+SSH_PASS="${SSH_PASSWORD:-}"
+SSH_USER_OVERRIDE="${SSH_USER:-}"
+
+# Build SSH/SCP command prefixes
+SSH_OPTS="-o ConnectTimeout=5"
+if [[ -n "$SSH_PASS" ]]; then
+    export SSHPASS="$SSH_PASS"
+    SSH_OPTS="$SSH_OPTS -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    SCP_CMD="sshpass -e scp $SSH_OPTS"
+    SSH_CMD="sshpass -e ssh $SSH_OPTS"
+    log_info "Using password-based SSH authentication (via SSHPASS)"
+else
+    SCP_CMD="scp $SSH_OPTS"
+    SSH_CMD="ssh $SSH_OPTS"
+fi
+
 log_info "Deploying $SCRIPT_NAME to hosts listed in $HOSTS_FILE..."
 
 COUNT=1
@@ -76,6 +95,13 @@ while IFS= read -r HOST <&3 || [[ -n "$HOST" ]]; do
     [[ -z "$HOST" ]] && continue
     [[ "$HOST" =~ ^#.*$ ]] && continue
 
+    # Override user if SSH_USER is set
+    if [[ -n "$SSH_USER_OVERRIDE" ]]; then
+        # Extract hostname portion (strip user@ prefix if present)
+        HOST_ADDR="${HOST#*@}"
+        HOST="${SSH_USER_OVERRIDE}@${HOST_ADDR}"
+    fi
+
     echo ""
     echo "----------------------------------------------------------------------------"
     log_info "Processing host: $HOST (Index: $COUNT)"
@@ -83,7 +109,7 @@ while IFS= read -r HOST <&3 || [[ -n "$HOST" ]]; do
 
     # 1. Copy the script
     log_info "Copying script to $HOST:$REMOTE_DEST..."
-    if scp -o ConnectTimeout=5 "$SCRIPT_PATH" "${HOST}:${REMOTE_DEST}"; then
+    if $SCP_CMD "$SCRIPT_PATH" "${HOST}:${REMOTE_DEST}"; then
         log_success "Script copied successfully."
     else
         log_error "Failed to copy script to $HOST. Skipping..."
@@ -95,7 +121,7 @@ while IFS= read -r HOST <&3 || [[ -n "$HOST" ]]; do
     EXTRA_ARGS=""
     if [[ -n "$SSH_USERS_FILE" ]]; then
         log_info "Copying SSH users file to $HOST:$REMOTE_USERS_FILE..."
-        if scp -o ConnectTimeout=5 "$SSH_USERS_FILE" "${HOST}:${REMOTE_USERS_FILE}"; then
+        if $SCP_CMD "$SSH_USERS_FILE" "${HOST}:${REMOTE_USERS_FILE}"; then
             log_success "SSH users file copied."
             EXTRA_ARGS="--ssh-users-file $REMOTE_USERS_FILE"
         else
@@ -105,7 +131,7 @@ while IFS= read -r HOST <&3 || [[ -n "$HOST" ]]; do
 
     # 2. Make executable
     log_info "Setting executable permissions..."
-    if ssh -o ConnectTimeout=5 "$HOST" "chmod +x $REMOTE_DEST"; then
+    if $SSH_CMD "$HOST" "chmod +x $REMOTE_DEST"; then
          log_success "Permissions set."
     else
         log_error "Failed to set permissions on $HOST. Skipping..."
@@ -116,11 +142,11 @@ while IFS= read -r HOST <&3 || [[ -n "$HOST" ]]; do
     log_info "Executing script (sudo required)..."
     # We use -t to force pseudo-terminal allocation for sudo prompts if needed
     # Pass the COUNT as the first argument to the script
-    if ssh -t -o ConnectTimeout=5 "$HOST" "sudo $REMOTE_DEST $COUNT $EXTRA_ARGS"; then
+    if $SSH_CMD -t "$HOST" "sudo $REMOTE_DEST $COUNT $EXTRA_ARGS"; then
         log_success "Script execution completed successfully on $HOST."
 
         # Optional: Cleanup
-        # ssh "$HOST" "rm $REMOTE_DEST"
+        # $SSH_CMD "$HOST" "rm $REMOTE_DEST"
     else
         log_error "Script execution failed on $HOST."
     fi
