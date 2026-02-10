@@ -1141,16 +1141,27 @@ func runTUI() error {
 		}
 	}
 
-	// Create a silent logger for TUI mode to prevent stdout corruption
-	// slog output would corrupt the alternate screen buffer used by the TUI
-	silentLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	// Log to ~/.fluid/fluid.log instead of stdout to avoid corrupting the TUI
+	logPath := filepath.Join(filepath.Dir(configPath), "fluid.log")
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not open log file %s: %v\n", logPath, err)
+		logFile = nil
+	}
+	var fileLogger *slog.Logger
+	if logFile != nil {
+		defer logFile.Close()
+		fileLogger = slog.New(slog.NewTextHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	} else {
+		fileLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
 
-	// Initialize services with the loaded config and silent logger
-	if err := initServicesWithConfigAndLogger(cfg, silentLogger); err != nil {
+	// Initialize services with the loaded config and file logger
+	if err := initServicesWithConfigAndLogger(cfg, fileLogger); err != nil {
 		return fmt.Errorf("init services: %w", err)
 	}
 
-	agent := tui.NewFluidAgent(cfg, dataStore, vmService, libvirtMgr, telemetryService)
+	agent := tui.NewFluidAgent(cfg, dataStore, vmService, libvirtMgr, telemetryService, fileLogger)
 
 	// Cleanup now happens in the TUI cleanup page when user presses Ctrl+C twice
 

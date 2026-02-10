@@ -5,8 +5,8 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**playbook** | [**FluidRemoteInternalStorePlaybook**](FluidRemoteInternalStorePlaybook.md) |  | [optional] 
-**tasks** | [**List[FluidRemoteInternalStorePlaybookTask]**](FluidRemoteInternalStorePlaybookTask.md) |  | [optional] 
+**playbook** | [**GithubComAspectrrFluidShFluidRemoteInternalStorePlaybook**](GithubComAspectrrFluidShFluidRemoteInternalStorePlaybook.md) |  | [optional] 
+**tasks** | [**List[GithubComAspectrrFluidShFluidRemoteInternalStorePlaybookTask]**](GithubComAspectrrFluidShFluidRemoteInternalStorePlaybookTask.md) |  | [optional] 
 
 ## Example
 

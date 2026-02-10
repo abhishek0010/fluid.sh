@@ -2,7 +2,7 @@
 
 """
     fluid-remote API
-    API for managing virtual machine sandboxes using libvirt
+    API for managing AI Agent VM sandboxes using libvirt
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union

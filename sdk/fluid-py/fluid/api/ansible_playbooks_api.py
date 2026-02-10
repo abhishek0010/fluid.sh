@@ -2,7 +2,7 @@
 
 """
     fluid-remote API
-    API for managing virtual machine sandboxes using libvirt
+    API for managing AI Agent VM sandboxes using libvirt
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -13,26 +13,26 @@ from typing_extensions import Annotated
 from fluid.api_client import ApiClient, RequestSerialized
 from fluid.api_response import ApiResponse
 from fluid.exceptions import ApiException
-from fluid.models.internal_ansible_add_task_request import \
-    InternalAnsibleAddTaskRequest
-from fluid.models.internal_ansible_add_task_response import \
-    InternalAnsibleAddTaskResponse
-from fluid.models.internal_ansible_create_playbook_request import \
-    InternalAnsibleCreatePlaybookRequest
-from fluid.models.internal_ansible_create_playbook_response import \
-    InternalAnsibleCreatePlaybookResponse
-from fluid.models.internal_ansible_export_playbook_response import \
-    InternalAnsibleExportPlaybookResponse
-from fluid.models.internal_ansible_get_playbook_response import \
-    InternalAnsibleGetPlaybookResponse
-from fluid.models.internal_ansible_list_playbooks_response import \
-    InternalAnsibleListPlaybooksResponse
-from fluid.models.internal_ansible_reorder_tasks_request import \
-    InternalAnsibleReorderTasksRequest
-from fluid.models.internal_ansible_update_task_request import \
-    InternalAnsibleUpdateTaskRequest
-from fluid.models.internal_ansible_update_task_response import \
-    InternalAnsibleUpdateTaskResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_add_task_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_add_task_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_create_playbook_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_create_playbook_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_export_playbook_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_get_playbook_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_list_playbooks_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_reorder_tasks_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_update_task_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_update_task_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse
 
 
 class AnsiblePlaybooksApi:
@@ -46,13 +46,13 @@ class AnsiblePlaybooksApi:
     def add_playbook_task(
         self,
         playbook_name: str,
-        request: InternalAnsibleAddTaskRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> InternalAnsibleAddTaskResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse:
         """Add task to playbook
 
         Adds a new task to an existing playbook
@@ -60,7 +60,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: Task parameters (required)
-        :type request: InternalAnsibleAddTaskRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -87,9 +87,9 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "InternalAnsibleAddTaskResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -103,13 +103,13 @@ class AnsiblePlaybooksApi:
     def add_playbook_task_with_http_info(
         self,
         playbook_name: str,
-        request: InternalAnsibleAddTaskRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[InternalAnsibleAddTaskResponse]:
+    ) -> ApiResponse[GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse]:
         """Add task to playbook
 
         Adds a new task to an existing playbook
@@ -117,7 +117,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: Task parameters (required)
-        :type request: InternalAnsibleAddTaskRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -144,9 +144,9 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "InternalAnsibleAddTaskResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -160,7 +160,7 @@ class AnsiblePlaybooksApi:
     def add_playbook_task_without_preload_content(
         self,
         playbook_name: str,
-        request: InternalAnsibleAddTaskRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -174,7 +174,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: Task parameters (required)
-        :type request: InternalAnsibleAddTaskRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -201,9 +201,9 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "InternalAnsibleAddTaskResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -213,7 +213,7 @@ class AnsiblePlaybooksApi:
     def _add_playbook_task_serialize(
         self,
         playbook_name: str,
-        request: InternalAnsibleAddTaskRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleAddTaskRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -278,19 +278,19 @@ class AnsiblePlaybooksApi:
 
     def create_playbook(
         self,
-        request: InternalAnsibleCreatePlaybookRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> InternalAnsibleCreatePlaybookResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse:
         """Create playbook
 
         Creates a new Ansible playbook
 
         :param request: Playbook creation parameters (required)
-        :type request: InternalAnsibleCreatePlaybookRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -316,9 +316,9 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "InternalAnsibleCreatePlaybookResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "409": "FluidRemoteInternalErrorErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "409": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -331,19 +331,21 @@ class AnsiblePlaybooksApi:
 
     def create_playbook_with_http_info(
         self,
-        request: InternalAnsibleCreatePlaybookRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[InternalAnsibleCreatePlaybookResponse]:
+    ) -> ApiResponse[
+        GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse
+    ]:
         """Create playbook
 
         Creates a new Ansible playbook
 
         :param request: Playbook creation parameters (required)
-        :type request: InternalAnsibleCreatePlaybookRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -369,9 +371,9 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "InternalAnsibleCreatePlaybookResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "409": "FluidRemoteInternalErrorErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "409": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -384,7 +386,7 @@ class AnsiblePlaybooksApi:
 
     def create_playbook_without_preload_content(
         self,
-        request: InternalAnsibleCreatePlaybookRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -396,7 +398,7 @@ class AnsiblePlaybooksApi:
         Creates a new Ansible playbook
 
         :param request: Playbook creation parameters (required)
-        :type request: InternalAnsibleCreatePlaybookRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -422,9 +424,9 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "InternalAnsibleCreatePlaybookResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "409": "FluidRemoteInternalErrorErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "409": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -433,7 +435,7 @@ class AnsiblePlaybooksApi:
 
     def _create_playbook_serialize(
         self,
-        request: InternalAnsibleCreatePlaybookRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleCreatePlaybookRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -535,7 +537,7 @@ class AnsiblePlaybooksApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -587,7 +589,7 @@ class AnsiblePlaybooksApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -639,7 +641,7 @@ class AnsiblePlaybooksApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -746,7 +748,7 @@ class AnsiblePlaybooksApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -802,7 +804,7 @@ class AnsiblePlaybooksApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -858,7 +860,7 @@ class AnsiblePlaybooksApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -931,7 +933,7 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> InternalAnsibleExportPlaybookResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse:
         """Export playbook
 
         Exports a playbook as raw YAML
@@ -963,8 +965,8 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleExportPlaybookResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -983,7 +985,9 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[InternalAnsibleExportPlaybookResponse]:
+    ) -> ApiResponse[
+        GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse
+    ]:
         """Export playbook
 
         Exports a playbook as raw YAML
@@ -1015,8 +1019,8 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleExportPlaybookResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1067,8 +1071,8 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleExportPlaybookResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleExportPlaybookResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1138,7 +1142,7 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> InternalAnsibleGetPlaybookResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse:
         """Get playbook
 
         Gets a playbook and its tasks by name
@@ -1170,8 +1174,8 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleGetPlaybookResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1190,7 +1194,9 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[InternalAnsibleGetPlaybookResponse]:
+    ) -> ApiResponse[
+        GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse
+    ]:
         """Get playbook
 
         Gets a playbook and its tasks by name
@@ -1222,8 +1228,8 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleGetPlaybookResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1274,8 +1280,8 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleGetPlaybookResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleGetPlaybookResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1344,7 +1350,7 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> InternalAnsibleListPlaybooksResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse:
         """List playbooks
 
         Lists all Ansible playbooks
@@ -1373,7 +1379,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleListPlaybooksResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1391,7 +1397,9 @@ class AnsiblePlaybooksApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[InternalAnsibleListPlaybooksResponse]:
+    ) -> ApiResponse[
+        GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse
+    ]:
         """List playbooks
 
         Lists all Ansible playbooks
@@ -1420,7 +1428,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleListPlaybooksResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1467,7 +1475,7 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleListPlaybooksResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleListPlaybooksResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1529,7 +1537,7 @@ class AnsiblePlaybooksApi:
     def reorder_playbook_tasks(
         self,
         playbook_name: str,
-        request: InternalAnsibleReorderTasksRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1543,7 +1551,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: New task order (required)
-        :type request: InternalAnsibleReorderTasksRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1571,8 +1579,8 @@ class AnsiblePlaybooksApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1586,7 +1594,7 @@ class AnsiblePlaybooksApi:
     def reorder_playbook_tasks_with_http_info(
         self,
         playbook_name: str,
-        request: InternalAnsibleReorderTasksRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1600,7 +1608,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: New task order (required)
-        :type request: InternalAnsibleReorderTasksRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1628,8 +1636,8 @@ class AnsiblePlaybooksApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1643,7 +1651,7 @@ class AnsiblePlaybooksApi:
     def reorder_playbook_tasks_without_preload_content(
         self,
         playbook_name: str,
-        request: InternalAnsibleReorderTasksRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1657,7 +1665,7 @@ class AnsiblePlaybooksApi:
         :param playbook_name: Playbook name (required)
         :type playbook_name: str
         :param request: New task order (required)
-        :type request: InternalAnsibleReorderTasksRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1685,8 +1693,8 @@ class AnsiblePlaybooksApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1696,7 +1704,7 @@ class AnsiblePlaybooksApi:
     def _reorder_playbook_tasks_serialize(
         self,
         playbook_name: str,
-        request: InternalAnsibleReorderTasksRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleReorderTasksRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -1763,13 +1771,13 @@ class AnsiblePlaybooksApi:
         self,
         playbook_name: str,
         task_id: str,
-        request: InternalAnsibleUpdateTaskRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> InternalAnsibleUpdateTaskResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse:
         """Update task
 
         Updates an existing task in a playbook
@@ -1779,7 +1787,7 @@ class AnsiblePlaybooksApi:
         :param task_id: Task ID (required)
         :type task_id: str
         :param request: Task update parameters (required)
-        :type request: InternalAnsibleUpdateTaskRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1807,9 +1815,9 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleUpdateTaskResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1824,13 +1832,15 @@ class AnsiblePlaybooksApi:
         self,
         playbook_name: str,
         task_id: str,
-        request: InternalAnsibleUpdateTaskRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[InternalAnsibleUpdateTaskResponse]:
+    ) -> ApiResponse[
+        GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse
+    ]:
         """Update task
 
         Updates an existing task in a playbook
@@ -1840,7 +1850,7 @@ class AnsiblePlaybooksApi:
         :param task_id: Task ID (required)
         :type task_id: str
         :param request: Task update parameters (required)
-        :type request: InternalAnsibleUpdateTaskRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1868,9 +1878,9 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleUpdateTaskResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1885,7 +1895,7 @@ class AnsiblePlaybooksApi:
         self,
         playbook_name: str,
         task_id: str,
-        request: InternalAnsibleUpdateTaskRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1901,7 +1911,7 @@ class AnsiblePlaybooksApi:
         :param task_id: Task ID (required)
         :type task_id: str
         :param request: Task update parameters (required)
-        :type request: InternalAnsibleUpdateTaskRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1929,9 +1939,9 @@ class AnsiblePlaybooksApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "InternalAnsibleUpdateTaskResponse",
-            "400": "FluidRemoteInternalErrorErrorResponse",
-            "404": "FluidRemoteInternalErrorErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalErrorErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1942,7 +1952,7 @@ class AnsiblePlaybooksApi:
         self,
         playbook_name: str,
         task_id: str,
-        request: InternalAnsibleUpdateTaskRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalAnsibleUpdateTaskRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],

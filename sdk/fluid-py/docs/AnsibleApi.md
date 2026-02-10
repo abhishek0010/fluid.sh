@@ -10,7 +10,7 @@ Method | HTTP request | Description
 
 
 # **create_ansible_job**
-> FluidRemoteInternalAnsibleJobResponse create_ansible_job(request)
+> GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse create_ansible_job(request)
 
 Create Ansible job
 
@@ -21,8 +21,8 @@ Creates a new Ansible playbook execution job
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_ansible_job_request import FluidRemoteInternalAnsibleJobRequest
-from fluid.models.fluid_remote_internal_ansible_job_response import FluidRemoteInternalAnsibleJobResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_job_request import GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_job_response import GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -37,7 +37,7 @@ configuration = fluid.Configuration(
 with fluid.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = fluid.AnsibleApi(api_client)
-    request = fluid.FluidRemoteInternalAnsibleJobRequest() # FluidRemoteInternalAnsibleJobRequest | Job creation parameters
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest() # GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest | Job creation parameters
 
     try:
         # Create Ansible job
@@ -55,11 +55,11 @@ with fluid.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request** | [**FluidRemoteInternalAnsibleJobRequest**](FluidRemoteInternalAnsibleJobRequest.md)| Job creation parameters | 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobRequest.md)| Job creation parameters | 
 
 ### Return type
 
-[**FluidRemoteInternalAnsibleJobResponse**](FluidRemoteInternalAnsibleJobResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleJobResponse.md)
 
 ### Authorization
 
@@ -80,7 +80,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_ansible_job**
-> FluidRemoteInternalAnsibleJob get_ansible_job(job_id)
+> GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob get_ansible_job(job_id)
 
 Get Ansible job
 
@@ -91,7 +91,7 @@ Gets the status of an Ansible job
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_ansible_job import FluidRemoteInternalAnsibleJob
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_ansible_job import GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -128,7 +128,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**FluidRemoteInternalAnsibleJob**](FluidRemoteInternalAnsibleJob.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob**](GithubComAspectrrFluidShFluidRemoteInternalAnsibleJob.md)
 
 ### Authorization
 

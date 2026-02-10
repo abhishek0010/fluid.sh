@@ -4,22 +4,22 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**list_virtual_machines**](VMsApi.md#list_virtual_machines) | **GET** /v1/vms | List all VMs
+[**list_virtual_machines**](VMsApi.md#list_virtual_machines) | **GET** /v1/vms | List all host VMs
 
 
 # **list_virtual_machines**
-> FluidRemoteInternalRestListVMsResponse list_virtual_machines()
+> GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse list_virtual_machines()
 
-List all VMs
+List all host VMs
 
-Returns a list of all virtual machines from the libvirt instance
+Returns a list of host virtual machines from libvirt (excludes sandboxes). When multi-host is configured, aggregates VMs from all hosts.
 
 ### Example
 
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_list_vms_response import FluidRemoteInternalRestListVMsResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_list_vms_response import GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -36,7 +36,7 @@ with fluid.ApiClient(configuration) as api_client:
     api_instance = fluid.VMsApi(api_client)
 
     try:
-        # List all VMs
+        # List all host VMs
         api_response = api_instance.list_virtual_machines()
         print("The response of VMsApi->list_virtual_machines:\n")
         pprint(api_response)
@@ -52,7 +52,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**FluidRemoteInternalRestListVMsResponse**](FluidRemoteInternalRestListVMsResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse.md)
 
 ### Authorization
 

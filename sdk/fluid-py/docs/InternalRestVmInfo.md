@@ -6,6 +6,8 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **disk_path** | **str** |  | [optional] 
+**host_address** | **str** | Host IP/hostname (multi-host mode) | [optional] 
+**host_name** | **str** | Host display name (multi-host mode) | [optional] 
 **name** | **str** |  | [optional] 
 **persistent** | **bool** |  | [optional] 
 **state** | **str** |  | [optional] 

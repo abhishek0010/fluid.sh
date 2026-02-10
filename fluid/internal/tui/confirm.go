@@ -628,6 +628,8 @@ func (m SourcePrepareConfirmModel) View() string {
 	b.WriteString("\n")
 	b.WriteString(m.styles.info.Render("Running 'source prepare' will:"))
 	b.WriteString("\n")
+	b.WriteString(m.styles.info.Render("  - Start the VM if it's not running"))
+	b.WriteString("\n")
 	b.WriteString(m.styles.info.Render("  - Create a 'fluid-readonly' user"))
 	b.WriteString("\n")
 	b.WriteString(m.styles.info.Render("  - Install a restricted shell"))

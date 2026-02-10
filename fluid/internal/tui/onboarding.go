@@ -1358,7 +1358,11 @@ func (m OnboardingModel) runSourcePrepare() tea.Cmd {
 				if sshUser == "" {
 					sshUser = "root"
 				}
-				sshRunFunc := makeSSHRunFunc(ip, "root", fmt.Sprintf("%s@%s", sshUser, host.Address))
+				vmUser := "root"
+				if host.SSHVMUser != "" {
+					vmUser = host.SSHVMUser
+				}
+				sshRunFunc := makeSSHRunFunc(ip, vmUser, fmt.Sprintf("%s@%s", sshUser, host.Address))
 				prepResult, err := readonly.Prepare(context.Background(), sshRunFunc, caPubKey)
 				if err != nil {
 					result.Error = err.Error()
@@ -1410,6 +1414,7 @@ func makeSSHRunFunc(ip, user, proxyJump string) readonly.SSHRunFunc {
 			"-o", "StrictHostKeyChecking=no",
 			"-o", "UserKnownHostsFile=/dev/null",
 			"-o", "ConnectTimeout=15",
+			"-o", "BatchMode=yes",
 		}
 		if proxyJump != "" {
 			args = append(args, "-J", proxyJump)

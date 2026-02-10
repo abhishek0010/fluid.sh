@@ -104,11 +104,9 @@ type Model struct {
 	suggestionIndex int
 
 	// History
+	historyPath  string
 	historyList  []string
 	historyIndex int
-
-	// Escape sequence filtering state
-	lastEscapeTime time.Time
 
 	// Live command output (inline with conversation)
 	liveOutputLines   []string
@@ -194,6 +192,13 @@ func NewModel(title, provider, modelName string, runner AgentRunner, cfg *config
 	// Create status channel for agent updates (larger buffer to prevent dropped messages)
 	statusChan := make(chan tea.Msg, 100)
 
+	// Load persistent history
+	historyPath := HistoryPath(configPath)
+	historyList := LoadHistory(historyPath)
+	if historyList == nil {
+		historyList = make([]string, 0)
+	}
+
 	m := Model{
 		textarea:          ta,
 		spinner:           s,
@@ -208,8 +213,9 @@ func NewModel(title, provider, modelName string, runner AgentRunner, cfg *config
 		agentRunner:       runner,
 		mdRenderer:        mdRenderer,
 		statusChan:        statusChan,
-		historyList:       make([]string, 0),
-		historyIndex:      0,
+		historyPath:       historyPath,
+		historyList:       historyList,
+		historyIndex:      len(historyList),
 		liveOutputLines:   make([]string, 0),
 		liveOutputPending: "",
 		showBanner:        true, // Show banner until first user message
@@ -387,37 +393,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Filter out escape sequences that might be from unrecognized mouse events
-		// These can appear as raw text when terminal sends mouse sequences that
-		// Bubble Tea doesn't recognize (e.g., legacy mouse encoding, scroll events)
 		keyStr := msg.String()
-		if len(keyStr) > 0 {
-			firstChar := keyStr[0]
-			// Filter escape sequences and control characters (except common ones)
-			if firstChar == '\x1b' || firstChar == '\x9b' {
-				// This is an escape sequence - don't pass to textarea
-				m.lastEscapeTime = time.Now()
-				return m, nil
-			}
-			// Filter other control characters that might slip through
-			if firstChar < 32 && firstChar != '\n' && firstChar != '\r' && firstChar != '\t' {
-				return m, nil
-			}
-			// Filter characters that commonly follow ESC in escape sequences
-			// Only filter if we recently saw an escape character (within 100ms)
-			// This catches sequences that get split into multiple KeyMsg events
-			if time.Since(m.lastEscapeTime) < 100*time.Millisecond {
-				// CSI introducer, SS3 introducer, numbers, semicolon, and common sequence terminators
-				if firstChar == '[' || firstChar == 'O' || firstChar == ';' ||
-					firstChar == '<' || firstChar == 'M' || firstChar == 'm' ||
-					(firstChar >= '0' && firstChar <= '9') ||
-					(len(keyStr) == 1 && firstChar >= 'A' && firstChar <= 'Z') {
-					// Extend the escape window for multi-character sequences
-					m.lastEscapeTime = time.Now()
-					return m, nil
-				}
-			}
-		}
 
 		if m.quitting && keyStr != "ctrl+c" {
 			m.quitting = false
@@ -472,6 +448,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch keyStr {
+		case "pgup":
+			m.viewport.PageUp()
+			return m, nil
+		case "pgdown":
+			m.viewport.PageDown()
+			return m, nil
 		case "shift+tab":
 			m.readOnly = !m.readOnly
 			if m.agentRunner != nil {
@@ -528,9 +510,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.Reset()
 				m.suggestions = nil
 
-				// Add to history
+				// Add to history (in-memory + persistent)
 				if len(m.historyList) == 0 || m.historyList[len(m.historyList)-1] != input {
 					m.historyList = append(m.historyList, input)
+					AppendHistory(m.historyPath, input)
 				}
 				m.historyIndex = len(m.historyList)
 
@@ -647,6 +630,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.ready {
 			m.viewport = viewport.New(m.width, conversationHeight)
 			m.viewport.YPosition = bannerHeight
+			m.viewport.KeyMap = viewport.KeyMap{}
 			m.ready = true
 		} else {
 			m.viewport.Width = m.width
@@ -930,13 +914,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return tea.Quit()
 		})
 
-	case tea.MouseMsg:
-		// Handle mouse events - only pass to viewport, not textarea
-		// This prevents scroll escape sequences from appearing in the input
-		var vpCmd tea.Cmd
-		m.viewport, vpCmd = m.viewport.Update(msg)
-		cmds = append(cmds, vpCmd)
-		return m, tea.Batch(cmds...)
 	}
 
 	// Update textarea (skip for mouse events handled above)
@@ -978,36 +955,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		lineCount = maxInputHeight
 	}
 
-	// If height changed, update it and recalculate layout
-	if lineCount != m.textarea.Height() || len(m.suggestions) > 0 {
+	if lineCount != m.textarea.Height() {
 		m.textarea.SetHeight(lineCount)
-
-		// Recalculate viewport height to match View() calculation
-		bannerHeight := 0
-		if m.showBanner && m.state == StateIdle {
-			bannerHeight = GetBannerLogoHeight() + 2
-		}
-		inputHeight := lineCount + 2 // textarea lines + border
-		statusBarHeight := 1
-		suggestionHeight := 0
-		if len(m.suggestions) > 0 {
-			suggestionHeight = len(m.suggestions)
-			if suggestionHeight > 5 {
-				suggestionHeight = 6 // 5 items + "... more" line
-			}
-			suggestionHeight += 2 // border
-		}
-		conversationHeight := m.height - bannerHeight - inputHeight - statusBarHeight - suggestionHeight
-
-		if conversationHeight > 0 {
-			m.viewport.Height = conversationHeight
-		}
 	}
 
-	// Update viewport
-	var vpCmd tea.Cmd
-	m.viewport, vpCmd = m.viewport.Update(msg)
-	cmds = append(cmds, vpCmd)
+	// Always recalculate viewport height to stay in sync with View()
+	bannerHeight := 0
+	if m.showBanner && m.state == StateIdle {
+		bannerHeight = GetBannerLogoHeight() + 2
+	}
+	inputHeight := lineCount + 2 // textarea lines + border
+	statusBarHeight := 1
+	suggestionHeight := 0
+	if len(m.suggestions) > 0 {
+		suggestionHeight = len(m.suggestions)
+		if suggestionHeight > 5 {
+			suggestionHeight = 6 // 5 items + "... more" line
+		}
+		suggestionHeight += 2 // border
+	}
+	conversationHeight := m.height - bannerHeight - inputHeight - statusBarHeight - suggestionHeight
+	if conversationHeight > 0 {
+		m.viewport.Height = conversationHeight
+	}
+
+	// Update viewport on resize events
+	if _, ok := msg.(tea.WindowSizeMsg); ok {
+		var vpCmd tea.Cmd
+		m.viewport, vpCmd = m.viewport.Update(msg)
+		cmds = append(cmds, vpCmd)
+	}
 
 	return m, tea.Batch(cmds...)
 }
@@ -1834,7 +1811,7 @@ func (m Model) renderCleanupView() string {
 
 // Run starts the TUI application
 func Run(m Model) error {
-	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
+	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err := p.Run()
 	return err
 }

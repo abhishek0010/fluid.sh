@@ -5,7 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**diff** | [**FluidRemoteInternalStoreDiff**](FluidRemoteInternalStoreDiff.md) |  | [optional] 
+**diff** | [**GithubComAspectrrFluidShFluidRemoteInternalStoreDiff**](GithubComAspectrrFluidShFluidRemoteInternalStoreDiff.md) |  | [optional] 
 
 ## Example
 

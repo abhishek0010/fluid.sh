@@ -4,9 +4,43 @@
 # Sets up libvirt and KVM on Ubuntu (x86 architecture).
 # This script installs necessary packages, configures groups, and validates the installation.
 #
-# Usage: sudo ./setup-ubuntu.sh [VM_INDEX]
+# Usage: sudo ./setup-ubuntu.sh [VM_INDEX] [--ssh-users-file <path>]
+#
+# Options:
+#   VM_INDEX                  VM index number (default: 1)
+#   --ssh-users-file <path>   Path to file with SSH users (one per line: <username> <public-key>)
 
-VM_INDEX=${1:-1}
+VM_INDEX=""
+SSH_USERS_FILE=""
+
+# Parse arguments: first positional arg is VM_INDEX, rest are named flags
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --ssh-users-file)
+            SSH_USERS_FILE="$2"
+            shift 2
+            ;;
+        --help|-h)
+            echo "Usage: sudo ./setup-ubuntu.sh [VM_INDEX] [--ssh-users-file <path>]"
+            echo ""
+            echo "Options:"
+            echo "  VM_INDEX                  VM index number (default: 1)"
+            echo "  --ssh-users-file <path>   Path to file with SSH users (one per line: <username> <public-key>)"
+            exit 0
+            ;;
+        *)
+            if [[ -z "$VM_INDEX" ]]; then
+                VM_INDEX="$1"
+            else
+                echo "Unknown argument: $1" >&2
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+VM_INDEX="${VM_INDEX:-1}"
 VM_NAME="test-vm-${VM_INDEX}"
 
 set -euo pipefail
@@ -220,6 +254,28 @@ cat > "$USER_DATA" <<EOF
 password: ubuntu
 chpasswd: { expire: False }
 ssh_pwauth: True
+EOF
+
+# Add SSH users from file if provided
+if [[ -n "$SSH_USERS_FILE" ]] && [[ -f "$SSH_USERS_FILE" ]]; then
+    echo "" >> "$USER_DATA"
+    echo "users:" >> "$USER_DATA"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -z "$line" ]] && continue
+        [[ "$line" =~ ^#.*$ ]] && continue
+        username="${line%% *}"
+        pubkey="${line#* }"
+        cat >> "$USER_DATA" <<EOF
+  - name: ${username}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ${pubkey}
+EOF
+    done < "$SSH_USERS_FILE"
+fi
+
+cat >> "$USER_DATA" <<EOF
 
 # Install and enable guest agent for better VM management
 packages:
@@ -350,7 +406,16 @@ if [[ -n "$VM_IP" ]]; then
 else
     echo "  - IP Address: (pending - check with 'virsh domifaddr ${VM_NAME} --source lease')"
 fi
-echo "  - Login: ubuntu / ubuntu"
+echo "  - Login: ubuntu / ubuntu (password)"
+if [[ -n "$SSH_USERS_FILE" ]] && [[ -f "$SSH_USERS_FILE" ]]; then
+    echo "  - SSH Users:"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -z "$line" ]] && continue
+        [[ "$line" =~ ^#.*$ ]] && continue
+        username="${line%% *}"
+        echo "      ${username} (key-based auth)"
+    done < "$SSH_USERS_FILE"
+fi
 if [[ -n "$REAL_USER" ]]; then
     echo "  - User: '$REAL_USER' added to 'libvirt' and 'kvm' groups"
     echo "    NOTE: You may need to log out and log back in for group changes to take effect."

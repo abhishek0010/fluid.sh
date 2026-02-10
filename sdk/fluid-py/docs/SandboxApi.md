@@ -21,19 +21,19 @@ Method | HTTP request | Description
 
 
 # **create_sandbox**
-> FluidRemoteInternalRestCreateSandboxResponse create_sandbox(request)
+> GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse create_sandbox(request)
 
 Create a new sandbox
 
-Creates a new virtual machine sandbox by cloning from an existing VM
+Creates a new virtual machine sandbox by cloning from an existing VM. When multi-host is configured, automatically routes to the host containing the source VM.
 
 ### Example
 
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_create_sandbox_request import FluidRemoteInternalRestCreateSandboxRequest
-from fluid.models.fluid_remote_internal_rest_create_sandbox_response import FluidRemoteInternalRestCreateSandboxResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_create_sandbox_request import GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_create_sandbox_response import GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -48,7 +48,7 @@ configuration = fluid.Configuration(
 with fluid.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = fluid.SandboxApi(api_client)
-    request = fluid.FluidRemoteInternalRestCreateSandboxRequest() # FluidRemoteInternalRestCreateSandboxRequest | Sandbox creation parameters
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest() # GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest | Sandbox creation parameters
 
     try:
         # Create a new sandbox
@@ -66,11 +66,11 @@ with fluid.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request** | [**FluidRemoteInternalRestCreateSandboxRequest**](FluidRemoteInternalRestCreateSandboxRequest.md)| Sandbox creation parameters | 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest**](GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest.md)| Sandbox creation parameters | 
 
 ### Return type
 
-[**FluidRemoteInternalRestCreateSandboxResponse**](FluidRemoteInternalRestCreateSandboxResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse.md)
 
 ### Authorization
 
@@ -92,7 +92,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **create_snapshot**
-> FluidRemoteInternalRestSnapshotResponse create_snapshot(id, request)
+> GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse create_snapshot(id, request)
 
 Create snapshot
 
@@ -103,8 +103,8 @@ Creates a snapshot of the sandbox
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_snapshot_request import FluidRemoteInternalRestSnapshotRequest
-from fluid.models.fluid_remote_internal_rest_snapshot_response import FluidRemoteInternalRestSnapshotResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_snapshot_request import GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_snapshot_response import GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -120,7 +120,7 @@ with fluid.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = fluid.SandboxApi(api_client)
     id = 'id_example' # str | Sandbox ID
-    request = fluid.FluidRemoteInternalRestSnapshotRequest() # FluidRemoteInternalRestSnapshotRequest | Snapshot parameters
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest() # GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest | Snapshot parameters
 
     try:
         # Create snapshot
@@ -139,11 +139,11 @@ with fluid.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **str**| Sandbox ID | 
- **request** | [**FluidRemoteInternalRestSnapshotRequest**](FluidRemoteInternalRestSnapshotRequest.md)| Snapshot parameters | 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest**](GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest.md)| Snapshot parameters | 
 
 ### Return type
 
-[**FluidRemoteInternalRestSnapshotResponse**](FluidRemoteInternalRestSnapshotResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse.md)
 
 ### Authorization
 
@@ -165,7 +165,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **destroy_sandbox**
-> FluidRemoteInternalRestDestroySandboxResponse destroy_sandbox(id)
+> GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse destroy_sandbox(id)
 
 Destroy sandbox
 
@@ -176,7 +176,7 @@ Destroys the sandbox and cleans up resources
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_destroy_sandbox_response import FluidRemoteInternalRestDestroySandboxResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_destroy_sandbox_response import GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -213,7 +213,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**FluidRemoteInternalRestDestroySandboxResponse**](FluidRemoteInternalRestDestroySandboxResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse.md)
 
 ### Authorization
 
@@ -236,7 +236,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **diff_snapshots**
-> FluidRemoteInternalRestDiffResponse diff_snapshots(id, request)
+> GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse diff_snapshots(id, request)
 
 Diff snapshots
 
@@ -247,8 +247,8 @@ Computes differences between two snapshots
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_diff_request import FluidRemoteInternalRestDiffRequest
-from fluid.models.fluid_remote_internal_rest_diff_response import FluidRemoteInternalRestDiffResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_diff_request import GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_diff_response import GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -264,7 +264,7 @@ with fluid.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = fluid.SandboxApi(api_client)
     id = 'id_example' # str | Sandbox ID
-    request = fluid.FluidRemoteInternalRestDiffRequest() # FluidRemoteInternalRestDiffRequest | Diff parameters
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest() # GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest | Diff parameters
 
     try:
         # Diff snapshots
@@ -283,11 +283,11 @@ with fluid.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **str**| Sandbox ID | 
- **request** | [**FluidRemoteInternalRestDiffRequest**](FluidRemoteInternalRestDiffRequest.md)| Diff parameters | 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest**](GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest.md)| Diff parameters | 
 
 ### Return type
 
-[**FluidRemoteInternalRestDiffResponse**](FluidRemoteInternalRestDiffResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse.md)
 
 ### Authorization
 
@@ -309,7 +309,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **discover_sandbox_ip**
-> FluidRemoteInternalRestDiscoverIPResponse discover_sandbox_ip(id)
+> GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse discover_sandbox_ip(id)
 
 Discover sandbox IP
 
@@ -320,7 +320,7 @@ Discovers and returns the IP address for a running sandbox. Use this for async w
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_discover_ip_response import FluidRemoteInternalRestDiscoverIPResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_discover_ip_response import GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -357,7 +357,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**FluidRemoteInternalRestDiscoverIPResponse**](FluidRemoteInternalRestDiscoverIPResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse.md)
 
 ### Authorization
 
@@ -448,7 +448,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_sandbox**
-> FluidRemoteInternalRestGetSandboxResponse get_sandbox(id, include_commands=include_commands)
+> GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse get_sandbox(id, include_commands=include_commands)
 
 Get sandbox details
 
@@ -459,7 +459,7 @@ Returns detailed information about a specific sandbox including recent commands
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_get_sandbox_response import FluidRemoteInternalRestGetSandboxResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_get_sandbox_response import GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -498,7 +498,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**FluidRemoteInternalRestGetSandboxResponse**](FluidRemoteInternalRestGetSandboxResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse.md)
 
 ### Authorization
 
@@ -532,7 +532,7 @@ Injects a public SSH key for a user in the sandbox
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_inject_ssh_key_request import FluidRemoteInternalRestInjectSSHKeyRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_inject_ssh_key_request import GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -548,7 +548,7 @@ with fluid.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = fluid.SandboxApi(api_client)
     id = 'id_example' # str | Sandbox ID
-    request = fluid.FluidRemoteInternalRestInjectSSHKeyRequest() # FluidRemoteInternalRestInjectSSHKeyRequest | SSH key injection parameters
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest() # GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest | SSH key injection parameters
 
     try:
         # Inject SSH key into sandbox
@@ -565,7 +565,7 @@ with fluid.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **str**| Sandbox ID | 
- **request** | [**FluidRemoteInternalRestInjectSSHKeyRequest**](FluidRemoteInternalRestInjectSSHKeyRequest.md)| SSH key injection parameters | 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest**](GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest.md)| SSH key injection parameters | 
 
 ### Return type
 
@@ -591,7 +591,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_sandbox_commands**
-> FluidRemoteInternalRestListSandboxCommandsResponse list_sandbox_commands(id, limit=limit, offset=offset)
+> GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse list_sandbox_commands(id, limit=limit, offset=offset)
 
 List sandbox commands
 
@@ -602,7 +602,7 @@ Returns all commands executed in the sandbox
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_list_sandbox_commands_response import FluidRemoteInternalRestListSandboxCommandsResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_list_sandbox_commands_response import GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -643,7 +643,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**FluidRemoteInternalRestListSandboxCommandsResponse**](FluidRemoteInternalRestListSandboxCommandsResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse.md)
 
 ### Authorization
 
@@ -666,7 +666,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_sandboxes**
-> FluidRemoteInternalRestListSandboxesResponse list_sandboxes(agent_id=agent_id, job_id=job_id, base_image=base_image, state=state, vm_name=vm_name, limit=limit, offset=offset)
+> GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse list_sandboxes(agent_id=agent_id, job_id=job_id, base_image=base_image, state=state, vm_name=vm_name, limit=limit, offset=offset)
 
 List sandboxes
 
@@ -677,7 +677,7 @@ Lists all sandboxes with optional filtering by agent_id, job_id, base_image, sta
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_list_sandboxes_response import FluidRemoteInternalRestListSandboxesResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_list_sandboxes_response import GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -726,7 +726,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**FluidRemoteInternalRestListSandboxesResponse**](FluidRemoteInternalRestListSandboxesResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse.md)
 
 ### Authorization
 
@@ -758,7 +758,7 @@ Publishes sandbox changes to GitOps repository
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_publish_request import FluidRemoteInternalRestPublishRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_publish_request import GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -774,7 +774,7 @@ with fluid.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = fluid.SandboxApi(api_client)
     id = 'id_example' # str | Sandbox ID
-    request = fluid.FluidRemoteInternalRestPublishRequest() # FluidRemoteInternalRestPublishRequest | Publish parameters
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest() # GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest | Publish parameters
 
     try:
         # Publish changes
@@ -791,7 +791,7 @@ with fluid.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **str**| Sandbox ID | 
- **request** | [**FluidRemoteInternalRestPublishRequest**](FluidRemoteInternalRestPublishRequest.md)| Publish parameters | 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest**](GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest.md)| Publish parameters | 
 
 ### Return type
 
@@ -816,7 +816,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **run_sandbox_command**
-> FluidRemoteInternalRestRunCommandResponse run_sandbox_command(id, request)
+> GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse run_sandbox_command(id, request)
 
 Run command in sandbox
 
@@ -827,8 +827,8 @@ Executes a command inside the sandbox via SSH. If private_key_path is omitted an
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_run_command_request import FluidRemoteInternalRestRunCommandRequest
-from fluid.models.fluid_remote_internal_rest_run_command_response import FluidRemoteInternalRestRunCommandResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_run_command_request import GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_run_command_response import GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -844,7 +844,7 @@ with fluid.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = fluid.SandboxApi(api_client)
     id = 'id_example' # str | Sandbox ID
-    request = fluid.FluidRemoteInternalRestRunCommandRequest() # FluidRemoteInternalRestRunCommandRequest | Command execution parameters
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest() # GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest | Command execution parameters
 
     try:
         # Run command in sandbox
@@ -863,11 +863,11 @@ with fluid.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **str**| Sandbox ID | 
- **request** | [**FluidRemoteInternalRestRunCommandRequest**](FluidRemoteInternalRestRunCommandRequest.md)| Command execution parameters | 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest**](GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest.md)| Command execution parameters | 
 
 ### Return type
 
-[**FluidRemoteInternalRestRunCommandResponse**](FluidRemoteInternalRestRunCommandResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse.md)
 
 ### Authorization
 
@@ -889,7 +889,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **start_sandbox**
-> FluidRemoteInternalRestStartSandboxResponse start_sandbox(id, request=request)
+> GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse start_sandbox(id, request=request)
 
 Start sandbox
 
@@ -900,8 +900,8 @@ Starts the virtual machine sandbox
 
 ```python
 import fluid
-from fluid.models.fluid_remote_internal_rest_start_sandbox_request import FluidRemoteInternalRestStartSandboxRequest
-from fluid.models.fluid_remote_internal_rest_start_sandbox_response import FluidRemoteInternalRestStartSandboxResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_start_sandbox_request import GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_start_sandbox_response import GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse
 from fluid.rest import ApiException
 from pprint import pprint
 
@@ -917,7 +917,7 @@ with fluid.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = fluid.SandboxApi(api_client)
     id = 'id_example' # str | Sandbox ID
-    request = fluid.FluidRemoteInternalRestStartSandboxRequest() # FluidRemoteInternalRestStartSandboxRequest | Start parameters (optional)
+    request = fluid.GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest() # GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest | Start parameters (optional)
 
     try:
         # Start sandbox
@@ -936,11 +936,11 @@ with fluid.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **str**| Sandbox ID | 
- **request** | [**FluidRemoteInternalRestStartSandboxRequest**](FluidRemoteInternalRestStartSandboxRequest.md)| Start parameters | [optional] 
+ **request** | [**GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest**](GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest.md)| Start parameters | [optional] 
 
 ### Return type
 
-[**FluidRemoteInternalRestStartSandboxResponse**](FluidRemoteInternalRestStartSandboxResponse.md)
+[**GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse**](GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse.md)
 
 ### Authorization
 

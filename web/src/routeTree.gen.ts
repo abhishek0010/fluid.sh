@@ -12,9 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SandboxesIndexRouteImport } from './routes/sandboxes/index'
 import { Route as AnsibleIndexRouteImport } from './routes/ansible/index'
-import { Route as TmuxPageRouteImport } from './routes/tmux/page'
 import { Route as SandboxesIdRouteImport } from './routes/sandboxes/$id'
-import { Route as TmuxIdPageRouteImport } from './routes/tmux/[id]/page'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -31,69 +29,44 @@ const AnsibleIndexRoute = AnsibleIndexRouteImport.update({
   path: '/ansible/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TmuxPageRoute = TmuxPageRouteImport.update({
-  id: '/tmux/page',
-  path: '/tmux/page',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SandboxesIdRoute = SandboxesIdRouteImport.update({
   id: '/sandboxes/$id',
   path: '/sandboxes/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TmuxIdPageRoute = TmuxIdPageRouteImport.update({
-  id: '/tmux/id/page',
-  path: '/tmux/id/page',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sandboxes/$id': typeof SandboxesIdRoute
-  '/tmux/page': typeof TmuxPageRoute
   '/ansible': typeof AnsibleIndexRoute
   '/sandboxes': typeof SandboxesIndexRoute
-  '/tmux/id/page': typeof TmuxIdPageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sandboxes/$id': typeof SandboxesIdRoute
-  '/tmux/page': typeof TmuxPageRoute
   '/ansible': typeof AnsibleIndexRoute
   '/sandboxes': typeof SandboxesIndexRoute
-  '/tmux/id/page': typeof TmuxIdPageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/sandboxes/$id': typeof SandboxesIdRoute
-  '/tmux/page': typeof TmuxPageRoute
   '/ansible/': typeof AnsibleIndexRoute
   '/sandboxes/': typeof SandboxesIndexRoute
-  '/tmux/id/page': typeof TmuxIdPageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sandboxes/$id' | '/tmux/page' | '/ansible' | '/sandboxes' | '/tmux/id/page'
+  fullPaths: '/' | '/sandboxes/$id' | '/ansible' | '/sandboxes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sandboxes/$id' | '/tmux/page' | '/ansible' | '/sandboxes' | '/tmux/id/page'
-  id:
-    | '__root__'
-    | '/'
-    | '/sandboxes/$id'
-    | '/tmux/page'
-    | '/ansible/'
-    | '/sandboxes/'
-    | '/tmux/id/page'
+  to: '/' | '/sandboxes/$id' | '/ansible' | '/sandboxes'
+  id: '__root__' | '/' | '/sandboxes/$id' | '/ansible/' | '/sandboxes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SandboxesIdRoute: typeof SandboxesIdRoute
-  TmuxPageRoute: typeof TmuxPageRoute
   AnsibleIndexRoute: typeof AnsibleIndexRoute
   SandboxesIndexRoute: typeof SandboxesIndexRoute
-  TmuxIdPageRoute: typeof TmuxIdPageRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -119,25 +92,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnsibleIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tmux/page': {
-      id: '/tmux/page'
-      path: '/tmux/page'
-      fullPath: '/tmux/page'
-      preLoaderRoute: typeof TmuxPageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/sandboxes/$id': {
       id: '/sandboxes/$id'
       path: '/sandboxes/$id'
       fullPath: '/sandboxes/$id'
       preLoaderRoute: typeof SandboxesIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tmux/id/page': {
-      id: '/tmux/id/page'
-      path: '/tmux/id/page'
-      fullPath: '/tmux/id/page'
-      preLoaderRoute: typeof TmuxIdPageRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -146,10 +105,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SandboxesIdRoute: SandboxesIdRoute,
-  TmuxPageRoute: TmuxPageRoute,
   AnsibleIndexRoute: AnsibleIndexRoute,
   SandboxesIndexRoute: SandboxesIndexRoute,
-  TmuxIdPageRoute: TmuxIdPageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

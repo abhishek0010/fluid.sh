@@ -2,7 +2,7 @@
 
 """
     fluid-remote API
-    API for managing virtual machine sandboxes using libvirt
+    API for managing AI Agent VM sandboxes using libvirt
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -13,40 +13,40 @@ from typing_extensions import Annotated
 from fluid.api_client import ApiClient, RequestSerialized
 from fluid.api_response import ApiResponse
 from fluid.exceptions import ApiException
-from fluid.models.fluid_remote_internal_rest_create_sandbox_request import \
-    FluidRemoteInternalRestCreateSandboxRequest
-from fluid.models.fluid_remote_internal_rest_create_sandbox_response import \
-    FluidRemoteInternalRestCreateSandboxResponse
-from fluid.models.fluid_remote_internal_rest_destroy_sandbox_response import \
-    FluidRemoteInternalRestDestroySandboxResponse
-from fluid.models.fluid_remote_internal_rest_diff_request import \
-    FluidRemoteInternalRestDiffRequest
-from fluid.models.fluid_remote_internal_rest_diff_response import \
-    FluidRemoteInternalRestDiffResponse
-from fluid.models.fluid_remote_internal_rest_discover_ip_response import \
-    FluidRemoteInternalRestDiscoverIPResponse
-from fluid.models.fluid_remote_internal_rest_get_sandbox_response import \
-    FluidRemoteInternalRestGetSandboxResponse
-from fluid.models.fluid_remote_internal_rest_inject_ssh_key_request import \
-    FluidRemoteInternalRestInjectSSHKeyRequest
-from fluid.models.fluid_remote_internal_rest_list_sandbox_commands_response import \
-    FluidRemoteInternalRestListSandboxCommandsResponse
-from fluid.models.fluid_remote_internal_rest_list_sandboxes_response import \
-    FluidRemoteInternalRestListSandboxesResponse
-from fluid.models.fluid_remote_internal_rest_publish_request import \
-    FluidRemoteInternalRestPublishRequest
-from fluid.models.fluid_remote_internal_rest_run_command_request import \
-    FluidRemoteInternalRestRunCommandRequest
-from fluid.models.fluid_remote_internal_rest_run_command_response import \
-    FluidRemoteInternalRestRunCommandResponse
-from fluid.models.fluid_remote_internal_rest_snapshot_request import \
-    FluidRemoteInternalRestSnapshotRequest
-from fluid.models.fluid_remote_internal_rest_snapshot_response import \
-    FluidRemoteInternalRestSnapshotResponse
-from fluid.models.fluid_remote_internal_rest_start_sandbox_request import \
-    FluidRemoteInternalRestStartSandboxRequest
-from fluid.models.fluid_remote_internal_rest_start_sandbox_response import \
-    FluidRemoteInternalRestStartSandboxResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_create_sandbox_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_create_sandbox_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_destroy_sandbox_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_diff_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_diff_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_discover_ip_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_get_sandbox_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_inject_ssh_key_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_list_sandbox_commands_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_list_sandboxes_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_publish_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_run_command_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_run_command_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_snapshot_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_snapshot_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_start_sandbox_request import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_start_sandbox_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse
 
 
 class SandboxApi:
@@ -59,19 +59,19 @@ class SandboxApi:
 
     def create_sandbox(
         self,
-        request: FluidRemoteInternalRestCreateSandboxRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestCreateSandboxResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse:
         """Create a new sandbox
 
-        Creates a new virtual machine sandbox by cloning from an existing VM
+        Creates a new virtual machine sandbox by cloning from an existing VM. When multi-host is configured, automatically routes to the host containing the source VM.
 
         :param request: Sandbox creation parameters (required)
-        :type request: FluidRemoteInternalRestCreateSandboxRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -97,9 +97,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "FluidRemoteInternalRestCreateSandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -112,19 +112,21 @@ class SandboxApi:
 
     def create_sandbox_with_http_info(
         self,
-        request: FluidRemoteInternalRestCreateSandboxRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestCreateSandboxResponse]:
+    ) -> ApiResponse[
+        GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse
+    ]:
         """Create a new sandbox
 
-        Creates a new virtual machine sandbox by cloning from an existing VM
+        Creates a new virtual machine sandbox by cloning from an existing VM. When multi-host is configured, automatically routes to the host containing the source VM.
 
         :param request: Sandbox creation parameters (required)
-        :type request: FluidRemoteInternalRestCreateSandboxRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -150,9 +152,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "FluidRemoteInternalRestCreateSandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -165,7 +167,7 @@ class SandboxApi:
 
     def create_sandbox_without_preload_content(
         self,
-        request: FluidRemoteInternalRestCreateSandboxRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -174,10 +176,10 @@ class SandboxApi:
     ) -> Any:
         """Create a new sandbox
 
-        Creates a new virtual machine sandbox by cloning from an existing VM
+        Creates a new virtual machine sandbox by cloning from an existing VM. When multi-host is configured, automatically routes to the host containing the source VM.
 
         :param request: Sandbox creation parameters (required)
-        :type request: FluidRemoteInternalRestCreateSandboxRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -203,9 +205,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "FluidRemoteInternalRestCreateSandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -214,7 +216,7 @@ class SandboxApi:
 
     def _create_sandbox_serialize(
         self,
-        request: FluidRemoteInternalRestCreateSandboxRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestCreateSandboxRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -278,13 +280,13 @@ class SandboxApi:
     def create_snapshot(
         self,
         id: str,
-        request: FluidRemoteInternalRestSnapshotRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestSnapshotResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse:
         """Create snapshot
 
         Creates a snapshot of the sandbox
@@ -292,7 +294,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Snapshot parameters (required)
-        :type request: FluidRemoteInternalRestSnapshotRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -319,9 +321,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "FluidRemoteInternalRestSnapshotResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -335,13 +337,13 @@ class SandboxApi:
     def create_snapshot_with_http_info(
         self,
         id: str,
-        request: FluidRemoteInternalRestSnapshotRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestSnapshotResponse]:
+    ) -> ApiResponse[GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse]:
         """Create snapshot
 
         Creates a snapshot of the sandbox
@@ -349,7 +351,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Snapshot parameters (required)
-        :type request: FluidRemoteInternalRestSnapshotRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -376,9 +378,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "FluidRemoteInternalRestSnapshotResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -392,7 +394,7 @@ class SandboxApi:
     def create_snapshot_without_preload_content(
         self,
         id: str,
-        request: FluidRemoteInternalRestSnapshotRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -406,7 +408,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Snapshot parameters (required)
-        :type request: FluidRemoteInternalRestSnapshotRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -433,9 +435,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "201": "FluidRemoteInternalRestSnapshotResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "201": "GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -445,7 +447,7 @@ class SandboxApi:
     def _create_snapshot_serialize(
         self,
         id: str,
-        request: FluidRemoteInternalRestSnapshotRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestSnapshotRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -516,7 +518,7 @@ class SandboxApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestDestroySandboxResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse:
         """Destroy sandbox
 
         Destroys the sandbox and cleans up resources
@@ -548,10 +550,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestDestroySandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -570,7 +572,9 @@ class SandboxApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestDestroySandboxResponse]:
+    ) -> ApiResponse[
+        GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse
+    ]:
         """Destroy sandbox
 
         Destroys the sandbox and cleans up resources
@@ -602,10 +606,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestDestroySandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -656,10 +660,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestDestroySandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestDestroySandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -724,13 +728,13 @@ class SandboxApi:
     def diff_snapshots(
         self,
         id: str,
-        request: FluidRemoteInternalRestDiffRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestDiffResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse:
         """Diff snapshots
 
         Computes differences between two snapshots
@@ -738,7 +742,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Diff parameters (required)
-        :type request: FluidRemoteInternalRestDiffRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -765,9 +769,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestDiffResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -781,13 +785,13 @@ class SandboxApi:
     def diff_snapshots_with_http_info(
         self,
         id: str,
-        request: FluidRemoteInternalRestDiffRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestDiffResponse]:
+    ) -> ApiResponse[GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse]:
         """Diff snapshots
 
         Computes differences between two snapshots
@@ -795,7 +799,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Diff parameters (required)
-        :type request: FluidRemoteInternalRestDiffRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -822,9 +826,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestDiffResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -838,7 +842,7 @@ class SandboxApi:
     def diff_snapshots_without_preload_content(
         self,
         id: str,
-        request: FluidRemoteInternalRestDiffRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -852,7 +856,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Diff parameters (required)
-        :type request: FluidRemoteInternalRestDiffRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -879,9 +883,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestDiffResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestDiffResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -891,7 +895,7 @@ class SandboxApi:
     def _diff_snapshots_serialize(
         self,
         id: str,
-        request: FluidRemoteInternalRestDiffRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestDiffRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -962,7 +966,7 @@ class SandboxApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestDiscoverIPResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse:
         """Discover sandbox IP
 
         Discovers and returns the IP address for a running sandbox. Use this for async workflows where wait_for_ip was false during start.
@@ -994,10 +998,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestDiscoverIPResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1016,7 +1020,7 @@ class SandboxApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestDiscoverIPResponse]:
+    ) -> ApiResponse[GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse]:
         """Discover sandbox IP
 
         Discovers and returns the IP address for a running sandbox. Use this for async workflows where wait_for_ip was false during start.
@@ -1048,10 +1052,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestDiscoverIPResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1102,10 +1106,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestDiscoverIPResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestDiscoverIPResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1211,8 +1215,8 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "501": "FluidRemoteInternalRestGenerateResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "501": "GithubComAspectrrFluidShFluidRemoteInternalRestGenerateResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1267,8 +1271,8 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "501": "FluidRemoteInternalRestGenerateResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "501": "GithubComAspectrrFluidShFluidRemoteInternalRestGenerateResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1323,8 +1327,8 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "501": "FluidRemoteInternalRestGenerateResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "501": "GithubComAspectrrFluidShFluidRemoteInternalRestGenerateResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1398,7 +1402,7 @@ class SandboxApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestGetSandboxResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse:
         """Get sandbox details
 
         Returns detailed information about a specific sandbox including recent commands
@@ -1433,10 +1437,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestGetSandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1456,7 +1460,7 @@ class SandboxApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestGetSandboxResponse]:
+    ) -> ApiResponse[GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse]:
         """Get sandbox details
 
         Returns detailed information about a specific sandbox including recent commands
@@ -1491,10 +1495,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestGetSandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1549,10 +1553,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestGetSandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestGetSandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1621,7 +1625,7 @@ class SandboxApi:
     def inject_ssh_key(
         self,
         id: str,
-        request: FluidRemoteInternalRestInjectSSHKeyRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1635,7 +1639,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: SSH key injection parameters (required)
-        :type request: FluidRemoteInternalRestInjectSSHKeyRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1663,8 +1667,8 @@ class SandboxApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1678,7 +1682,7 @@ class SandboxApi:
     def inject_ssh_key_with_http_info(
         self,
         id: str,
-        request: FluidRemoteInternalRestInjectSSHKeyRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1692,7 +1696,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: SSH key injection parameters (required)
-        :type request: FluidRemoteInternalRestInjectSSHKeyRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1720,8 +1724,8 @@ class SandboxApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1735,7 +1739,7 @@ class SandboxApi:
     def inject_ssh_key_without_preload_content(
         self,
         id: str,
-        request: FluidRemoteInternalRestInjectSSHKeyRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -1749,7 +1753,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: SSH key injection parameters (required)
-        :type request: FluidRemoteInternalRestInjectSSHKeyRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -1777,8 +1781,8 @@ class SandboxApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             "204": None,
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1788,7 +1792,7 @@ class SandboxApi:
     def _inject_ssh_key_serialize(
         self,
         id: str,
-        request: FluidRemoteInternalRestInjectSSHKeyRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestInjectSSHKeyRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -1861,7 +1865,7 @@ class SandboxApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestListSandboxCommandsResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse:
         """List sandbox commands
 
         Returns all commands executed in the sandbox
@@ -1899,10 +1903,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestListSandboxCommandsResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -1923,7 +1927,9 @@ class SandboxApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestListSandboxCommandsResponse]:
+    ) -> ApiResponse[
+        GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse
+    ]:
         """List sandbox commands
 
         Returns all commands executed in the sandbox
@@ -1961,10 +1967,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestListSandboxCommandsResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2023,10 +2029,10 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestListSandboxCommandsResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "404": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxCommandsResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "404": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2110,7 +2116,7 @@ class SandboxApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestListSandboxesResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse:
         """List sandboxes
 
         Lists all sandboxes with optional filtering by agent_id, job_id, base_image, state, or vm_name
@@ -2160,8 +2166,8 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestListSandboxesResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2186,7 +2192,9 @@ class SandboxApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestListSandboxesResponse]:
+    ) -> ApiResponse[
+        GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse
+    ]:
         """List sandboxes
 
         Lists all sandboxes with optional filtering by agent_id, job_id, base_image, state, or vm_name
@@ -2236,8 +2244,8 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestListSandboxesResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2312,8 +2320,8 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestListSandboxesResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestListSandboxesResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2403,7 +2411,7 @@ class SandboxApi:
     def publish_changes(
         self,
         id: str,
-        request: FluidRemoteInternalRestPublishRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -2417,7 +2425,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Publish parameters (required)
-        :type request: FluidRemoteInternalRestPublishRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -2444,8 +2452,8 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "501": "FluidRemoteInternalRestPublishResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "501": "GithubComAspectrrFluidShFluidRemoteInternalRestPublishResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2459,7 +2467,7 @@ class SandboxApi:
     def publish_changes_with_http_info(
         self,
         id: str,
-        request: FluidRemoteInternalRestPublishRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -2473,7 +2481,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Publish parameters (required)
-        :type request: FluidRemoteInternalRestPublishRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -2500,8 +2508,8 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "501": "FluidRemoteInternalRestPublishResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "501": "GithubComAspectrrFluidShFluidRemoteInternalRestPublishResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2515,7 +2523,7 @@ class SandboxApi:
     def publish_changes_without_preload_content(
         self,
         id: str,
-        request: FluidRemoteInternalRestPublishRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -2529,7 +2537,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Publish parameters (required)
-        :type request: FluidRemoteInternalRestPublishRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -2556,8 +2564,8 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "501": "FluidRemoteInternalRestPublishResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "501": "GithubComAspectrrFluidShFluidRemoteInternalRestPublishResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2567,7 +2575,7 @@ class SandboxApi:
     def _publish_changes_serialize(
         self,
         id: str,
-        request: FluidRemoteInternalRestPublishRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestPublishRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -2633,13 +2641,13 @@ class SandboxApi:
     def run_sandbox_command(
         self,
         id: str,
-        request: FluidRemoteInternalRestRunCommandRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestRunCommandResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse:
         """Run command in sandbox
 
         Executes a command inside the sandbox via SSH. If private_key_path is omitted and SSH CA is configured, managed credentials will be used automatically.
@@ -2647,7 +2655,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Command execution parameters (required)
-        :type request: FluidRemoteInternalRestRunCommandRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -2674,9 +2682,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestRunCommandResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2690,13 +2698,13 @@ class SandboxApi:
     def run_sandbox_command_with_http_info(
         self,
         id: str,
-        request: FluidRemoteInternalRestRunCommandRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestRunCommandResponse]:
+    ) -> ApiResponse[GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse]:
         """Run command in sandbox
 
         Executes a command inside the sandbox via SSH. If private_key_path is omitted and SSH CA is configured, managed credentials will be used automatically.
@@ -2704,7 +2712,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Command execution parameters (required)
-        :type request: FluidRemoteInternalRestRunCommandRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -2731,9 +2739,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestRunCommandResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2747,7 +2755,7 @@ class SandboxApi:
     def run_sandbox_command_without_preload_content(
         self,
         id: str,
-        request: FluidRemoteInternalRestRunCommandRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -2761,7 +2769,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Command execution parameters (required)
-        :type request: FluidRemoteInternalRestRunCommandRequest
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -2788,9 +2796,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestRunCommandResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2800,7 +2808,7 @@ class SandboxApi:
     def _run_sandbox_command_serialize(
         self,
         id: str,
-        request: FluidRemoteInternalRestRunCommandRequest,
+        request: GithubComAspectrrFluidShFluidRemoteInternalRestRunCommandRequest,
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],
@@ -2866,13 +2874,15 @@ class SandboxApi:
     def start_sandbox(
         self,
         id: str,
-        request: Optional[FluidRemoteInternalRestStartSandboxRequest] = None,
+        request: Optional[
+            GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest
+        ] = None,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestStartSandboxResponse:
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse:
         """Start sandbox
 
         Starts the virtual machine sandbox
@@ -2880,7 +2890,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Start parameters (optional)
-        :type request: FluidRemoteInternalRestStartSandboxRequest, optional
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest, optional
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -2907,9 +2917,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestStartSandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2923,13 +2933,17 @@ class SandboxApi:
     def start_sandbox_with_http_info(
         self,
         id: str,
-        request: Optional[FluidRemoteInternalRestStartSandboxRequest] = None,
+        request: Optional[
+            GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest
+        ] = None,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestStartSandboxResponse]:
+    ) -> ApiResponse[
+        GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse
+    ]:
         """Start sandbox
 
         Starts the virtual machine sandbox
@@ -2937,7 +2951,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Start parameters (optional)
-        :type request: FluidRemoteInternalRestStartSandboxRequest, optional
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest, optional
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -2964,9 +2978,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestStartSandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -2980,7 +2994,9 @@ class SandboxApi:
     def start_sandbox_without_preload_content(
         self,
         id: str,
-        request: Optional[FluidRemoteInternalRestStartSandboxRequest] = None,
+        request: Optional[
+            GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest
+        ] = None,
         _request_timeout: Union[None, float, Tuple[float, float]] = None,
         _request_auth: Optional[Dict[str, Any]] = None,
         _content_type: Optional[str] = None,
@@ -2994,7 +3010,7 @@ class SandboxApi:
         :param id: Sandbox ID (required)
         :type id: str
         :param request: Start parameters (optional)
-        :type request: FluidRemoteInternalRestStartSandboxRequest, optional
+        :type request: GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest, optional
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
                                  timeout. It can also be a pair (tuple) of
@@ -3021,9 +3037,9 @@ class SandboxApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestStartSandboxResponse",
-            "400": "FluidRemoteInternalRestErrorResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxResponse",
+            "400": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -3033,7 +3049,9 @@ class SandboxApi:
     def _start_sandbox_serialize(
         self,
         id: str,
-        request: Optional[FluidRemoteInternalRestStartSandboxRequest],
+        request: Optional[
+            GithubComAspectrrFluidShFluidRemoteInternalRestStartSandboxRequest
+        ],
         _request_auth: Optional[Dict[str, Any]],
         _content_type: Optional[str],
         _headers: Optional[Dict[str, Any]],

@@ -5,7 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**playbooks** | [**List[FluidRemoteInternalStorePlaybook]**](FluidRemoteInternalStorePlaybook.md) |  | [optional] 
+**playbooks** | [**List[GithubComAspectrrFluidShFluidRemoteInternalStorePlaybook]**](GithubComAspectrrFluidShFluidRemoteInternalStorePlaybook.md) |  | [optional] 
 **total** | **int** |  | [optional] 
 
 ## Example

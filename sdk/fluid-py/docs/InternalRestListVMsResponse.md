@@ -5,6 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**host_errors** | [**List[InternalRestHostError]**](InternalRestHostError.md) | Errors from unreachable hosts (multi-host mode) | [optional] 
 **vms** | [**List[InternalRestVmInfo]**](InternalRestVmInfo.md) |  | [optional] 
 
 ## Example

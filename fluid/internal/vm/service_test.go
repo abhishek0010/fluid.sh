@@ -184,6 +184,18 @@ func (m *mockStore) GetNextTaskPosition(ctx context.Context, playbookID string) 
 	return 0, nil
 }
 
+func (m *mockStore) GetSourceVM(ctx context.Context, name string) (*store.SourceVM, error) {
+	return nil, store.ErrNotFound
+}
+
+func (m *mockStore) UpsertSourceVM(ctx context.Context, svm *store.SourceVM) error {
+	return nil
+}
+
+func (m *mockStore) ListSourceVMs(ctx context.Context) ([]*store.SourceVM, error) {
+	return nil, nil
+}
+
 func TestGetSandbox_Success(t *testing.T) {
 	ip := "192.168.1.100"
 	mockSt := &mockStore{

@@ -2,7 +2,7 @@
 
 """
     fluid-remote API
-    API for managing virtual machine sandboxes using libvirt
+    API for managing AI Agent VM sandboxes using libvirt
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from fluid.api_client import ApiClient, RequestSerialized
 from fluid.api_response import ApiResponse
 from fluid.exceptions import ApiException
-from fluid.models.fluid_remote_internal_rest_list_vms_response import \
-    FluidRemoteInternalRestListVMsResponse
+from fluid.models.github_com_aspectrr_fluid_sh_fluid_remote_internal_rest_list_vms_response import \
+    GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse
 
 
 class VMsApi:
@@ -29,10 +29,10 @@ class VMsApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> FluidRemoteInternalRestListVMsResponse:
-        """List all VMs
+    ) -> GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse:
+        """List all host VMs
 
-        Returns a list of all virtual machines from the libvirt instance
+        Returns a list of host virtual machines from libvirt (excludes sandboxes). When multi-host is configured, aggregates VMs from all hosts.
 
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
@@ -58,8 +58,8 @@ class VMsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestListVMsResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -77,10 +77,10 @@ class VMsApi:
         _content_type: Optional[str] = None,
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
-    ) -> ApiResponse[FluidRemoteInternalRestListVMsResponse]:
-        """List all VMs
+    ) -> ApiResponse[GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse]:
+        """List all host VMs
 
-        Returns a list of all virtual machines from the libvirt instance
+        Returns a list of host virtual machines from libvirt (excludes sandboxes). When multi-host is configured, aggregates VMs from all hosts.
 
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
@@ -106,8 +106,8 @@ class VMsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestListVMsResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout
@@ -126,9 +126,9 @@ class VMsApi:
         _headers: Optional[Dict[str, Any]] = None,
         _host_index: int = 0,
     ) -> Any:
-        """List all VMs
+        """List all host VMs
 
-        Returns a list of all virtual machines from the libvirt instance
+        Returns a list of host virtual machines from libvirt (excludes sandboxes). When multi-host is configured, aggregates VMs from all hosts.
 
         :param _request_timeout: Timeout setting for this request. If one
                                  number is provided, it will be the total request
@@ -154,8 +154,8 @@ class VMsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            "200": "FluidRemoteInternalRestListVMsResponse",
-            "500": "FluidRemoteInternalRestErrorResponse",
+            "200": "GithubComAspectrrFluidShFluidRemoteInternalRestListVMsResponse",
+            "500": "GithubComAspectrrFluidShFluidRemoteInternalRestErrorResponse",
         }
         response_data = self.api_client.call_api(
             *_param, _request_timeout=_request_timeout

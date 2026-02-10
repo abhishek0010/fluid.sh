@@ -5,7 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**commands** | [**List[FluidRemoteInternalStoreCommand]**](FluidRemoteInternalStoreCommand.md) |  | [optional] 
+**commands** | [**List[GithubComAspectrrFluidShFluidRemoteInternalStoreCommand]**](GithubComAspectrrFluidShFluidRemoteInternalStoreCommand.md) |  | [optional] 
 **total** | **int** |  | [optional] 
 
 ## Example

@@ -7,6 +7,7 @@ echo "Generating SDK..."
 
 # Generate with custom templates
 docker run --rm \
+  --user "$(id -u):$(id -g)" \
   -v ${PWD}/..:/local \
   openapitools/openapi-generator-cli generate --skip-validate-spec \
   -i /local/fluid-remote/docs/openapi.yaml \
