@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -963,6 +964,7 @@ func TestRunSourceVMCommand_AllowlistRejection(t *testing.T) {
 		mgr:       mockMgr,
 		keyMgr:    mockKeyMgr,
 		timeNowFn: time.Now,
+		logger:    slog.Default(),
 		cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
 	}
 
@@ -1232,4 +1234,161 @@ func TestRunSourceVMCommand_SSHRunFailure(t *testing.T) {
 	if result.Stderr != "connection timeout" {
 		t.Errorf("expected stderr %q, got %q", "connection timeout", result.Stderr)
 	}
+}
+
+// mockTelemetryService records Track calls for test assertions.
+type mockTelemetryService struct {
+	mu     sync.Mutex
+	events []trackedEvent
+}
+
+type trackedEvent struct {
+	name       string
+	properties map[string]any
+}
+
+func (m *mockTelemetryService) Track(event string, properties map[string]any) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.events = append(m.events, trackedEvent{name: event, properties: properties})
+}
+
+func (m *mockTelemetryService) Close() {}
+
+func (m *mockTelemetryService) getEvents() []trackedEvent {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]trackedEvent, len(m.events))
+	copy(out, m.events)
+	return out
+}
+
+func TestRunSourceVMCommand_TelemetryTracking(t *testing.T) {
+	t.Run("blocked by allowlist", func(t *testing.T) {
+		mt := &mockTelemetryService{}
+		svc := &Service{
+			telemetry: mt,
+			mgr:       &mockManager{},
+			keyMgr:    &mockKeyManager{},
+			timeNowFn: time.Now,
+			logger:    slog.Default(),
+			cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+		}
+
+		_, err := svc.RunSourceVMCommand(context.Background(), "source-vm-1", "rm -rf /", 60*time.Second)
+		if err == nil {
+			t.Fatal("expected error for disallowed command")
+		}
+
+		events := mt.getEvents()
+		if len(events) != 1 {
+			t.Fatalf("expected 1 telemetry event, got %d", len(events))
+		}
+		if events[0].name != "source_vm_command_blocked" {
+			t.Errorf("expected event 'source_vm_command_blocked', got %q", events[0].name)
+		}
+		if events[0].properties["source_vm"] != "source-vm-1" {
+			t.Errorf("expected source_vm 'source-vm-1', got %v", events[0].properties["source_vm"])
+		}
+		if _, ok := events[0].properties["reason"]; !ok {
+			t.Error("expected 'reason' property in telemetry event")
+		}
+	})
+
+	t.Run("successful command", func(t *testing.T) {
+		mt := &mockTelemetryService{}
+		svc := &Service{
+			telemetry: mt,
+			mgr: &mockManager{
+				getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
+					return "192.168.1.200", "52:54:00:12:34:57", nil
+				},
+			},
+			keyMgr: &mockKeyManager{
+				getSourceVMCredentialsFn: func(ctx context.Context, sourceVMName string) (*sshkeys.Credentials, error) {
+					return &sshkeys.Credentials{
+						Username:        "fluid-readonly",
+						PrivateKeyPath:  "/tmp/key",
+						CertificatePath: "/tmp/key-cert.pub",
+					}, nil
+				},
+			},
+			ssh: &mockSSHRunner{
+				runWithCertFn: func(ctx context.Context, addr, user, privateKeyPath, certPath, command string, timeout time.Duration, env map[string]string, proxyJump string) (string, string, int, error) {
+					return "output", "", 0, nil
+				},
+			},
+			timeNowFn: time.Now,
+			logger:    slog.Default(),
+			cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+		}
+
+		_, err := svc.RunSourceVMCommand(context.Background(), "source-vm-1", "ls -l", 60*time.Second)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		events := mt.getEvents()
+		if len(events) != 1 {
+			t.Fatalf("expected 1 telemetry event, got %d", len(events))
+		}
+		if events[0].name != "source_vm_command" {
+			t.Errorf("expected event 'source_vm_command', got %q", events[0].name)
+		}
+		if events[0].properties["exit_code"] != 0 {
+			t.Errorf("expected exit_code 0, got %v", events[0].properties["exit_code"])
+		}
+	})
+
+	t.Run("blocked by restricted shell", func(t *testing.T) {
+		mt := &mockTelemetryService{}
+		svc := &Service{
+			telemetry: mt,
+			mgr: &mockManager{
+				getIPAddressFn: func(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
+					return "192.168.1.200", "52:54:00:12:34:57", nil
+				},
+			},
+			keyMgr: &mockKeyManager{
+				getSourceVMCredentialsFn: func(ctx context.Context, sourceVMName string) (*sshkeys.Credentials, error) {
+					return &sshkeys.Credentials{
+						Username:        "fluid-readonly",
+						PrivateKeyPath:  "/tmp/key",
+						CertificatePath: "/tmp/key-cert.pub",
+					}, nil
+				},
+			},
+			ssh: &mockSSHRunner{
+				runWithCertFn: func(ctx context.Context, addr, user, privateKeyPath, certPath, command string, timeout time.Duration, env map[string]string, proxyJump string) (string, string, int, error) {
+					return "", "command not permitted", 126, nil
+				},
+			},
+			timeNowFn: time.Now,
+			logger:    slog.Default(),
+			cfg:       Config{CommandTimeout: 30 * time.Second, IPDiscoveryTimeout: 30 * time.Second},
+		}
+
+		result, err := svc.RunSourceVMCommand(context.Background(), "source-vm-1", "ls -l", 60*time.Second)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.ExitCode != 126 {
+			t.Errorf("expected exit code 126, got %d", result.ExitCode)
+		}
+
+		events := mt.getEvents()
+		// Should have both: source_vm_command_blocked (restricted_shell) and source_vm_command
+		if len(events) != 2 {
+			t.Fatalf("expected 2 telemetry events, got %d", len(events))
+		}
+		if events[0].name != "source_vm_command_blocked" {
+			t.Errorf("expected first event 'source_vm_command_blocked', got %q", events[0].name)
+		}
+		if events[0].properties["reason"] != "restricted_shell" {
+			t.Errorf("expected reason 'restricted_shell', got %v", events[0].properties["reason"])
+		}
+		if events[1].name != "source_vm_command" {
+			t.Errorf("expected second event 'source_vm_command', got %q", events[1].name)
+		}
+	})
 }

@@ -658,12 +658,12 @@ func TestGetSourceVMCredentials_FilesystemLayout(t *testing.T) {
 		{
 			name:            "simple name",
 			sourceVMName:    "ubuntu-22.04",
-			expectedDirName: "sourcevm-ubuntu-22.04",
+			expectedDirName: "sourcevm-ubuntu-22_04",
 		},
 		{
 			name:            "name with dots",
 			sourceVMName:    "golden.ubuntu.22.04",
-			expectedDirName: "sourcevm-golden.ubuntu.22.04",
+			expectedDirName: "sourcevm-golden_ubuntu_22_04",
 		},
 		{
 			name:            "name with hyphens",
@@ -811,7 +811,7 @@ func TestSanitizeVMName(t *testing.T) {
 		{
 			name:     "with dots",
 			input:    "ubuntu.22.04",
-			expected: "ubuntu.22.04",
+			expected: "ubuntu_22_04",
 		},
 		{
 			name:     "with hyphens",
@@ -826,7 +826,7 @@ func TestSanitizeVMName(t *testing.T) {
 		{
 			name:     "path traversal with ..",
 			input:    "../../../etc/passwd",
-			expected: ".._.._.._etc_passwd",
+			expected: "_________etc_passwd",
 		},
 		{
 			name:     "path traversal with /",
@@ -836,7 +836,7 @@ func TestSanitizeVMName(t *testing.T) {
 		{
 			name:     "path traversal complex",
 			input:    "../../vm/../config",
-			expected: ".._.._vm_.._config",
+			expected: "______vm____config",
 		},
 		{
 			name:     "special characters",
@@ -851,7 +851,7 @@ func TestSanitizeVMName(t *testing.T) {
 		{
 			name:     "mixed valid and invalid",
 			input:    "vm-123.test/path",
-			expected: "vm-123.test_path",
+			expected: "vm-123_test_path",
 		},
 		{
 			name:     "unicode characters",

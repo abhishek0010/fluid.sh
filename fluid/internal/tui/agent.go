@@ -1829,25 +1829,6 @@ func (a *FluidAgent) runSourceCommand(ctx context.Context, sourceVM, command str
 	result, err := a.vmService.RunSourceVMCommandWithCallback(ctx, sourceVM, command, 0, outputCallback)
 	a.sendStatus(CommandOutputDoneMsg{SandboxID: sourceVM})
 
-	// Fallback safety net: if DB said prepared but SSH still fails, offer re-prepare
-	if err != nil && isSourceVMConnectionError(err) {
-		a.logger.Warn("source VM connection error, attempting re-prepare", "source_vm", sourceVM, "error", err)
-		// Clear stale session cache so requestSourcePrepareApproval doesn't skip
-		delete(a.preparedSourceVMs, sourceVM)
-		if a.requestSourcePrepareApproval(sourceVM, err) {
-			a.sendStatus(ToolStartMsg{ToolName: "source_prepare", Args: map[string]any{"source_vm": sourceVM}})
-			if prepErr := a.prepareSourceVM(ctx, sourceVM); prepErr != nil {
-				a.logger.Error("re-prepare failed", "source_vm", sourceVM, "error", prepErr)
-				a.sendStatus(ToolCompleteMsg{ToolName: "source_prepare", Success: false, Error: prepErr.Error()})
-				return nil, fmt.Errorf("source prepare failed: %w (original error: %v)", prepErr, err)
-			}
-			a.sendStatus(ToolCompleteMsg{ToolName: "source_prepare", Success: true, Result: map[string]any{"source_vm": sourceVM, "status": "prepared"}})
-			// Retry the command after prepare
-			result, err = a.vmService.RunSourceVMCommandWithCallback(ctx, sourceVM, command, 0, outputCallback)
-			a.sendStatus(CommandOutputDoneMsg{SandboxID: sourceVM})
-		}
-	}
-
 	if err != nil {
 		a.logger.Error("source command failed", "source_vm", sourceVM, "error", err)
 		if result != nil {
@@ -1892,25 +1873,6 @@ func (a *FluidAgent) readSourceFile(ctx context.Context, sourceVM, path string) 
 
 	cmd := fmt.Sprintf("base64 %s", shellEscape(path))
 	result, err := a.vmService.RunSourceVMCommand(ctx, sourceVM, cmd, 0)
-
-	// Fallback safety net: if DB said prepared but SSH still fails, offer re-prepare
-	if err != nil && isSourceVMConnectionError(err) {
-		a.logger.Warn("source VM connection error during file read, attempting re-prepare", "source_vm", sourceVM, "error", err)
-		// Clear stale session cache so requestSourcePrepareApproval doesn't skip
-		delete(a.preparedSourceVMs, sourceVM)
-		if a.requestSourcePrepareApproval(sourceVM, err) {
-			a.sendStatus(ToolStartMsg{ToolName: "source_prepare", Args: map[string]any{"source_vm": sourceVM}})
-			if prepErr := a.prepareSourceVM(ctx, sourceVM); prepErr != nil {
-				a.logger.Error("re-prepare failed during file read", "source_vm", sourceVM, "error", prepErr)
-				a.sendStatus(ToolCompleteMsg{ToolName: "source_prepare", Success: false, Error: prepErr.Error()})
-				return nil, fmt.Errorf("source prepare failed: %w (original error: %v)", prepErr, err)
-			}
-			a.sendStatus(ToolCompleteMsg{ToolName: "source_prepare", Success: true, Result: map[string]any{"source_vm": sourceVM, "status": "prepared"}})
-			// Retry after prepare
-			result, err = a.vmService.RunSourceVMCommand(ctx, sourceVM, cmd, 0)
-		}
-	}
-
 	if err != nil {
 		a.logger.Error("failed to read file from source VM", "source_vm", sourceVM, "path", path, "error", err)
 		return nil, fmt.Errorf("failed to read file from source VM: %w", err)
@@ -2134,34 +2096,6 @@ func (a *FluidAgent) ensureSourceVMPrepared(ctx context.Context, sourceVM string
 	return nil
 }
 
-// isSourceVMConnectionError checks if an error is a connection/auth failure to a source VM.
-func isSourceVMConnectionError(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := err.Error()
-	patterns := []string{
-		"Permission denied",
-		"Connection refused",
-		"Connection timed out",
-		"No route to host",
-		"Could not resolve hostname",
-		"ssh: connect to host",
-		"Host key verification failed",
-		"ssh: handshake failed",
-		"certificate",
-		"ip address not found within timeout",
-		"ip address not found in ARP table",
-		"could not discover IP",
-	}
-	for _, p := range patterns {
-		if strings.Contains(msg, p) {
-			return true
-		}
-	}
-	return false
-}
-
 // requestSourcePrepareApproval prompts the user to approve source VM preparation.
 // Returns true if approved, false otherwise.
 func (a *FluidAgent) requestSourcePrepareApproval(sourceVM string, connErr error) bool {
@@ -2277,7 +2211,11 @@ func (a *FluidAgent) prepareSourceVM(ctx context.Context, sourceVM string) error
 	prepResult, err := readonly.Prepare(ctx, sshRun, string(caPubKeyBytes))
 	if err != nil {
 		a.logger.Error("readonly.Prepare failed", "source_vm", sourceVM, "ip", ip, "proxy_jump", proxyJump, "error", err)
-		return fmt.Errorf("prepare failed: %w", err)
+		sshCmd := fmt.Sprintf("ssh %s@%s \"whoami\"", vmUser, ip)
+		if proxyJump != "" {
+			sshCmd = fmt.Sprintf("ssh -J %s %s@%s \"whoami\"", proxyJump, vmUser, ip)
+		}
+		return fmt.Errorf("prepare failed: %w\n\nTo debug, test SSH connectivity from your machine:\n  %s\n\nIf this fails, use /settings to verify your host's SSHVMUser and connection settings are correct.", err, sshCmd)
 	}
 	a.logger.Info("prepareSourceVM completed", "source_vm", sourceVM, "result", prepResult)
 

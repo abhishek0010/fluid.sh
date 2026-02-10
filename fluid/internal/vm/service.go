@@ -1661,6 +1661,15 @@ func (s *Service) RunSourceVMCommandWithCallback(ctx context.Context, sourceVMNa
 
 	// Validate command against the read-only allowlist.
 	if err := readonly.ValidateCommand(command); err != nil {
+		s.logger.Warn("source VM command blocked by allowlist",
+			"source_vm", sourceVMName,
+			"command", command,
+			"reason", err.Error(),
+		)
+		s.telemetry.Track("source_vm_command_blocked", map[string]any{
+			"source_vm": sourceVMName,
+			"reason":    err.Error(),
+		})
 		return nil, fmt.Errorf("command not allowed in read-only mode: %w", err)
 	}
 
@@ -1688,9 +1697,7 @@ func (s *Service) RunSourceVMCommandWithCallback(ctx context.Context, sourceVMNa
 	// Determine proxy jump.
 	proxyJump := s.cfg.SSHProxyJump
 
-	// Wrap command in login shell.
-	wrappedCmd := fmt.Sprintf("bash -lc %q", command)
-
+	// Pass command directly - the restricted shell on source VMs handles execution.
 	var stdout, stderr string
 	var code int
 	var runErr error
@@ -1702,10 +1709,10 @@ func (s *Service) RunSourceVMCommandWithCallback(ctx context.Context, sourceVMNa
 				outputCallback(chunk)
 			}
 		}()
-		stdout, stderr, code, runErr = s.ssh.RunWithCertStreaming(ctx, ip, creds.Username, creds.PrivateKeyPath, creds.CertificatePath, wrappedCmd, timeout, nil, proxyJump, outputChan)
+		stdout, stderr, code, runErr = s.ssh.RunWithCertStreaming(ctx, ip, creds.Username, creds.PrivateKeyPath, creds.CertificatePath, command, timeout, nil, proxyJump, outputChan)
 		close(outputChan)
 	} else {
-		stdout, stderr, code, runErr = s.ssh.RunWithCert(ctx, ip, creds.Username, creds.PrivateKeyPath, creds.CertificatePath, wrappedCmd, timeout, nil, proxyJump)
+		stdout, stderr, code, runErr = s.ssh.RunWithCert(ctx, ip, creds.Username, creds.PrivateKeyPath, creds.CertificatePath, command, timeout, nil, proxyJump)
 	}
 
 	result := &SourceCommandResult{
@@ -1715,9 +1722,27 @@ func (s *Service) RunSourceVMCommandWithCallback(ctx context.Context, sourceVMNa
 		Stderr:   stderr,
 	}
 
+	if code == 126 {
+		s.logger.Warn("source VM command blocked by restricted shell",
+			"source_vm", sourceVMName,
+			"command", command,
+			"stderr", stderr,
+		)
+		s.telemetry.Track("source_vm_command_blocked", map[string]any{
+			"source_vm": sourceVMName,
+			"reason":    "restricted_shell",
+		})
+	}
+
 	if runErr != nil {
 		return result, fmt.Errorf("ssh run on source VM: %w", runErr)
 	}
+
+	s.telemetry.Track("source_vm_command", map[string]any{
+		"source_vm": sourceVMName,
+		"exit_code": code,
+	})
+
 	return result, nil
 }
 

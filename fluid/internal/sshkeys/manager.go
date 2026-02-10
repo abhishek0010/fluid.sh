@@ -19,8 +19,8 @@ import (
 )
 
 // vmNameSanitizer is a compiled regex for sanitizing VM names used in filesystem paths.
-// It matches any character that is not alphanumeric, dot, underscore, or hyphen.
-var vmNameSanitizer = regexp.MustCompile(`[^A-Za-z0-9._-]`)
+// It matches any character that is not alphanumeric, underscore, or hyphen.
+var vmNameSanitizer = regexp.MustCompile(`[^A-Za-z0-9_-]`)
 
 // KeyProvider provides SSH credentials for sandboxes.
 type KeyProvider interface {
@@ -391,10 +391,10 @@ func (m *KeyManager) GetSourceVMCredentials(ctx context.Context, sourceVMName st
 }
 
 // sanitizeVMName sanitizes a VM name for safe use in filesystem paths.
-// It replaces any character that is not alphanumeric, dot, underscore, or hyphen
+// It replaces any character that is not alphanumeric, underscore, or hyphen
 // with an underscore. This prevents path traversal attacks using ".." or "/" in VM names.
 func sanitizeVMName(name string) string {
-	// Only allow: A-Z, a-z, 0-9, dot, underscore, hyphen
+	// Only allow: A-Z, a-z, 0-9, underscore, hyphen
 	return vmNameSanitizer.ReplaceAllString(name, "_")
 }
 
