@@ -884,7 +884,7 @@ func TestSourceVMCredentialsPathTraversal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cfg := DefaultConfig()
 	cfg.KeyDir = tmpDir
@@ -894,7 +894,7 @@ func TestSourceVMCredentialsPathTraversal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewKeyManager failed: %v", err)
 	}
-	defer km.Close()
+	defer func() { _ = km.Close() }()
 
 	ctx := context.Background()
 
@@ -977,7 +977,7 @@ func TestSourceVMCredentialsSanitizationInPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cfg := DefaultConfig()
 	cfg.KeyDir = tmpDir
@@ -987,7 +987,7 @@ func TestSourceVMCredentialsSanitizationInPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewKeyManager failed: %v", err)
 	}
-	defer km.Close()
+	defer func() { _ = km.Close() }()
 
 	ctx := context.Background()
 

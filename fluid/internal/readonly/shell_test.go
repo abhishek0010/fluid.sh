@@ -15,7 +15,7 @@ func TestRestrictedShell_CommandChaining(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	// Write the restricted shell script
 	if _, err := tmpfile.Write([]byte(RestrictedShellScript)); err != nil {
@@ -26,7 +26,7 @@ func TestRestrictedShell_CommandChaining(t *testing.T) {
 	}
 
 	// Make it executable
-	if err := os.Chmod(tmpfile.Name(), 0755); err != nil {
+	if err := os.Chmod(tmpfile.Name(), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -167,7 +167,7 @@ func TestRestrictedShell_InteractiveLoginBlocked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	if _, err := tmpfile.Write([]byte(RestrictedShellScript)); err != nil {
 		t.Fatal(err)
@@ -176,7 +176,7 @@ func TestRestrictedShell_InteractiveLoginBlocked(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.Chmod(tmpfile.Name(), 0755); err != nil {
+	if err := os.Chmod(tmpfile.Name(), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -200,7 +200,7 @@ func TestRestrictedShell_OutputRedirectionBlocked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	if _, err := tmpfile.Write([]byte(RestrictedShellScript)); err != nil {
 		t.Fatal(err)
@@ -209,7 +209,7 @@ func TestRestrictedShell_OutputRedirectionBlocked(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.Chmod(tmpfile.Name(), 0755); err != nil {
+	if err := os.Chmod(tmpfile.Name(), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
