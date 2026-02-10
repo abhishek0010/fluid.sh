@@ -2215,7 +2215,7 @@ func (a *FluidAgent) prepareSourceVM(ctx context.Context, sourceVM string) error
 		if proxyJump != "" {
 			sshCmd = fmt.Sprintf("ssh -J %s %s@%s \"whoami\"", proxyJump, vmUser, ip)
 		}
-		return fmt.Errorf("prepare failed: %w\n\nTo debug, test SSH connectivity from your machine:\n  %s\n\nIf this fails, use /settings to verify your host's SSHVMUser and connection settings are correct.", err, sshCmd)
+		return fmt.Errorf("prepare failed (debug: test SSH with `%s`, check /settings for SSHVMUser): %w", sshCmd, err)
 	}
 	a.logger.Info("prepareSourceVM completed", "source_vm", sourceVM, "result", prepResult)
 
