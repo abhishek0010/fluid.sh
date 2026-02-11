@@ -294,7 +294,7 @@ This matters for the agent workflow. When an agent is deciding *which* source VM
 | Agent sends `cat /etc/passwd; rm -rf /` | Pipeline parser splits on `;`, validates each segment, rejects `rm` |
 | Agent sends `$(rm -rf /)` | Metacharacter detector blocks `$()` outside quotes |
 | Attacker forges SSH certificate | Restricted shell still blocks destructive commands server-side |
-| Attacker bypasses restricted shell | The `fluid-readonly` user has no sudo access, no home directory, no writable paths |
+| Attacker bypasses restricted shell | The `fluid-readonly` user has no sudo access, no real home directory, and only standard non-privileged Unix write permissions (cannot modify system config or service data without escalation) |
 | VM name contains `../../etc` | `sanitizeVMName` strips all non-alphanumeric characters, prevents path traversal |
 | Agent tries interactive SSH session | Restricted shell exits immediately when `SSH_ORIGINAL_COMMAND` is empty |
 | Credential stolen | 30-minute TTL limits window; certificate only grants `fluid-readonly` principal |
