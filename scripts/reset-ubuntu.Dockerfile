@@ -3,7 +3,10 @@ FROM alpine:3.19
 # Install bash + ssh client + sshpass (for password-based SSH)
 RUN apk add --no-cache bash openssh sshpass
 
-# SSH credentials for connecting to remote hosts (optional - falls back to key-based auth)
+# SSH credentials for connecting to remote hosts.
+# When set, run-on-remotes.sh uses sshpass for password-based auth instead of key-based auth.
+# Only used to connect to the Hetzner hosts - never passed into VMs or cloud-init.
+# Usage: docker run -e SSH_USER=root -e SSH_PASSWORD=secret ...
 ENV SSH_USER=""
 ENV SSH_PASSWORD=""
 

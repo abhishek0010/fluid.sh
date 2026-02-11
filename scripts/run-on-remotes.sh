@@ -71,14 +71,20 @@ SSH_OPTS="-o ConnectTimeout=5"
 SCP_CMD="scp"
 SSH_CMD="ssh"
 
-# Map SSH_PASSWORD to SSHPASS (what sshpass -e reads)
+# Map SSH_PASSWORD to SSHPASS (the env var that sshpass -e reads)
 if [[ -n "${SSH_PASSWORD:-}" ]] && [[ -z "${SSHPASS:-}" ]]; then
     export SSHPASS="$SSH_PASSWORD"
 fi
 
 if [[ -n "${SSHPASS:-}" ]]; then
-    log_info "Password-based SSH authentication enabled"
-    SSH_OPTS="$SSH_OPTS -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    # Validate sshpass is installed
+    if ! command -v sshpass &> /dev/null; then
+        log_error "sshpass is required for password-based SSH but is not installed"
+        exit 1
+    fi
+    log_warn "Using password-based SSH auth - credentials are in env vars (visible in /proc/*/environ)"
+    # accept-new: trust on first connect, reject if host key changes (MITM protection)
+    SSH_OPTS="$SSH_OPTS -o StrictHostKeyChecking=accept-new"
     SCP_CMD="sshpass -e scp"
     SSH_CMD="sshpass -e ssh"
 fi
@@ -97,9 +103,10 @@ while IFS= read -r HOST <&3 || [[ -n "$HOST" ]]; do
     [[ -z "$HOST" ]] && continue
     [[ "$HOST" =~ ^#.*$ ]] && continue
 
-    # Override user if SSH_USER is set
+    # Override the user portion of the host entry with SSH_USER if set.
+    # Handles both "user@host" (strips existing user) and bare "host" formats.
+    # e.g. SSH_USER=root: "admin@1.2.3.4" -> "root@1.2.3.4", "1.2.3.4" -> "root@1.2.3.4"
     if [[ -n "${SSH_USER:-}" ]]; then
-        # Strip existing user@ prefix if present, replace with SSH_USER
         HOST_ADDR="${HOST#*@}"
         HOST="${SSH_USER}@${HOST_ADDR}"
     fi
