@@ -87,9 +87,9 @@ if [[ -n "$SSH_PASS" ]]; then
     fi
     export SSHPASS="$SSH_PASS"
     SSH_OPTS="$SSH_OPTS -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-    SCP_CMD="sshpass -e scp $SSH_OPTS"
-    SSH_CMD="sshpass -e ssh $SSH_OPTS"
-    log_info "Using password-based SSH authentication (via SSHPASS)"
+    SCP_CMD="sshpass -p \"$SSH_PASS\" scp $SSH_OPTS"
+    SSH_CMD="sshpass -p \"$SSH_PASS\" ssh $SSH_OPTS"
+    log_info "Using password-based SSH authentication (via sshpass)"
 else
     SCP_CMD="scp $SSH_OPTS"
     SSH_CMD="ssh $SSH_OPTS"
