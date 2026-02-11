@@ -79,11 +79,13 @@ qemu-img create -f qcow2 -F qcow2 -b <base-disk-path> <overlay-path>
 
 This creates a thin overlay that starts empty and only grows as the sandbox writes data. All reads that don't hit the overlay fall through to the backing (source) disk.
 
-**4. Generate a unique cloud-init ISO**
+**4. Generate a unique cloud-init ISO (best-effort)**
 
-Each sandbox gets its own cloud-init NoCloud seed ISO. This is critical — without a unique `instance-id`, cloud-init inside the clone would detect it already ran (from the source VM's state) and skip network initialization, leaving the sandbox with no IP address.
+The CLI attempts to generate a cloud-init NoCloud seed ISO for each sandbox. This is important — without a unique `instance-id`, cloud-init inside the clone would detect it already ran (from the source VM's state) and skip network initialization, leaving the sandbox with no IP address.
 
-The ISO contains:
+However, **ISO generation is best-effort**. If the build fails (e.g., required tools like `cloud-localds`, `genisoimage`, or `mkisofs` are unavailable), the CLI logs a warning and continues without attaching an ISO. The clone may still work if the source VM didn't rely on cloud-init for networking, but there's a risk the clone comes up without a fresh network configuration or IP address.
+
+When successfully generated, the ISO contains:
 
 - `meta-data`: A unique `instance-id` set to the sandbox name, plus `local-hostname`
 - `user-data`: Network configuration enabling DHCP on virtio interfaces
