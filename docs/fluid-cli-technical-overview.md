@@ -243,7 +243,10 @@ SSH commands that fail with exit code 255 (connection error) are retried with ex
 For sandboxes running on remote KVM hosts, the CLI constructs an SSH ProxyJump chain:
 
 ```bash
-ssh -J root@<host-address> -i <key> sandbox@<sandbox-ip> -- <command>
+ssh -i <private-key> \
+    -o CertificateFile=<cert-path> \
+    -J root@<host-address> \
+    sandbox@<sandbox-ip> -- <command>
 ```
 
 The `RemoteVirshManager` (`fluid/internal/libvirt/remote.go`) tunnels all `virsh` commands through SSH to the remote host's libvirt socket.
