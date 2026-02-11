@@ -80,7 +80,8 @@ if [[ -n "$SSH_PASS" ]]; then
         log_error "SSH_PASSWORD is set but 'sshpass' is not installed."
         log_error "Please install sshpass to use password-based authentication:"
         log_error "  - Ubuntu/Debian: apt-get install sshpass"
-        log_error "  - macOS: brew install hudochenkov/sshpass/sshpass"
+        log_error "  - macOS (Homebrew): brew install hudochenkov/sshpass/sshpass"
+        log_error "  - macOS (MacPorts): port install sshpass"
         log_error "  - RHEL/CentOS: yum install sshpass"
         exit 1
     fi
