@@ -104,7 +104,7 @@ network:
       dhcp4: true
 ```
 
-The ISO is built using `genisoimage` or `cloud-localds`, whichever is available on the host.
+The ISO is built using `cloud-localds` if available, otherwise `genisoimage`, and finally `mkisofs` as a fallback, matching the tooling fallback order in the CLI.
 
 **5. Modify the source VM's XML**
 
