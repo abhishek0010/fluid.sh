@@ -451,8 +451,8 @@ func TestPrepare_SSHRunError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when SSH connection fails")
 	}
-	if !result.ShellInstalled == false {
-		// ShellInstalled remains false since step failed
+	if result.ShellInstalled {
+		t.Error("ShellInstalled should be false on SSH error")
 	}
 	if len(mock.getCommands()) != 1 {
 		t.Errorf("should stop after first failure, got %d commands", len(mock.getCommands()))
