@@ -150,10 +150,13 @@ On first run (`fluid init`), the CLI generates an Ed25519 CA key pair via `ssh-k
 ```
 ~/.fluid/ssh-ca/
 ├── ssh-ca          # CA private key (0600 permissions)
-└── ssh-ca.pub      # CA public key (baked into VM images)
+└── ssh-ca.pub      # CA public key (distributed to VMs)
 ```
 
-The CA public key is installed into source VM images so that `sshd` can verify certificates signed by this CA. This is done by adding `TrustedUserCAKeys /etc/ssh/fluid_ca.pub` to the VM's `sshd_config`.
+The CA public key must be installed on VMs so that `sshd` can verify certificates signed by this CA. The installation method and path depend on the VM type:
+
+- **Sandboxes (linked clones)**: The CA public key is injected via cloud-init at `/etc/ssh/ssh_ca.pub` during VM creation, and `TrustedUserCAKeys /etc/ssh/ssh_ca.pub` is appended to `sshd_config` on first boot.
+- **Read-only source VMs** (`fluid source prepare`): The CA public key is installed at `/etc/ssh/fluid_ca.pub` via SSH, and `TrustedUserCAKeys /etc/ssh/fluid_ca.pub` is appended to `sshd_config`.
 
 ### Certificate Issuance
 
@@ -263,8 +266,8 @@ The `Prepare` function (`fluid/internal/readonly/prepare.go:33`) executes six id
 
 1. **Install restricted shell** at `/usr/local/bin/fluid-readonly-shell`
 2. **Create `fluid-readonly` user** with the restricted shell as its login shell
-3. **Install CA public key** at `/etc/ssh/fluid_ca.pub`
-4. **Configure sshd** to trust the CA (`TrustedUserCAKeys`) and use principal-based authorization (`AuthorizedPrincipalsFile`)
+3. **Install CA public key** at `/etc/ssh/fluid_ca.pub` (note: this differs from the sandbox path `/etc/ssh/ssh_ca.pub`)
+4. **Configure sshd** to trust the CA (`TrustedUserCAKeys /etc/ssh/fluid_ca.pub`) and use principal-based authorization (`AuthorizedPrincipalsFile`)
 5. **Create authorized principals** file mapping the `fluid-readonly` user to the `fluid-readonly` principal
 6. **Restart sshd** to apply changes
 
