@@ -13,7 +13,7 @@ authorDiscord: "https://discordapp.com/users/301068417685913600"
 
 Fluid already lets AI agents spin up sandboxes by cloning golden VM images via QCOW2 copy-on-write overlays. That flow is fast and safe -- the base image is never modified because every write lands on the overlay.
 
-But sometimes an agent doesn't need a whole clone. It needs to *look* at the source VM: check what packages are installed, inspect a config file, read logs, verify a service is running. Spinning up a full sandbox just to run `dpkg -l` is wasteful. It burns disk, consumes a DHCP lease, and adds latency that kills the feedback loop agents need to stay productive.
+But sometimes an agent doesn't need a whole clone. It needs to _look_ at the source VM: check what packages are installed, inspect a config file, read logs, verify a service is running. Spinning up a full sandbox just to run `dpkg -l` is wasteful. It burns disk, consumes a DHCP lease, and adds latency that kills the feedback loop agents need to stay productive.
 
 The question is simple: how do you let an untrusted AI agent SSH into a production golden image and run commands -- without letting it `rm -rf /` the thing?
 
@@ -52,15 +52,15 @@ Before any SSH connection is established, the fluid CLI validates the command in
 
 About 70 commands are permitted, organized by category:
 
-| Category | Commands |
-|----------|----------|
+| Category        | Commands                                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
 | File inspection | `cat`, `ls`, `find`, `head`, `tail`, `stat`, `file`, `wc`, `du`, `tree`, `strings`, `md5sum`, `sha256sum` |
-| Process/system | `ps`, `top`, `pgrep`, `systemctl` (status only), `journalctl`, `dmesg` |
-| Network | `ss`, `netstat`, `ip`, `ifconfig`, `dig`, `nslookup`, `ping` |
-| Disk | `df`, `lsblk`, `blkid` |
-| Package query | `dpkg -l`, `rpm -qa`, `apt list`, `pip list` |
-| System info | `uname`, `hostname`, `uptime`, `free`, `lscpu`, `lsmod`, `lspci`, `lsusb` |
-| Pipe targets | `grep`, `awk`, `sed`, `sort`, `uniq`, `cut`, `tr`, `xargs` |
+| Process/system  | `ps`, `top`, `pgrep`, `systemctl` (status only), `journalctl`, `dmesg`                                    |
+| Network         | `ss`, `netstat`, `ip`, `ifconfig`, `dig`, `nslookup`, `ping`                                              |
+| Disk            | `df`, `lsblk`, `blkid`                                                                                    |
+| Package query   | `dpkg -l`, `rpm -qa`, `apt list`, `pip list`                                                              |
+| System info     | `uname`, `hostname`, `uptime`, `free`, `lscpu`, `lsmod`, `lspci`, `lsusb`                                 |
+| Pipe targets    | `grep`, `awk`, `sed`, `sort`, `uniq`, `cut`, `tr`, `xargs`                                                |
 
 Any command not on the list is rejected before a network connection is even attempted.
 
@@ -112,11 +112,11 @@ Even if the client-side validation were completely bypassed -- say, by an attack
 
 ### Two Principal Types
 
-Fluid's SSH certificate authority issues certificates with different *principals* depending on the access type:
+Fluid's SSH certificate authority issues certificates with different _principals_ depending on the access type:
 
-| Access Type | Principal | Username | Shell |
-|-------------|-----------|----------|-------|
-| Sandbox (full access) | `sandbox` | `sandbox` | `/bin/bash` |
+| Access Type           | Principal        | Username         | Shell                                 |
+| --------------------- | ---------------- | ---------------- | ------------------------------------- |
+| Sandbox (full access) | `sandbox`        | `sandbox`        | `/bin/bash`                           |
 | Source VM (read-only) | `fluid-readonly` | `fluid-readonly` | `/usr/local/bin/fluid-readonly-shell` |
 
 When the fluid CLI requests credentials for a source VM, the key manager issues a certificate with the `fluid-readonly` principal:
@@ -178,7 +178,7 @@ fi
 
 ### Destructive Command Blocklist
 
-Unlike the client-side allowlist, the server-side shell uses a *blocklist* -- a complementary strategy. It matches approximately 90 patterns against each pipeline segment:
+Unlike the client-side allowlist, the server-side shell uses a _blocklist_ -- a complementary strategy. It matches approximately 90 patterns against each pipeline segment:
 
 - **File operations**: `rm`, `mv`, `cp`, `dd`
 - **Privilege escalation**: `sudo`, `su`
@@ -271,7 +271,7 @@ If the CA key changes, the fingerprint mismatch tells fluid the VM needs re-prep
 
 ## Productivity: No Clone Overhead
 
-The key productivity win is avoiding the full clone cycle. Here's what running a diagnostic command on a source VM *doesn't* require:
+The key productivity win is avoiding the full clone cycle. Here's what running a diagnostic command on a source VM _doesn't_ require:
 
 - No QCOW2 overlay creation
 - No XML domain definition
@@ -284,21 +284,21 @@ The key productivity win is avoiding the full clone cycle. Here's what running a
 
 The agent gets a response to `cat /etc/nginx/nginx.conf` or `dpkg -l | grep python` directly from the running golden image. The results aren't persisted to the store (unlike sandbox commands), keeping the audit trail clean -- source VM reads are tracked through telemetry instead.
 
-This matters for the agent workflow. When an agent is deciding *which* source VM to clone, or *whether* a source VM has the right software stack, it can inspect first and clone only when it's ready to make changes. The read-inspect-decide loop stays fast.
+This matters for the agent workflow. When an agent is deciding _which_ source VM to clone, or _whether_ a source VM has the right software stack, it can inspect first and clone only when it's ready to make changes. The read-inspect-decide loop stays fast.
 
 ## What Could Go Wrong (and Why It's Contained)
 
-| Scenario | Mitigation |
-|----------|------------|
-| Agent sends `rm -rf /` | Client-side allowlist rejects `rm` before SSH connection |
-| Agent sends `cat /etc/passwd; rm -rf /` | Pipeline parser splits on `;`, validates each segment, rejects `rm` |
-| Agent sends `$(rm -rf /)` | Metacharacter detector blocks `$()` outside quotes |
-| Attacker forges SSH certificate | Restricted shell still blocks destructive commands server-side |
-| Attacker bypasses restricted shell | The `fluid-readonly` user has no sudo access, no real home directory, and only standard non-privileged Unix write permissions (cannot modify system config or service data without escalation) |
-| VM name contains `../../etc` | `sanitizeVMName` strips all non-alphanumeric characters, prevents path traversal |
-| Agent tries interactive SSH session | Restricted shell exits immediately when `SSH_ORIGINAL_COMMAND` is empty |
-| Credential stolen | 30-minute TTL limits window; certificate only grants `fluid-readonly` principal |
+| Scenario                                | Mitigation                                                                                                                                                                                     |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent sends `rm -rf /`                  | Client-side allowlist rejects `rm` before SSH connection                                                                                                                                       |
+| Agent sends `cat /etc/passwd; rm -rf /` | Pipeline parser splits on `;`, validates each segment, rejects `rm`                                                                                                                            |
+| Agent sends `$(rm -rf /)`               | Metacharacter detector blocks `$()` outside quotes                                                                                                                                             |
+| Attacker forges SSH certificate         | Restricted shell still blocks destructive commands server-side                                                                                                                                 |
+| Attacker bypasses restricted shell      | The `fluid-readonly` user has no sudo access, no real home directory, and only standard non-privileged Unix write permissions (cannot modify system config or service data without escalation) |
+| VM name contains `../../etc`            | `sanitizeVMName` strips all non-alphanumeric characters, prevents path traversal                                                                                                               |
+| Agent tries interactive SSH session     | Restricted shell exits immediately when `SSH_ORIGINAL_COMMAND` is empty                                                                                                                        |
+| Credential stolen                       | 30-minute TTL limits window; certificate only grants `fluid-readonly` principal                                                                                                                |
 
 ## Summary
 
-Reading a source VM safely requires solving a specific problem: letting untrusted code run *some* commands on a machine that must not be modified. Fluid's approach is to make read-only the default at every layer -- not just one check at the front door, but independent enforcement at the client, the authentication system, and the server. The result is an agent that can inspect golden images at full speed without the overhead of cloning, and without the risk of corruption.
+Reading a source VM safely requires solving a specific problem: letting untrusted code run _some_ commands on a machine that must not be modified. Fluid's approach is to make read-only the default at every layer -- not just one check at the front door, but independent enforcement at the client, the authentication system, and the server. The result is an agent that can inspect golden images at full speed without the overhead of cloning, and without the risk of corruption.
