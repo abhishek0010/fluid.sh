@@ -26,6 +26,7 @@ func TestGetConfigDir_XDG(t *testing.T) {
 	
 	t.Run("with XDG_CONFIG_HOME set", func(t *testing.T) {
 		// Unset FLUID_CONFIG_DIR to test XDG behavior
+		// Empty string effectively unsets the variable for GetConfigDir() logic
 		t.Setenv("FLUID_CONFIG_DIR", "")
 		t.Setenv("XDG_CONFIG_HOME", "/custom/xdg/config")
 		

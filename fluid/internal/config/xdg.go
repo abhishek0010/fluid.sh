@@ -34,7 +34,7 @@ func GetConfigDir() (string, error) {
 		// Fallback to %USERPROFILE%\AppData\Roaming\fluid
 		return filepath.Join(home, "AppData", "Roaming", "fluid"), nil
 
-	case "darwin", "linux", "freebsd", "openbsd", "netbsd":
+	case "darwin", "linux", "freebsd", "openbsd", "netbsd", "solaris", "aix":
 		// On Unix-like systems, follow XDG Base Directory specification
 		if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
 			return filepath.Join(xdgConfigHome, "fluid"), nil
