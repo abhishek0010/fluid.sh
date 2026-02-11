@@ -100,7 +100,12 @@ type HostConfig struct {
 
 // DefaultConfig returns config with sensible defaults.
 func DefaultConfig() *Config {
-	configDir, _ := GetConfigDir()
+	configDir, err := GetConfigDir()
+	if err != nil {
+		// Fallback to home directory if XDG resolution fails
+		home, _ := os.UserHomeDir()
+		configDir = filepath.Join(home, ".fluid")
+	}
 
 	return &Config{
 		Telemetry: TelemetryConfig{

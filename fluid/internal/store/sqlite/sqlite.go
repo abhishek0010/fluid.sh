@@ -13,42 +13,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
+	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 )
-
-// getConfigDir returns the config directory, mirroring the logic from config.GetConfigDir
-// to avoid circular imports. This ensures consistency with the main config directory.
-func getConfigDir() (string, error) {
-	// Import the config package's XDG logic via environment variable
-	if dir := os.Getenv("FLUID_CONFIG_DIR"); dir != "" {
-		return dir, nil
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	// On Windows, use %APPDATA%\fluid
-	if appData := os.Getenv("APPDATA"); appData != "" {
-		return filepath.Join(appData, "fluid"), nil
-	}
-
-	// On Unix-like systems (including macOS), follow XDG Base Directory specification
-	if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
-		return filepath.Join(xdgConfigHome, "fluid"), nil
-	}
-
-	// Check if we're on Windows by checking for typical Windows paths
-	// This is a simple heuristic - on Windows without APPDATA set
-	if filepath.VolumeName(home) != "" {
-		return filepath.Join(home, "AppData", "Roaming", "fluid"), nil
-	}
-
-	// Default XDG location for Unix-like systems: ~/.config/fluid
-	return filepath.Join(home, ".config", "fluid"), nil
-}
-
 
 // Ensure interface compliance.
 var (
@@ -67,7 +34,7 @@ func New(ctx context.Context, cfg store.Config) (store.Store, error) {
 	dbPath := cfg.DatabaseURL
 	if dbPath == "" {
 		// Use the same config directory function as the main config
-		configDir, err := getConfigDir()
+		configDir, err := config.GetConfigDir()
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: get config dir: %w", err)
 		}

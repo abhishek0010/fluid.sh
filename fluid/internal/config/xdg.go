@@ -14,7 +14,6 @@ import (
 // 1. Environment variable FLUID_CONFIG_DIR (if set)
 // 2. XDG_CONFIG_HOME/fluid (Linux/Unix) or %APPDATA%/fluid (Windows)
 // 3. ~/.config/fluid (Linux/Unix) or %USERPROFILE%/AppData/Roaming/fluid (Windows)
-// 4. Fallback: ~/.fluid (for backward compatibility)
 func GetConfigDir() (string, error) {
 	// Allow explicit override via environment variable
 	if dir := os.Getenv("FLUID_CONFIG_DIR"); dir != "" {

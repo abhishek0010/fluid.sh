@@ -23,11 +23,10 @@ func TestGetConfigDir_XDG(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping XDG test on Windows")
 	}
-
-	// Unset FLUID_CONFIG_DIR to test XDG behavior
-	os.Unsetenv("FLUID_CONFIG_DIR")
 	
 	t.Run("with XDG_CONFIG_HOME set", func(t *testing.T) {
+		// Unset FLUID_CONFIG_DIR to test XDG behavior
+		t.Setenv("FLUID_CONFIG_DIR", "")
 		t.Setenv("XDG_CONFIG_HOME", "/custom/xdg/config")
 		
 		dir, err := GetConfigDir()
@@ -36,7 +35,9 @@ func TestGetConfigDir_XDG(t *testing.T) {
 	})
 	
 	t.Run("without XDG_CONFIG_HOME", func(t *testing.T) {
-		os.Unsetenv("XDG_CONFIG_HOME")
+		// Unset both override variables
+		t.Setenv("FLUID_CONFIG_DIR", "")
+		t.Setenv("XDG_CONFIG_HOME", "")
 		
 		dir, err := GetConfigDir()
 		require.NoError(t, err)
@@ -53,11 +54,10 @@ func TestGetConfigDir_Windows(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Skipping Windows test on non-Windows OS")
 	}
-
-	// Unset FLUID_CONFIG_DIR to test Windows behavior
-	os.Unsetenv("FLUID_CONFIG_DIR")
 	
 	t.Run("with APPDATA set", func(t *testing.T) {
+		// Unset FLUID_CONFIG_DIR to test Windows behavior
+		t.Setenv("FLUID_CONFIG_DIR", "")
 		t.Setenv("APPDATA", "C:\\Users\\TestUser\\AppData\\Roaming")
 		
 		dir, err := GetConfigDir()
@@ -68,6 +68,9 @@ func TestGetConfigDir_Windows(t *testing.T) {
 	t.Run("without APPDATA", func(t *testing.T) {
 		// This test is tricky on real Windows since APPDATA is usually set
 		// We'll just verify it doesn't error
+		t.Setenv("FLUID_CONFIG_DIR", "")
+		t.Setenv("APPDATA", "")
+		
 		dir, err := GetConfigDir()
 		require.NoError(t, err)
 		assert.Contains(t, dir, "fluid")
@@ -76,9 +79,9 @@ func TestGetConfigDir_Windows(t *testing.T) {
 
 func TestGetConfigDir_CrossPlatform(t *testing.T) {
 	// Test that the function returns a valid path on any OS
-	os.Unsetenv("FLUID_CONFIG_DIR")
-	os.Unsetenv("XDG_CONFIG_HOME")
-	os.Unsetenv("APPDATA")
+	t.Setenv("FLUID_CONFIG_DIR", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("APPDATA", "")
 	
 	dir, err := GetConfigDir()
 	require.NoError(t, err)
