@@ -46,6 +46,7 @@ fluid source prepare <vm-name>
 ```
 
 This will:
+
 1. Install a restricted shell script on the VM
 2. Create a `fluid-readonly` user with that restricted shell
 3. Set up SSH CA trust so the agent can authenticate with ephemeral certificates
@@ -57,10 +58,10 @@ This is also run automatically during onboarding or when you try to investigate 
 
 Two new tools are available to the agent in read-only mode:
 
-| Tool | Description |
-| --- | --- |
+| Tool                 | Description                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------- |
 | `run_source_command` | Execute a read-only diagnostic command on a source VM (ps, ls, cat, systemctl status, journalctl, etc.) |
-| `read_source_file` | Read the contents of a file on a source VM |
+| `read_source_file`   | Read the contents of a file on a source VM                                                              |
 
 ### Allowed Commands
 
@@ -96,3 +97,9 @@ This feature completes the read phase of Fluid's 4-phase strategy:
 **Ansible:** After fixing the issue or after debugging, an Ansible playbook will be created to fix this issue on production.
 
 **Cleanup:** Finally, any sandboxes created will be cleaned up when the CLI is closed, or can be closed manually by the agent.
+
+## Come Hang Out
+
+Questions? Join us on [Discord](https://discord.gg/4WGGXJWm8J)
+
+Found a bug? Open an issue on [GitHub](https://github.com/aspectrr/fluid.sh/issues)

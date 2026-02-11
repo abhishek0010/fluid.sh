@@ -70,16 +70,8 @@ Below are the tools that the agent can use when setting the agent in `READ-ONLY`
 
 ![Read-Only-Mode](../../../../read_only_mode.png)
 
-### Reading Source VMs in Read-Only
+## Come Hang Out
 
-Along this same line of read-only was a feature would be incredibly helpful for investigation/debugging in production VMs, which was allowing the agent to read files, query journalctl and other non-destructive actions. This gives more leverage to the agent without having to create a sandbox. To make this work, you need to run `fluid source prepare <vm-name>`, or this be run during onboarding or when you try to investigate a VM when in read-only mode.
+Questions? Join us on [Discord](https://discord.gg/4WGGXJWm8J)
 
-I think this will be incredibly helpful and part of the 4 phase strategy that Fluid employs:
-
-**Read:** Read through the source VM for context and inital debugging.
-
-**Edit:** Edit and test failure modes with potentially destructive commmands in a VM sandbox.
-
-**Ansible:** After fixing the issue or after debugging, an Ansible playbook will be created to fix this issue on production.
-
-**Cleanup:** Finally, any sandboxes created will be cleaned up when the CLI is closed, or can be clsoed manually by the agent.
+Found a bug? Open an issue on [GitHub](https://github.com/aspectrr/fluid.sh/issues)
