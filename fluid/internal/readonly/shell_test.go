@@ -580,3 +580,96 @@ func TestRestrictedShell_OutputRedirectionBlocked(t *testing.T) {
 		})
 	}
 }
+
+// TestRestrictedShell_LoginShellInvocation tests that the restricted shell
+// accepts commands via -c argument (login shell invocation by sshd) in
+// addition to SSH_ORIGINAL_COMMAND.
+func TestRestrictedShell_LoginShellInvocation(t *testing.T) {
+	tmpfile, err := os.CreateTemp("", "fluid-readonly-shell-test-*.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
+
+	if _, err := tmpfile.Write([]byte(RestrictedShellScript)); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chmod(tmpfile.Name(), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("dash_c_allowed_command", func(t *testing.T) {
+		cmd := exec.Command(tmpfile.Name(), "-c", "cat /etc/hosts")
+		// No SSH_ORIGINAL_COMMAND set
+		cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
+		output, err := cmd.CombinedOutput()
+		exitCode := 0
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				exitCode = exitErr.ExitCode()
+			} else {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		}
+		if exitCode == 126 || exitCode == 1 {
+			t.Errorf("expected allowed command via -c to succeed, got exit=%d output=%s", exitCode, output)
+		}
+	})
+
+	t.Run("dash_c_blocked_command", func(t *testing.T) {
+		cmd := exec.Command(tmpfile.Name(), "-c", "rm -rf /")
+		cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			t.Error("expected blocked command via -c to fail")
+		}
+		if !strings.Contains(string(output), "ERROR:") {
+			t.Errorf("expected ERROR message, got: %s", output)
+		}
+	})
+
+	t.Run("dash_c_empty_command", func(t *testing.T) {
+		cmd := exec.Command(tmpfile.Name(), "-c", "")
+		cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			t.Error("expected empty -c command to be rejected")
+		}
+		if !strings.Contains(string(output), "Interactive login is not permitted") {
+			t.Errorf("expected interactive login error, got: %s", output)
+		}
+	})
+
+	t.Run("no_args_no_env", func(t *testing.T) {
+		cmd := exec.Command(tmpfile.Name())
+		cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			t.Error("expected no-args invocation to be rejected")
+		}
+		if !strings.Contains(string(output), "Interactive login is not permitted") {
+			t.Errorf("expected interactive login error, got: %s", output)
+		}
+	})
+
+	t.Run("ssh_original_command_takes_precedence", func(t *testing.T) {
+		// SSH_ORIGINAL_COMMAND is set to a blocked command, -c has an allowed one.
+		// SSH_ORIGINAL_COMMAND should take precedence.
+		cmd := exec.Command(tmpfile.Name(), "-c", "cat /etc/hosts")
+		cmd.Env = []string{
+			"PATH=" + os.Getenv("PATH"),
+			"SSH_ORIGINAL_COMMAND=rm -rf /",
+		}
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			t.Error("expected SSH_ORIGINAL_COMMAND to take precedence and block")
+		}
+		if !strings.Contains(string(output), "ERROR:") {
+			t.Errorf("expected ERROR message from blocked SSH_ORIGINAL_COMMAND, got: %s", output)
+		}
+	})
+}

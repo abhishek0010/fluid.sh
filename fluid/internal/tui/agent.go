@@ -60,8 +60,13 @@ type FluidAgent struct {
 	createdSandboxes []string
 
 	// Currently active sandbox (for status bar display)
-	currentSandboxID   string
-	currentSandboxHost string
+	currentSandboxID        string
+	currentSandboxHost      string
+	currentSandboxBaseImage string
+
+	// Source VM tracking (for status bar and auto read-only)
+	currentSourceVM string
+	autoReadOnly    bool
 
 	// Pending approval for memory-constrained sandbox creation
 	pendingApproval *PendingApproval
@@ -810,6 +815,7 @@ func (a *FluidAgent) createSandbox(ctx context.Context, sourceVM, hostName strin
 		// Set as current sandbox for status bar display
 		a.currentSandboxID = sb.ID
 		a.currentSandboxHost = host.Name
+		a.currentSandboxBaseImage = sb.BaseImage
 
 		result := map[string]any{
 			"sandbox_id": sb.ID,
@@ -837,6 +843,7 @@ func (a *FluidAgent) createSandbox(ctx context.Context, sourceVM, hostName strin
 	// Set as current sandbox for status bar display
 	a.currentSandboxID = sb.ID
 	a.currentSandboxHost = "local"
+	a.currentSandboxBaseImage = sb.BaseImage
 
 	result := map[string]any{
 		"sandbox_id": sb.ID,
@@ -918,6 +925,7 @@ func (a *FluidAgent) destroySandbox(ctx context.Context, id string) (map[string]
 	if id == a.currentSandboxID {
 		a.currentSandboxID = ""
 		a.currentSandboxHost = ""
+		a.currentSandboxBaseImage = ""
 	}
 
 	return map[string]any{
@@ -936,11 +944,17 @@ func (a *FluidAgent) runCommand(ctx context.Context, sandboxID, command string) 
 	// Update current sandbox if different (user is working with this sandbox)
 	if sandboxID != "" && sandboxID != a.currentSandboxID {
 		a.currentSandboxID = sandboxID
-		// Try to get host info from sandbox
-		if sb, err := a.vmService.GetSandbox(ctx, sandboxID); err == nil && sb.HostName != nil {
-			a.currentSandboxHost = *sb.HostName
+		// Try to get host info and base image from sandbox
+		if sb, err := a.vmService.GetSandbox(ctx, sandboxID); err == nil {
+			if sb.HostName != nil {
+				a.currentSandboxHost = *sb.HostName
+			} else {
+				a.currentSandboxHost = "local"
+			}
+			a.currentSandboxBaseImage = sb.BaseImage
 		} else {
 			a.currentSandboxHost = "local"
+			a.currentSandboxBaseImage = ""
 		}
 	}
 
@@ -1797,6 +1811,22 @@ func (a *FluidAgent) runSourceCommand(ctx context.Context, sourceVM, command str
 	}
 	a.logger.Debug("run source command", "source_vm", sourceVM, "command", truncCmd)
 
+	// Auto-enable read-only mode while operating on source VM
+	a.currentSourceVM = sourceVM
+	if !a.readOnly {
+		a.autoReadOnly = true
+		a.readOnly = true
+		a.sendStatus(AutoReadOnlyMsg{SourceVM: sourceVM, Enabled: true})
+	}
+	defer func() {
+		a.currentSourceVM = ""
+		if a.autoReadOnly {
+			a.autoReadOnly = false
+			a.readOnly = false
+			a.sendStatus(AutoReadOnlyMsg{SourceVM: sourceVM, Enabled: false})
+		}
+	}()
+
 	// Proactive check: ensure source VM is prepared before attempting command
 	if err := a.ensureSourceVMPrepared(ctx, sourceVM); err != nil {
 		return nil, err
@@ -1865,6 +1895,22 @@ func (a *FluidAgent) readSourceFile(ctx context.Context, sourceVM, path string) 
 	}
 
 	a.logger.Debug("read source file", "source_vm", sourceVM, "path", path)
+
+	// Auto-enable read-only mode while operating on source VM
+	a.currentSourceVM = sourceVM
+	if !a.readOnly {
+		a.autoReadOnly = true
+		a.readOnly = true
+		a.sendStatus(AutoReadOnlyMsg{SourceVM: sourceVM, Enabled: true})
+	}
+	defer func() {
+		a.currentSourceVM = ""
+		if a.autoReadOnly {
+			a.autoReadOnly = false
+			a.readOnly = false
+			a.sendStatus(AutoReadOnlyMsg{SourceVM: sourceVM, Enabled: false})
+		}
+	}()
 
 	// Proactive check: ensure source VM is prepared before attempting read
 	if err := a.ensureSourceVMPrepared(ctx, sourceVM); err != nil {
@@ -2025,6 +2071,21 @@ func (a *FluidAgent) GetCurrentSandbox() (id string, host string) {
 func (a *FluidAgent) SetCurrentSandbox(id string, host string) {
 	a.currentSandboxID = id
 	a.currentSandboxHost = host
+}
+
+// GetCurrentSandboxBaseImage returns the base image of the current sandbox
+func (a *FluidAgent) GetCurrentSandboxBaseImage() string {
+	return a.currentSandboxBaseImage
+}
+
+// GetCurrentSourceVM returns the source VM currently being operated on
+func (a *FluidAgent) GetCurrentSourceVM() string {
+	return a.currentSourceVM
+}
+
+// ClearAutoReadOnly clears the auto read-only flag (for manual override via Shift+Tab)
+func (a *FluidAgent) ClearAutoReadOnly() {
+	a.autoReadOnly = false
 }
 
 // isSourceVMPrepared checks the DB (with in-memory cache) to determine if a source VM is prepared.
@@ -2208,7 +2269,18 @@ func (a *FluidAgent) prepareSourceVM(ctx context.Context, sourceVM string) error
 	sshRun := makeSSHRunFunc(ip, vmUser, proxyJump)
 
 	// Run prepare
-	prepResult, err := readonly.Prepare(ctx, sshRun, string(caPubKeyBytes))
+	// Wire progress callback to TUI status channel
+	onProgress := func(p readonly.PrepareProgress) {
+		stepNum := int(p.Step) + 1
+		a.sendStatus(SourcePrepareProgressMsg{
+			SourceVM: sourceVM,
+			StepName: p.StepName,
+			StepNum:  stepNum,
+			Total:    p.Total,
+			Done:     p.Done,
+		})
+	}
+	prepResult, err := readonly.Prepare(ctx, sshRun, string(caPubKeyBytes), onProgress)
 	if err != nil {
 		a.logger.Error("readonly.Prepare failed", "source_vm", sourceVM, "ip", ip, "proxy_jump", proxyJump, "error", err)
 		sshCmd := fmt.Sprintf("ssh %s@%s \"whoami\"", vmUser, ip)

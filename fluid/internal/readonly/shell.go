@@ -7,17 +7,19 @@ const RestrictedShellScript = `#!/bin/bash
 # fluid-readonly-shell - restricted shell for read-only VM access.
 # Installed by: fluid source prepare
 # This shell is set as the login shell for the fluid-readonly user.
-# It only allows commands passed via SSH_ORIGINAL_COMMAND (no interactive login).
+# Commands are accepted via SSH_ORIGINAL_COMMAND (ForceCommand) or -c arg (login shell).
 
 set -euo pipefail
 
-# Deny interactive login - require SSH_ORIGINAL_COMMAND
-if [ -z "${SSH_ORIGINAL_COMMAND:-}" ]; then
+# Extract command from SSH_ORIGINAL_COMMAND or login shell -c invocation
+if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
+    CMD="$SSH_ORIGINAL_COMMAND"
+elif [ "${1:-}" = "-c" ] && [ -n "${2:-}" ]; then
+    CMD="$2"
+else
     echo "ERROR: Interactive login is not permitted. This account is for read-only SSH commands only." >&2
     exit 1
 fi
-
-CMD="$SSH_ORIGINAL_COMMAND"
 
 # Blocked command patterns (destructive operations)
 BLOCKED_PATTERNS=(

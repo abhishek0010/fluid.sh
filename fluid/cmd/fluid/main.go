@@ -1351,7 +1351,7 @@ var sourcePrepareCmd = &cobra.Command{
 			return stdout.String(), stderr.String(), 0, nil
 		}
 
-		result, err := readonly.Prepare(ctx, sshRunFunc, string(caPubKey))
+		result, err := readonly.Prepare(ctx, sshRunFunc, string(caPubKey), nil)
 		if err != nil {
 			return fmt.Errorf("prepare VM %s: %w", vmName, err)
 		}

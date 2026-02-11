@@ -203,3 +203,18 @@ type CleanupCompleteMsg struct {
 	Failed    int
 	Skipped   int
 }
+
+// SourcePrepareProgressMsg is sent during source VM preparation to show step-by-step progress
+type SourcePrepareProgressMsg struct {
+	SourceVM string
+	StepName string
+	StepNum  int
+	Total    int
+	Done     bool
+}
+
+// AutoReadOnlyMsg is sent when read-only mode is auto-toggled for source VM operations
+type AutoReadOnlyMsg struct {
+	SourceVM string
+	Enabled  bool
+}

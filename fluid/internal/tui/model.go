@@ -116,6 +116,12 @@ type Model struct {
 	liveOutputIndex   int // Index in conversation where live output is displayed
 	currentRetry      *RetryAttemptMsg
 
+	// Live prepare progress (inline with conversation, like live command output)
+	showingLivePrepare  bool
+	livePrepareSourceVM string
+	livePrepareSteps    []string // completed/in-progress step descriptions
+	livePrepareIndex    int      // index in conversation
+
 	// Markdown renderer
 	mdRenderer *glamour.TermRenderer
 
@@ -392,6 +398,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case tea.MouseMsg:
+		if !m.inSettings && !m.inPlaybooks && !m.inMemoryConfirm &&
+			!m.inNetworkConfirm && !m.inSourcePrepareConfirm && !m.inCleanup {
+			switch msg.Button {
+			case tea.MouseButtonWheelUp:
+				m.viewport.LineUp(3)
+			case tea.MouseButtonWheelDown:
+				m.viewport.LineDown(3)
+			}
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		keyStr := msg.String()
 
@@ -458,6 +476,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.readOnly = !m.readOnly
 			if m.agentRunner != nil {
 				m.agentRunner.SetReadOnly(m.readOnly)
+			}
+			// Clear auto read-only so manual toggle sticks
+			if agent, ok := m.agentRunner.(*FluidAgent); ok {
+				agent.ClearAutoReadOnly()
 			}
 			mode := "edit"
 			if m.readOnly {
@@ -756,6 +778,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Clear output buffer as it's no longer needed (result will be shown via ToolCompleteMsg)
 		m.liveOutputLines = nil
 		m.liveOutputPending = ""
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
+
+	case SourcePrepareProgressMsg:
+		if !m.showingLivePrepare {
+			m.showingLivePrepare = true
+			m.livePrepareSourceVM = msg.SourceVM
+			m.livePrepareSteps = nil
+			m.livePrepareIndex = len(m.conversation)
+			m.conversation = append(m.conversation, ConversationEntry{
+				Role:    "live_prepare",
+				Content: "",
+			})
+		}
+
+		if msg.Done {
+			// Mark the last step as done
+			if len(m.livePrepareSteps) > 0 {
+				m.livePrepareSteps[len(m.livePrepareSteps)-1] = fmt.Sprintf("  v [%d/%d] %s", msg.StepNum, msg.Total, msg.StepName)
+			}
+			// If this was the last step, close the live box
+			if msg.StepNum == msg.Total {
+				m.showingLivePrepare = false
+			}
+		} else {
+			// New step starting
+			m.livePrepareSteps = append(m.livePrepareSteps, fmt.Sprintf("  . [%d/%d] %s...", msg.StepNum, msg.Total, msg.StepName))
+		}
+
+		// Update the conversation entry in place
+		if m.livePrepareIndex < len(m.conversation) {
+			m.conversation[m.livePrepareIndex].Content = strings.Join(m.livePrepareSteps, "\n")
+		}
+		m.updateViewportContent(false)
+		m.viewport.GotoBottom()
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
+
+	case AutoReadOnlyMsg:
+		m.readOnly = msg.Enabled
+		if msg.Enabled {
+			m.addSystemMessage(fmt.Sprintf("Auto read-only: accessing source VM %s", msg.SourceVM))
+		} else {
+			m.addSystemMessage("Auto read-only: restored edit mode")
+		}
+		m.updateViewportContent(false)
 		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case AgentResponseMsg:
@@ -1102,7 +1168,9 @@ func (m Model) View() string {
 	if m.cfg != nil && m.cfg.AIAgent.Model != "" {
 		modelName = m.cfg.AIAgent.Model
 	}
-	statusBar := RenderStatusBarBottom(modelName, sandboxID, sandboxHost, contextUsage, m.readOnly, m.width)
+	sourceVM := m.getCurrentSourceVM()
+	sandboxBaseImage := m.getCurrentSandboxBaseImage()
+	statusBar := RenderStatusBarBottom(modelName, sandboxID, sandboxHost, sandboxBaseImage, sourceVM, contextUsage, m.readOnly, m.width)
 	statusHeight := lipgloss.Height(statusBar)
 
 	// Calculate viewport height to fill remaining space
@@ -1188,6 +1256,20 @@ func (m *Model) getCurrentSandbox() (id string, host string) {
 		return agent.GetCurrentSandbox()
 	}
 	return "", ""
+}
+
+func (m *Model) getCurrentSourceVM() string {
+	if agent, ok := m.agentRunner.(*FluidAgent); ok {
+		return agent.GetCurrentSourceVM()
+	}
+	return ""
+}
+
+func (m *Model) getCurrentSandboxBaseImage() string {
+	if agent, ok := m.agentRunner.(*FluidAgent); ok {
+		return agent.GetCurrentSandboxBaseImage()
+	}
+	return ""
 }
 
 func (m *Model) updateSuggestions() {
@@ -1393,6 +1475,32 @@ func (m *Model) updateViewportContent(forceScroll bool) {
 			content := lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#94A3B8")).
 				Width(boxWidth - 4). // Account for padding and border
+				Render(entry.Content)
+
+			b.WriteString(style.Render(header + "\n" + content))
+			b.WriteString("\n")
+
+		case "live_prepare":
+			// Styled box for source VM preparation progress
+			boxWidth := m.width - 6
+			if boxWidth < 30 {
+				boxWidth = 30
+			}
+
+			style := lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#EAB308")).
+				Padding(0, 1).
+				Width(boxWidth)
+
+			header := lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#EAB308")).
+				Bold(true).
+				Render(fmt.Sprintf("Preparing %s for read-only access:", m.livePrepareSourceVM))
+
+			content := lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#94A3B8")).
+				Width(boxWidth - 4).
 				Render(entry.Content)
 
 			b.WriteString(style.Render(header + "\n" + content))
@@ -1809,9 +1917,57 @@ func (m Model) renderCleanupView() string {
 	return b.String()
 }
 
+// isLeakedMouseSequence checks whether runes are a leaked SGR mouse escape
+// sequence. When rapid mouse events fragment across read boundaries, bubbletea
+// consumes the leading ESC as KeyEscape and the remaining bytes arrive as
+// KeyRunes. Fragments can be full ("[<65;80;25M"), concatenated
+// ("[<65;80;25M[<65;80;25M"), or partial (";25M", "<65;80").
+// All fragments consist solely of SGR mouse characters: [ < 0-9 ; M m.
+// Normal keystrokes produce single-rune events; paste uses bracketed paste.
+// A multi-rune event containing only these characters is always a leak.
+func isLeakedMouseSequence(runes []rune) bool {
+	if len(runes) < 2 {
+		return false
+	}
+	hasSGRChar := false
+	for _, r := range runes {
+		switch {
+		case r >= '0' && r <= '9':
+		case r == ';', r == '[', r == '<', r == 'M', r == 'm':
+			hasSGRChar = true
+		default:
+			return false
+		}
+	}
+	return hasSGRChar
+}
+
+// mouseEventFilter drops leaked SGR mouse escape sequences before they reach
+// Update(). This is the bubbletea-idiomatic way to handle input fragmentation.
+func mouseEventFilter(_ tea.Model, msg tea.Msg) tea.Msg {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg.Type == tea.KeyRunes {
+			if isLeakedMouseSequence(keyMsg.Runes) {
+				return nil
+			}
+			// \x1b[ (CSI introducer) parsed as alt+[ when the sequence fragments
+			// at the 2-byte boundary. This is never legitimate user input - terminals
+			// don't emit bare \x1b[ for Alt+[.
+			if keyMsg.Alt && len(keyMsg.Runes) == 1 && keyMsg.Runes[0] == '[' {
+				return nil
+			}
+		}
+	}
+	return msg
+}
+
 // Run starts the TUI application
 func Run(m Model) error {
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m,
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+		tea.WithFilter(mouseEventFilter),
+	)
 	_, err := p.Run()
 	return err
 }
