@@ -60,6 +60,7 @@ if [[ -z "${HOSTS:-}" ]]; then
 fi
 
 HOSTS_FILE=$(mktemp)
+trap 'rm -f "$HOSTS_FILE"' EXIT INT TERM
 printf '%s\n' "$HOSTS" > "$HOSTS_FILE"
 log_info "Loaded $(grep -c '[^[:space:]]' "$HOSTS_FILE") host(s) from HOSTS env var"
 

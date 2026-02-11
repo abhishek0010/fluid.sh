@@ -2280,7 +2280,7 @@ func (a *FluidAgent) prepareSourceVM(ctx context.Context, sourceVM string) error
 			Done:     p.Done,
 		})
 	}
-	prepResult, err := readonly.Prepare(ctx, sshRun, string(caPubKeyBytes), onProgress)
+	prepResult, err := readonly.Prepare(ctx, sshRun, string(caPubKeyBytes), onProgress, a.logger)
 	if err != nil {
 		a.logger.Error("readonly.Prepare failed", "source_vm", sourceVM, "ip", ip, "proxy_jump", proxyJump, "error", err)
 		sshCmd := fmt.Sprintf("ssh %s@%s \"whoami\"", vmUser, ip)

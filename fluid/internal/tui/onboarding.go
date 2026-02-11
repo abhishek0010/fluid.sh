@@ -1363,7 +1363,7 @@ func (m OnboardingModel) runSourcePrepare() tea.Cmd {
 					vmUser = host.SSHVMUser
 				}
 				sshRunFunc := makeSSHRunFunc(ip, vmUser, fmt.Sprintf("%s@%s", sshUser, host.Address))
-				prepResult, err := readonly.Prepare(context.Background(), sshRunFunc, caPubKey, nil)
+				prepResult, err := readonly.Prepare(context.Background(), sshRunFunc, caPubKey, nil, nil)
 				if err != nil {
 					result.Error = err.Error()
 				} else {
@@ -1392,7 +1392,7 @@ func (m OnboardingModel) runSourcePrepare() tea.Cmd {
 					continue
 				}
 				sshRunFunc := makeSSHRunFunc(ip, "root", "")
-				prepResult, err := readonly.Prepare(context.Background(), sshRunFunc, caPubKey, nil)
+				prepResult, err := readonly.Prepare(context.Background(), sshRunFunc, caPubKey, nil, nil)
 				if err != nil {
 					result.Error = err.Error()
 				} else {
