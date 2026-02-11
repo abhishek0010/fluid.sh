@@ -403,9 +403,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			!m.inNetworkConfirm && !m.inSourcePrepareConfirm && !m.inCleanup {
 			switch msg.Button {
 			case tea.MouseButtonWheelUp:
-				m.viewport.LineUp(3)
+				m.viewport.ScrollUp(3)
 			case tea.MouseButtonWheelDown:
-				m.viewport.LineDown(3)
+				m.viewport.ScrollDown(3)
 			}
 		}
 		return m, nil
