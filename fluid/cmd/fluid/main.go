@@ -72,7 +72,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default ~/.fluid/config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default: XDG config dir, e.g., ~/.config/fluid/config.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", true, "output JSON (default true)")
 
 	rootCmd.AddCommand(initCmd)
@@ -104,8 +104,11 @@ func initServices() error {
 	// Determine config path
 	configPath := cfgFile
 	if configPath == "" {
-		home, _ := os.UserHomeDir()
-		configPath = filepath.Join(home, ".fluid", "config.yaml")
+		configDir, err := config.GetConfigDir()
+		if err != nil {
+			return fmt.Errorf("get config dir: %w", err)
+		}
+		configPath = filepath.Join(configDir, "config.yaml")
 	}
 
 	// Ensure config directory and file exist with defaults
@@ -235,7 +238,7 @@ vm:
 ssh:
   proxy_jump: ""  # Optional: user@jumphost for isolated networks
   default_user: sandbox
-  # SSH CA paths are auto-configured to ~/.fluid/ssh-ca/
+  # SSH CA paths are auto-configured relative to config directory
 `
 
 	if err := os.WriteFile(configPath, []byte(defaultCfg), 0o644); err != nil {
@@ -250,14 +253,13 @@ ssh:
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize fluid configuration",
-	Long:  `Creates default config file at ~/.fluid/config.yaml`,
+	Long:  `Creates default config file in XDG config directory (e.g., ~/.config/fluid/config.yaml on Linux)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		home, err := os.UserHomeDir()
+		configDir, err := config.GetConfigDir()
 		if err != nil {
-			return err
+			return fmt.Errorf("get config dir: %w", err)
 		}
 
-		configDir := filepath.Join(home, ".fluid")
 		configPath := filepath.Join(configDir, "config.yaml")
 
 		// Check if config already exists

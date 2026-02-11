@@ -100,8 +100,7 @@ type HostConfig struct {
 
 // DefaultConfig returns config with sensible defaults.
 func DefaultConfig() *Config {
-	home, _ := os.UserHomeDir()
-	configDir := filepath.Join(home, ".fluid")
+	configDir, _ := GetConfigDir()
 
 	return &Config{
 		Telemetry: TelemetryConfig{
