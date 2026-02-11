@@ -192,7 +192,7 @@ Each certificate (`fluid/internal/sshca/ca.go:260`) includes:
 |----------|-------|
 | Key type | Ed25519 |
 | Identity | `user:{agent-id}-vm:{vm-id}-sbx:{sandbox-id}-cert:{cert-id}` |
-| Principals | `["sandbox"]` (the SSH username allowed) |
+| Principals | `["<ssh-username>"]` (derived from requested SSH username; defaults to `sandbox`) |
 | TTL | 30 minutes (default), max 60 minutes |
 | Clock skew | 1-minute backdate on `ValidAfter` |
 | Serial | Monotonically incrementing, random initial seed |
