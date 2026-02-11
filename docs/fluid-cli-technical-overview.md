@@ -40,7 +40,7 @@ libvirt (qemu:///system or qemu+ssh://host/system)
 KVM / QEMU virtual machines
 ```
 
-All commands output JSON for easy agent parsing. State is persisted in SQLite at `~/.fluid/state.db`, and the database schema is auto-migrated on first run.
+By default, all commands output JSON for easy agent parsing (configurable via the `--json` flag, e.g. `--json=false` for YAML/human-readable output). State is persisted in SQLite at `~/.fluid/state.db`, and the database schema is auto-migrated on first run.
 
 ---
 
