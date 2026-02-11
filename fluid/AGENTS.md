@@ -10,7 +10,7 @@ AI Agent (Claude Code, etc.)
     v (subprocess/tool calls)
 fluid CLI
     |
-    +-- SQLite store (~/.fluid/state.db)
+    +-- SQLite store (XDG config dir, e.g., ~/.config/fluid/state.db)
     +-- Libvirt manager
     +-- VM service
     |
@@ -24,7 +24,7 @@ libvirt (qemu:///system or qemu+ssh://host/system)
 # Build the CLI
 make build
 
-# Initialize configuration (creates ~/.fluid/config.yaml)
+# Initialize configuration (creates config in XDG directory, e.g., ~/.config/fluid/config.yaml)
 ./bin/fluid init
 
 # List available VMs to clone from
@@ -159,7 +159,9 @@ root
 
 ## Configuration
 
-Default config location: `~/.fluid/config.yaml`
+Default config location: XDG config directory (e.g., `~/.config/fluid/config.yaml` on Linux, `%APPDATA%\fluid\config.yaml` on Windows)
+
+You can override this with the `FLUID_CONFIG_DIR` environment variable or `--config` flag.
 
 ```yaml
 libvirt:
@@ -279,7 +281,7 @@ $ fluid destroy SBX-abc123
 
 ## Data Storage
 
-State is stored in SQLite at `~/.fluid/state.db`:
+State is stored in SQLite in the XDG config directory (e.g., `~/.config/fluid/state.db` on Linux):
 - Sandboxes
 - Snapshots
 - Commands

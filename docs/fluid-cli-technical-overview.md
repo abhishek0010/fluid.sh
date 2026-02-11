@@ -28,9 +28,9 @@ AI Agent (Claude Code, etc.)
     v  (subprocess / tool call)
 fluid CLI
     |
-    +-- SQLite store (~/.fluid/state.db)
-    +-- SSH Certificate Authority (~/.fluid/ssh-ca/)
-    +-- Key Manager (~/.fluid/sandbox-keys/)
+    +-- SQLite store (XDG config dir, e.g., ~/.config/fluid/state.db)
+    +-- SSH Certificate Authority (XDG config dir, e.g., ~/.config/fluid/ssh-ca/)
+    +-- Key Manager (XDG config dir, e.g., ~/.config/fluid/sandbox-keys/)
     +-- Libvirt Manager
     |
     v
@@ -40,7 +40,7 @@ libvirt (qemu:///system or qemu+ssh://host/system)
 KVM / QEMU virtual machines
 ```
 
-By default, all commands output JSON for easy agent parsing (configurable via the `--json` flag, e.g. `--json=false` for YAML/human-readable output). State is persisted in SQLite at `~/.fluid/state.db`, and the database schema is auto-migrated on first run.
+By default, all commands output JSON for easy agent parsing (configurable via the `--json` flag, e.g. `--json=false` for YAML/human-readable output). State is persisted in SQLite in the XDG config directory (e.g., `~/.config/fluid/state.db` on Linux), and the database schema is auto-migrated on first run.
 
 ---
 
@@ -150,7 +150,7 @@ Fluid runs its own SSH Certificate Authority (CA) to provide ephemeral, auditabl
 On first run (`fluid init`), the CLI generates an Ed25519 CA key pair via `ssh-keygen`:
 
 ```
-~/.fluid/ssh-ca/
+<XDG_CONFIG_DIR>/fluid/ssh-ca/  # e.g., ~/.config/fluid/ssh-ca/ on Linux
 ├── ssh-ca          # CA private key (0600 permissions)
 └── ssh-ca.pub      # CA public key (distributed to VMs)
 ```
@@ -169,7 +169,7 @@ When the CLI needs to execute a command in a sandbox, the `KeyManager` (`fluid/i
 3. **Request certificate**: The CA signs the public key with `ssh-keygen -s`:
 
 ```bash
-ssh-keygen -s ~/.fluid/ssh-ca/ssh-ca \
+ssh-keygen -s <config_dir>/ssh-ca/ssh-ca \
     -I "user:<agent-id>-vm:<vm-id>-sbx:<sandbox-id>-cert:<cert-id>" \
     -n sandbox \
     -V +30m \
@@ -183,7 +183,7 @@ ssh-keygen -s ~/.fluid/ssh-ca/ssh-ca \
 4. **Store credentials**: Private key and certificate are written to disk:
 
 ```
-~/.fluid/sandbox-keys/
+<XDG_CONFIG_DIR>/fluid/sandbox-keys/  # e.g., ~/.config/fluid/sandbox-keys/ on Linux
 └── SBX-abc123/
     ├── key              # Private key (0600)
     └── key-cert.pub     # Signed certificate
@@ -366,7 +366,7 @@ When `fluid destroy <sandbox-id>` is called, the VM service orchestrates a multi
 
 The `KeyManager.CleanupSandbox()` method:
 - Removes all cached credentials from memory (all usernames for this sandbox)
-- Deletes the sandbox's key directory from disk: `~/.fluid/sandbox-keys/{sandbox-id}/`
+- Deletes the sandbox's key directory from disk: `<config_dir>/sandbox-keys/{sandbox-id}/`
 - Removes the per-sandbox mutex from the lock map
 
 **2. VM destruction** (`libvirt/virsh.go:922`)
@@ -398,16 +398,16 @@ When using the interactive TUI (`fluid tui`), the agent tracks every sandbox it 
 | Domain XML | `os.RemoveAll(jobDir)` | `{WorkDir}/{vm-name}/` |
 | External snapshots | `os.RemoveAll(jobDir)` | `{WorkDir}/{vm-name}/` |
 | DHCP lease | Lease file rewrite | `/var/lib/libvirt/dnsmasq/` |
-| SSH private key | `os.RemoveAll(keyDir)` | `~/.fluid/sandbox-keys/{id}/` |
-| SSH certificate | `os.RemoveAll(keyDir)` | `~/.fluid/sandbox-keys/{id}/` |
+| SSH private key | `os.RemoveAll(keyDir)` | `<config_dir>/sandbox-keys/{id}/` |
+| SSH certificate | `os.RemoveAll(keyDir)` | `<config_dir>/sandbox-keys/{id}/` |
 | In-memory credential cache | `delete(m.credentials, key)` | KeyManager |
-| Database record | Soft delete (`deleted_at`) | `~/.fluid/state.db` |
+| Database record | Soft delete (`deleted_at`) | `<config_dir>/state.db` |
 
 ---
 
 ## Data Persistence
 
-All state is stored in SQLite at `~/.fluid/state.db`. The schema is auto-migrated on startup using GORM.
+All state is stored in SQLite in the XDG config directory (e.g., `~/.config/fluid/state.db` on Linux). The schema is auto-migrated on startup using GORM.
 
 ### Tables
 

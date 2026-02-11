@@ -765,8 +765,11 @@ var vmsCmd = &cobra.Command{
 		// Load config to check for hosts
 		configPath := cfgFile
 		if configPath == "" {
-			home, _ := os.UserHomeDir()
-			configPath = filepath.Join(home, ".fluid", "config.yaml")
+			configDir, err := config.GetConfigDir()
+			if err != nil {
+				return fmt.Errorf("get config dir: %w", err)
+			}
+			configPath = filepath.Join(configDir, "config.yaml")
 		}
 
 		loadedCfg, err := config.LoadWithEnvOverride(configPath)
@@ -977,8 +980,11 @@ var hostsCmd = &cobra.Command{
 		// Load config
 		configPath := cfgFile
 		if configPath == "" {
-			home, _ := os.UserHomeDir()
-			configPath = filepath.Join(home, ".fluid", "config.yaml")
+			configDir, err := config.GetConfigDir()
+			if err != nil {
+				return fmt.Errorf("get config dir: %w", err)
+			}
+			configPath = filepath.Join(configDir, "config.yaml")
 		}
 
 		loadedCfg, err := config.LoadWithEnvOverride(configPath)
@@ -1115,8 +1121,11 @@ func runTUI() error {
 	// Get config path
 	configPath := cfgFile
 	if configPath == "" {
-		home, _ := os.UserHomeDir()
-		configPath = filepath.Join(home, ".fluid", "config.yaml")
+		configDir, err := config.GetConfigDir()
+		if err != nil {
+			return fmt.Errorf("get config dir: %w", err)
+		}
+		configPath = filepath.Join(configDir, "config.yaml")
 	}
 
 	// Load config directly here to ensure hosts are loaded
