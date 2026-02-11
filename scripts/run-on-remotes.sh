@@ -75,6 +75,15 @@ SSH_USER_OVERRIDE="${SSH_USER:-}"
 # Build SSH/SCP command prefixes
 SSH_OPTS="-o ConnectTimeout=5"
 if [[ -n "$SSH_PASS" ]]; then
+    # Verify sshpass is installed
+    if ! command -v sshpass >/dev/null 2>&1; then
+        log_error "SSH_PASSWORD is set but 'sshpass' is not installed."
+        log_error "Please install sshpass to use password-based authentication:"
+        log_error "  - Ubuntu/Debian: apt-get install sshpass"
+        log_error "  - macOS: brew install hudochenkov/sshpass/sshpass"
+        log_error "  - RHEL/CentOS: yum install sshpass"
+        exit 1
+    fi
     export SSHPASS="$SSH_PASS"
     SSH_OPTS="$SSH_OPTS -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     SCP_CMD="sshpass -e scp $SSH_OPTS"
