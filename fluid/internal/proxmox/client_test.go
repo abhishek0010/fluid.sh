@@ -895,7 +895,7 @@ func TestResizeVM(t *testing.T) {
 func TestAPIError_Forbidden(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"errors":{"token":"invalid"}}`))
+		_, _ = w.Write([]byte(`{"errors":{"token":"invalid"}}`))
 	})
 	defer server.Close()
 
@@ -911,7 +911,7 @@ func TestAPIError_Forbidden(t *testing.T) {
 func TestAPIError_NotFound(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"errors":{"vmid":"does not exist"}}`))
+		_, _ = w.Write([]byte(`{"errors":{"vmid":"does not exist"}}`))
 	})
 	defer server.Close()
 
@@ -927,7 +927,7 @@ func TestAPIError_NotFound(t *testing.T) {
 func TestAPIError_InternalServerError(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal Server Error"))
+		_, _ = w.Write([]byte("Internal Server Error"))
 	})
 	defer server.Close()
 
@@ -943,7 +943,7 @@ func TestAPIError_InternalServerError(t *testing.T) {
 func TestAPIError_Unauthorized(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"data":null}`))
+		_, _ = w.Write([]byte(`{"data":null}`))
 	})
 	defer server.Close()
 
@@ -958,7 +958,7 @@ func TestAPIError_Unauthorized(t *testing.T) {
 
 func TestAPIError_InvalidJSON(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("not json at all"))
+		_, _ = w.Write([]byte("not json at all"))
 	})
 	defer server.Close()
 
