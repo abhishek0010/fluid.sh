@@ -116,9 +116,13 @@ func initServices() error {
 	}
 
 	// Load config
-	cfg, err = config.LoadWithEnvOverride(configPath)
+	var warnings []string
+	cfg, warnings, err = config.LoadWithEnvOverride(configPath)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
+	}
+	for _, w := range warnings {
+		fmt.Fprintf(os.Stderr, "Warning: %s\n", w)
 	}
 
 	// Ensure SSH CA exists - generate if missing
@@ -800,7 +804,7 @@ var vmsCmd = &cobra.Command{
 			configPath = filepath.Join(home, ".fluid", "config.yaml")
 		}
 
-		loadedCfg, err := config.LoadWithEnvOverride(configPath)
+		loadedCfg, _, err := config.LoadWithEnvOverride(configPath)
 		if err != nil {
 			// If no config, fall back to local virsh
 			vms, err := listVMsViaVirsh(ctx)
@@ -1060,7 +1064,7 @@ var hostsCmd = &cobra.Command{
 			configPath = filepath.Join(home, ".fluid", "config.yaml")
 		}
 
-		loadedCfg, err := config.LoadWithEnvOverride(configPath)
+		loadedCfg, _, err := config.LoadWithEnvOverride(configPath)
 		if err != nil {
 			return fmt.Errorf("load config: %w", err)
 		}

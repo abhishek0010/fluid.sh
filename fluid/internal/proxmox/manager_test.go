@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -274,16 +275,22 @@ func TestNewProxmoxManager_MissingNode(t *testing.T) {
 
 // --- CloneVM ---
 
-func TestManagerCloneVM_Unsupported(t *testing.T) {
+func TestManagerCloneVM_DelegatesToCloneFromVM(t *testing.T) {
 	mgr, server := mockProxmoxAPI(t)
 	defer server.Close()
 
-	_, err := mgr.CloneVM(context.Background(), "base.img", "new-vm", 2, 4096, "vmbr0")
-	if err == nil {
-		t.Fatal("expected error for CloneVM on Proxmox")
+	ref, err := mgr.CloneVM(context.Background(), "ubuntu-template", "clone-via-clonevm", 2, 4096, "vmbr0")
+	if err != nil {
+		t.Fatalf("CloneVM: %v", err)
 	}
-	if !strings.Contains(err.Error(), "not supported") {
-		t.Errorf("expected 'not supported', got: %s", err.Error())
+	if ref.Name != "clone-via-clonevm" {
+		t.Errorf("expected clone-via-clonevm, got %s", ref.Name)
+	}
+	if ref.UUID == "" {
+		t.Error("expected non-empty UUID (VMID)")
+	}
+	if ref.UUID != "9000" {
+		t.Errorf("expected UUID 9000, got %s", ref.UUID)
 	}
 }
 
@@ -332,6 +339,86 @@ func TestManagerCloneFromVM_SourceNotFound(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "not found") {
 		t.Errorf("expected 'not found', got: %s", err.Error())
+	}
+}
+
+func TestManagerCloneFromVM_SetConfigFails(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 100, Name: "ubuntu-template", Status: "stopped"}}))
+	})
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/clone", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelope("UPID:pve1:00001234:clone"))
+	})
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000/config", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"errors":{"cores":"invalid value"}}`))
+	})
+	mux.HandleFunc("/api2/json/nodes/pve1/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mgr, err := NewProxmoxManager(Config{
+		Host: server.URL, TokenID: "t", Secret: "s", Node: "pve1",
+		VMIDStart: 9000, VMIDEnd: 9999,
+	}, nil)
+	if err != nil {
+		t.Fatalf("NewProxmoxManager: %v", err)
+	}
+
+	_, err = mgr.CloneFromVM(context.Background(), "ubuntu-template", "new-sandbox", 2, 4096, "vmbr0")
+	if err == nil {
+		t.Fatal("expected error when SetVMConfig fails")
+	}
+	if !strings.Contains(err.Error(), "set CPU/memory on clone") {
+		t.Errorf("expected 'set CPU/memory on clone' in error, got: %s", err.Error())
+	}
+}
+
+func TestManagerCloneFromVM_WithNetwork(t *testing.T) {
+	var capturedNet0 string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 100, Name: "template"}}))
+	})
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/clone", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelope("UPID:pve1:clone"))
+	})
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000/config", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut {
+			if err := r.ParseForm(); err != nil {
+				t.Fatal(err)
+			}
+			capturedNet0 = r.FormValue("net0")
+		}
+		_, _ = w.Write(envelope(nil))
+	})
+	mux.HandleFunc("/api2/json/nodes/pve1/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mgr, err := NewProxmoxManager(Config{
+		Host: server.URL, TokenID: "t", Secret: "s", Node: "pve1",
+		VMIDStart: 9000, VMIDEnd: 9999,
+	}, nil)
+	if err != nil {
+		t.Fatalf("NewProxmoxManager: %v", err)
+	}
+
+	ref, err := mgr.CloneFromVM(context.Background(), "template", "net-sandbox", 2, 4096, "vmbr1")
+	if err != nil {
+		t.Fatalf("CloneFromVM with network: %v", err)
+	}
+	if ref.Name != "net-sandbox" {
+		t.Errorf("expected net-sandbox, got %s", ref.Name)
+	}
+	expected := "virtio,bridge=vmbr1"
+	if capturedNet0 != expected {
+		t.Errorf("expected net0=%q, got %q", expected, capturedNet0)
 	}
 }
 
@@ -1606,6 +1693,203 @@ func TestManagerStopVM_VerifyGracefulRoute(t *testing.T) {
 	}
 	if shutdownCalled {
 		t.Error("force stop should not call /shutdown")
+	}
+}
+
+// --- Concurrent VMID allocation ---
+
+func TestManagerCloneFromVM_ConcurrentSafe(t *testing.T) {
+	// Track which VMIDs have been claimed via clone requests.
+	// The mock dynamically adds cloned VMIDs to the "used" set so that
+	// NextVMID (which calls ListVMs) sees them on subsequent calls.
+	var mu sync.Mutex
+	clonedVMIDs := map[int]bool{}
+
+	mux := http.NewServeMux()
+
+	// List VMs - returns template + any previously cloned VMs
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		vms := []VMListEntry{{VMID: 100, Name: "template", Status: "stopped"}}
+		for id := range clonedVMIDs {
+			vms = append(vms, VMListEntry{VMID: id, Name: fmt.Sprintf("clone-%d", id), Status: "stopped"})
+		}
+		mu.Unlock()
+		_, _ = w.Write(envelope(vms))
+	})
+
+	// Clone endpoint - record the newid
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/clone", func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Errorf("parse form: %v", err)
+		}
+		newid := r.FormValue("newid")
+		var id int
+		_, _ = fmt.Sscanf(newid, "%d", &id)
+		mu.Lock()
+		clonedVMIDs[id] = true
+		mu.Unlock()
+		_, _ = w.Write(envelope(fmt.Sprintf("UPID:pve1:clone:%d", id)))
+	})
+
+	// Task status - always completed
+	mux.HandleFunc("/api2/json/nodes/pve1/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
+	})
+
+	// Config for any cloned VM
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/config") {
+			_, _ = w.Write(envelope(nil))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mgr, err := NewProxmoxManager(Config{
+		Host:      server.URL,
+		TokenID:   "t",
+		Secret:    "s",
+		Node:      "pve1",
+		VMIDStart: 9000,
+		VMIDEnd:   9999,
+	}, nil)
+	if err != nil {
+		t.Fatalf("NewProxmoxManager: %v", err)
+	}
+
+	const N = 3
+	type result struct {
+		ref provider.VMRef
+		err error
+	}
+	results := make(chan result, N)
+
+	for range N {
+		go func() {
+			ref, err := mgr.CloneFromVM(context.Background(), "template", "concurrent-clone", 0, 0, "")
+			results <- result{ref, err}
+		}()
+	}
+
+	seen := map[string]bool{}
+	for range N {
+		r := <-results
+		if r.err != nil {
+			t.Fatalf("CloneFromVM failed: %v", r.err)
+		}
+		if seen[r.ref.UUID] {
+			t.Errorf("duplicate VMID allocated: %s", r.ref.UUID)
+		}
+		seen[r.ref.UUID] = true
+	}
+
+	if len(seen) != N {
+		t.Errorf("expected %d unique VMIDs, got %d", N, len(seen))
+	}
+}
+
+func TestConfigValidation_DefaultTimeout(t *testing.T) {
+	cfg := Config{
+		Host: "https://pve:8006", TokenID: "t", Secret: "s", Node: "n",
+	}
+	if cfg.Timeout != 0 {
+		t.Fatalf("expected zero timeout before Validate, got %v", cfg.Timeout)
+	}
+	err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if cfg.Timeout != 5*time.Minute {
+		t.Errorf("expected default Timeout 5m, got %v", cfg.Timeout)
+	}
+}
+
+func TestConfigValidation_CustomTimeout(t *testing.T) {
+	cfg := Config{
+		Host: "https://pve:8006", TokenID: "t", Secret: "s", Node: "n",
+		Timeout: 10 * time.Second,
+	}
+	err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	// Custom timeout should be preserved, not overwritten by default
+	if cfg.Timeout != 10*time.Second {
+		t.Errorf("expected custom Timeout 10s, got %v", cfg.Timeout)
+	}
+}
+
+func TestManagerGetIPAddress_SkipsLinkLocal(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 203, Name: "link-local-only"}}))
+	})
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu/203/agent/network-get-interfaces", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelope(struct {
+			Result []NetworkInterface `json:"result"`
+		}{
+			Result: []NetworkInterface{
+				{
+					Name:            "eth0",
+					HardwareAddress: "AA:BB:CC:DD:EE:FF",
+					IPAddresses:     []GuestIPAddress{{IPAddressType: "ipv4", IPAddress: "169.254.1.100", Prefix: 16}},
+				},
+			},
+		}))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mgr, _ := NewProxmoxManager(Config{
+		Host: server.URL, TokenID: "t", Secret: "s", Node: "pve1",
+		VMIDStart: 9000, VMIDEnd: 9999,
+	}, nil)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	_, _, err := mgr.GetIPAddress(ctx, "link-local-only", 30*time.Second)
+	if err == nil {
+		t.Fatal("expected timeout for link-local-only VM")
+	}
+}
+
+func TestManagerGetIPAddress_SkipsInvalidIP(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 204, Name: "bad-ip-vm"}}))
+	})
+	mux.HandleFunc("/api2/json/nodes/pve1/qemu/204/agent/network-get-interfaces", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelope(struct {
+			Result []NetworkInterface `json:"result"`
+		}{
+			Result: []NetworkInterface{
+				{
+					Name:            "eth0",
+					HardwareAddress: "AA:BB:CC:DD:EE:FF",
+					IPAddresses:     []GuestIPAddress{{IPAddressType: "ipv4", IPAddress: "not-an-ip", Prefix: 24}},
+				},
+			},
+		}))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mgr, _ := NewProxmoxManager(Config{
+		Host: server.URL, TokenID: "t", Secret: "s", Node: "pve1",
+		VMIDStart: 9000, VMIDEnd: 9999,
+	}, nil)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	_, _, err := mgr.GetIPAddress(ctx, "bad-ip-vm", 30*time.Second)
+	if err == nil {
+		t.Fatal("expected timeout for VM with invalid IP")
 	}
 }
 

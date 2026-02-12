@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"strings"
@@ -22,6 +24,7 @@ type Client struct {
 	node       string
 	httpClient *http.Client
 	logger     *slog.Logger
+	maxRetries int
 }
 
 // NewClient creates a new Proxmox API client.
@@ -34,6 +37,13 @@ func NewClient(cfg Config, logger *slog.Logger) *Client {
 			InsecureSkipVerify: !cfg.VerifySSL,
 		},
 	}
+	if !cfg.VerifySSL {
+		logger.Warn("TLS certificate verification is disabled - connections are vulnerable to MITM attacks")
+	}
+	timeout := cfg.Timeout
+	if timeout == 0 {
+		timeout = 5 * time.Minute
+	}
 	return &Client{
 		baseURL: strings.TrimRight(cfg.Host, "/"),
 		tokenID: cfg.TokenID,
@@ -41,56 +51,98 @@ func NewClient(cfg Config, logger *slog.Logger) *Client {
 		node:    cfg.Node,
 		httpClient: &http.Client{
 			Transport: transport,
-			Timeout:   30 * time.Second,
+			Timeout:   timeout,
 		},
-		logger: logger,
+		logger:     logger,
+		maxRetries: 3,
 	}
 }
 
-// do executes an HTTP request against the Proxmox API.
+// do executes an HTTP request against the Proxmox API with retry logic.
+// Retries on 5xx status codes and transient network errors with exponential backoff.
+// Does not retry on 4xx errors, context cancellation, or context deadline exceeded.
 func (c *Client) do(ctx context.Context, method, path string, body url.Values) (json.RawMessage, error) {
 	apiURL := fmt.Sprintf("%s/api2/json%s", c.baseURL, path)
 
-	var bodyReader io.Reader
-	if body != nil {
-		bodyReader = strings.NewReader(body.Encode())
+	var lastErr error
+	delay := 1 * time.Second
+
+	for attempt := 1; attempt <= c.maxRetries; attempt++ {
+		var bodyReader io.Reader
+		if body != nil {
+			bodyReader = strings.NewReader(body.Encode())
+		}
+
+		req, err := http.NewRequestWithContext(ctx, method, apiURL, bodyReader)
+		if err != nil {
+			return nil, fmt.Errorf("create request: %w", err)
+		}
+
+		req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", c.tokenID, c.secret))
+		if body != nil {
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		}
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			// Do not retry on context cancellation or deadline exceeded
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, fmt.Errorf("request %s %s: %w", method, path, err)
+			}
+			lastErr = fmt.Errorf("request %s %s: %w", method, path, err)
+			if attempt < c.maxRetries {
+				c.logger.Warn("retrying request", "method", method, "path", path, "attempt", attempt, "error", lastErr)
+				jitteredDelay := time.Duration(float64(delay) * (0.9 + rand.Float64()*0.2))
+				select {
+				case <-ctx.Done():
+					return nil, fmt.Errorf("request %s %s: %w", method, path, ctx.Err())
+				case <-time.After(jitteredDelay):
+				}
+				delay *= 2
+			}
+			continue
+		}
+
+		respBody, err := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("read response: %w", err)
+		}
+
+		// Retry on 5xx status codes
+		if resp.StatusCode >= 500 {
+			lastErr = fmt.Errorf("API %s %s returned %d: %s", method, path, resp.StatusCode, string(respBody))
+			if attempt < c.maxRetries {
+				c.logger.Warn("retrying request", "method", method, "path", path, "attempt", attempt, "error", lastErr)
+				jitteredDelay := time.Duration(float64(delay) * (0.9 + rand.Float64()*0.2))
+				select {
+				case <-ctx.Done():
+					return nil, fmt.Errorf("request %s %s: %w", method, path, ctx.Err())
+				case <-time.After(jitteredDelay):
+				}
+				delay *= 2
+			}
+			continue
+		}
+
+		// Non-retryable HTTP errors (4xx, etc.)
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return nil, fmt.Errorf("API %s %s returned %d: %s", method, path, resp.StatusCode, string(respBody))
+		}
+
+		// Parse the outer response envelope
+		var envelope struct {
+			Data   json.RawMessage `json:"data"`
+			Errors json.RawMessage `json:"errors,omitempty"`
+		}
+		if err := json.Unmarshal(respBody, &envelope); err != nil {
+			return nil, fmt.Errorf("unmarshal response: %w", err)
+		}
+
+		return envelope.Data, nil
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, apiURL, bodyReader)
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", c.tokenID, c.secret))
-	if body != nil {
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request %s %s: %w", method, path, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("API %s %s returned %d: %s", method, path, resp.StatusCode, string(respBody))
-	}
-
-	// Parse the outer response envelope
-	var envelope struct {
-		Data   json.RawMessage `json:"data"`
-		Errors json.RawMessage `json:"errors,omitempty"`
-	}
-	if err := json.Unmarshal(respBody, &envelope); err != nil {
-		return nil, fmt.Errorf("unmarshal response: %w", err)
-	}
-
-	return envelope.Data, nil
+	return nil, lastErr
 }
 
 // ListVMs returns all QEMU VMs on the configured node.

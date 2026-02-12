@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aspectrr/fluid.sh/fluid/internal/provider"
@@ -17,6 +19,7 @@ type ProxmoxManager struct {
 	cfg      Config
 	resolver *VMResolver
 	logger   *slog.Logger
+	vmidMu   sync.Mutex
 }
 
 // NewProxmoxManager creates a new Proxmox provider manager.
@@ -37,21 +40,30 @@ func NewProxmoxManager(cfg Config, logger *slog.Logger) (*ProxmoxManager, error)
 	}, nil
 }
 
-// CloneVM is not supported for Proxmox - use CloneFromVM instead.
+// CloneVM clones a VM from a base image. On Proxmox, base images are templates
+// (which are themselves VMs), so CloneVM and CloneFromVM are semantically identical.
+// This delegates to CloneFromVM, treating baseImage as a source VM/template name.
 func (m *ProxmoxManager) CloneVM(ctx context.Context, baseImage, newVMName string, cpu, memoryMB int, network string) (provider.VMRef, error) {
-	return provider.VMRef{}, fmt.Errorf("CloneVM from base image is not supported on Proxmox; use CloneFromVM with a template VM name")
+	return m.CloneFromVM(ctx, baseImage, newVMName, cpu, memoryMB, network)
 }
 
 // CloneFromVM creates a clone of an existing VM.
 // It resolves the source VM name to a VMID, allocates a new VMID, and clones.
+// The network parameter sets the Proxmox bridge via the net0 config param
+// (format: "virtio,bridge=<network>"). If network is empty, falls back to
+// Config.Bridge. If both are empty, the template's network config is preserved.
 func (m *ProxmoxManager) CloneFromVM(ctx context.Context, sourceVMName, newVMName string, cpu, memoryMB int, network string) (provider.VMRef, error) {
 	sourceVMID, err := m.resolver.ResolveVMID(ctx, sourceVMName)
 	if err != nil {
 		return provider.VMRef{}, fmt.Errorf("resolve source VM %q: %w", sourceVMName, err)
 	}
 
+	// Lock to serialize VMID allocation + clone so concurrent callers
+	// cannot receive the same VMID before Proxmox reserves it.
+	m.vmidMu.Lock()
 	newVMID, err := m.client.NextVMID(ctx, m.cfg.VMIDStart, m.cfg.VMIDEnd)
 	if err != nil {
+		m.vmidMu.Unlock()
 		return provider.VMRef{}, fmt.Errorf("allocate VMID: %w", err)
 	}
 
@@ -65,6 +77,7 @@ func (m *ProxmoxManager) CloneFromVM(ctx context.Context, sourceVMName, newVMNam
 	)
 
 	upid, err := m.client.CloneVM(ctx, sourceVMID, newVMID, newVMName, full)
+	m.vmidMu.Unlock()
 	if err != nil {
 		return provider.VMRef{}, fmt.Errorf("clone VM: %w", err)
 	}
@@ -73,8 +86,8 @@ func (m *ProxmoxManager) CloneFromVM(ctx context.Context, sourceVMName, newVMNam
 		return provider.VMRef{}, fmt.Errorf("wait for clone: %w", err)
 	}
 
-	// Configure the clone with requested CPU/memory
-	if cpu > 0 || memoryMB > 0 {
+	// Configure the clone with requested CPU/memory/network
+	if cpu > 0 || memoryMB > 0 || network != "" || m.cfg.Bridge != "" {
 		params := url.Values{}
 		if cpu > 0 {
 			params.Set("cores", fmt.Sprintf("%d", cpu))
@@ -82,8 +95,13 @@ func (m *ProxmoxManager) CloneFromVM(ctx context.Context, sourceVMName, newVMNam
 		if memoryMB > 0 {
 			params.Set("memory", fmt.Sprintf("%d", memoryMB))
 		}
+		if network != "" {
+			params.Set("net0", fmt.Sprintf("virtio,bridge=%s", network))
+		} else if m.cfg.Bridge != "" {
+			params.Set("net0", fmt.Sprintf("virtio,bridge=%s", m.cfg.Bridge))
+		}
 		if err := m.client.SetVMConfig(ctx, newVMID, params); err != nil {
-			m.logger.Warn("failed to set CPU/memory on clone, continuing", "error", err)
+			return provider.VMRef{}, fmt.Errorf("set CPU/memory on clone %d: %w", newVMID, err)
 		}
 	}
 
@@ -226,6 +244,10 @@ func (m *ProxmoxManager) DiffSnapshot(ctx context.Context, vmName, fromSnapshot,
 
 // GetIPAddress retrieves the VM's primary IPv4 address via the QEMU guest agent.
 // Polls until an IP is found or the timeout expires.
+// Filtering rules: skips loopback interfaces by name ("lo"), loopback IPs
+// (127.0.0.0/8 via net.IP.IsLoopback), link-local IPs (169.254.0.0/16 via
+// net.IP.IsLinkLocalUnicast), unparseable IPs, and IPv6 addresses.
+// Returns the first valid IPv4 address found.
 func (m *ProxmoxManager) GetIPAddress(ctx context.Context, vmName string, timeout time.Duration) (string, string, error) {
 	vmid, err := m.resolver.ResolveVMID(ctx, vmName)
 	if err != nil {
@@ -245,8 +267,11 @@ func (m *ProxmoxManager) GetIPAddress(ctx context.Context, vmName string, timeou
 					continue
 				}
 				for _, addr := range iface.IPAddresses {
-					if addr.IPAddressType == "ipv4" && !strings.HasPrefix(addr.IPAddress, "127.") {
-						return addr.IPAddress, iface.HardwareAddress, nil
+					if addr.IPAddressType == "ipv4" {
+						ip := net.ParseIP(addr.IPAddress)
+						if ip != nil && !ip.IsLoopback() && !ip.IsLinkLocalUnicast() {
+							return addr.IPAddress, iface.HardwareAddress, nil
+						}
 					}
 				}
 			}

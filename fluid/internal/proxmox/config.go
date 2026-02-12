@@ -1,19 +1,23 @@
 package proxmox
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // Config holds all settings needed to connect to a Proxmox VE cluster.
 type Config struct {
-	Host      string // Base URL, e.g., "https://pve.example.com:8006"
-	TokenID   string // API token ID, e.g., "root@pam!fluid"
-	Secret    string // API token secret
-	Node      string // Target node name, e.g., "pve1"
-	VerifySSL bool   // Verify TLS certificates
-	Storage   string // Storage for VM disks, e.g., "local-lvm"
-	Bridge    string // Network bridge, e.g., "vmbr0"
-	CloneMode string // "full" or "linked"
-	VMIDStart int    // Start of VMID range for sandboxes
-	VMIDEnd   int    // End of VMID range for sandboxes
+	Host      string        // Base URL, e.g., "https://pve.example.com:8006"
+	TokenID   string        // API token ID, e.g., "root@pam!fluid"
+	Secret    string        // API token secret
+	Node      string        // Target node name, e.g., "pve1"
+	VerifySSL bool          // Verify TLS certificates (set to false only for self-signed certs; disabling exposes connections to MITM attacks)
+	Storage   string        // Storage for VM disks, e.g., "local-lvm"
+	Bridge    string        // Network bridge, e.g., "vmbr0"
+	CloneMode string        // "full" or "linked"
+	VMIDStart int           // Start of VMID range for sandboxes
+	VMIDEnd   int           // End of VMID range for sandboxes
+	Timeout   time.Duration `yaml:"timeout"` // HTTP client timeout
 }
 
 // Validate checks that required config fields are set.
@@ -38,6 +42,9 @@ func (c *Config) Validate() error {
 	}
 	if c.VMIDEnd <= c.VMIDStart {
 		return fmt.Errorf("proxmox vmid_end (%d) must be greater than vmid_start (%d)", c.VMIDEnd, c.VMIDStart)
+	}
+	if c.Timeout == 0 {
+		c.Timeout = 5 * time.Minute
 	}
 	if c.CloneMode == "" {
 		c.CloneMode = "full"

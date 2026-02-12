@@ -8,12 +8,18 @@ import (
 // Manager defines the VM orchestration operations supported by all providers.
 // Implementations exist for libvirt/KVM (via virsh) and Proxmox VE (via REST API).
 type Manager interface {
-	// CloneVM creates a linked-clone VM from a golden base image and defines it.
-	// cpu and memoryMB are the VM shape. network is provider-specific (e.g., libvirt network name).
+	// CloneVM creates a VM from a golden base image and defines it.
+	// For libvirt: baseImage is a filename in base_image_dir; the image is copied and a new domain defined.
+	// For Proxmox: templates are VMs, so this delegates to CloneFromVM (baseImage = template name).
+	// Remote libvirt hosts do not support CloneVM; use CloneFromVM for provider-agnostic cloning.
+	// cpu and memoryMB are the VM shape. network is provider-specific (e.g., libvirt network name,
+	// Proxmox bridge name).
 	CloneVM(ctx context.Context, baseImage, newVMName string, cpu, memoryMB int, network string) (VMRef, error)
 
-	// CloneFromVM creates a linked-clone VM from an existing VM's disk.
-	// It looks up the source VM by name, retrieves its disk, and creates an overlay/clone.
+	// CloneFromVM creates a clone from an existing VM by name.
+	// Works uniformly across all providers: resolves the source VM, copies/clones its disk,
+	// and creates a new VM with the specified shape. Prefer this over CloneVM for
+	// provider-agnostic code.
 	CloneFromVM(ctx context.Context, sourceVMName, newVMName string, cpu, memoryMB int, network string) (VMRef, error)
 
 	// InjectSSHKey injects an SSH public key for a user into the VM before boot.

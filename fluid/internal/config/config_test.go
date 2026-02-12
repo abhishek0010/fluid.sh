@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -100,14 +101,15 @@ func TestLoadWithEnvOverride(t *testing.T) {
 logging:
   level: "info"
 `
-	err := os.WriteFile(configPath, []byte(yaml), 0o644)
+	err := os.WriteFile(configPath, []byte(yaml), 0o600)
 	require.NoError(t, err)
 
 	// Set env vars to override (only LOG_LEVEL is supported)
 	t.Setenv("LOG_LEVEL", "debug")
 
-	cfg, err := LoadWithEnvOverride(configPath)
+	cfg, warnings, err := LoadWithEnvOverride(configPath)
 	require.NoError(t, err)
+	assert.Empty(t, warnings)
 
 	// Env vars should override YAML
 	assert.Equal(t, "debug", cfg.Logging.Level)
@@ -261,14 +263,14 @@ proxmox:
   secret: "yaml-secret"
   node: "yaml-node"
 `
-	err := os.WriteFile(configPath, []byte(yamlContent), 0o644)
+	err := os.WriteFile(configPath, []byte(yamlContent), 0o600)
 	require.NoError(t, err)
 
 	// Env vars override YAML values
 	t.Setenv("PROXMOX_HOST", "https://env-host:8006")
 	t.Setenv("PROXMOX_SECRET", "env-secret")
 
-	cfg, err := LoadWithEnvOverride(configPath)
+	cfg, _, err := LoadWithEnvOverride(configPath)
 	require.NoError(t, err)
 
 	// Env vars take precedence
@@ -322,6 +324,55 @@ func TestApplyDefaults_ProxmoxDefaults(t *testing.T) {
 	assert.Equal(t, 9999, cfg.Proxmox.VMIDEnd)
 }
 
+func TestCheckFilePermissions_SecureFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "config.yaml")
+
+	err := os.WriteFile(path, []byte("test"), 0o600)
+	require.NoError(t, err)
+
+	warnings := CheckFilePermissions(path)
+	assert.Empty(t, warnings)
+}
+
+func TestCheckFilePermissions_InsecureFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping permission test on Windows")
+	}
+
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "config.yaml")
+
+	err := os.WriteFile(path, []byte("test"), 0o644)
+	require.NoError(t, err)
+
+	warnings := CheckFilePermissions(path)
+	assert.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], "insecure permissions")
+	assert.Contains(t, warnings[0], "chmod 600")
+}
+
+func TestCheckFilePermissions_NonexistentFile(t *testing.T) {
+	warnings := CheckFilePermissions("/nonexistent/path/config.yaml")
+	assert.Empty(t, warnings)
+}
+
+func TestSave_FilePermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	cfg := DefaultConfig()
+	err := cfg.Save(configPath)
+	require.NoError(t, err)
+
+	info, err := os.Stat(configPath)
+	require.NoError(t, err)
+
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	}
+}
+
 func TestParseDuration(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -342,4 +393,83 @@ func TestParseDuration(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestHasSecrets(t *testing.T) {
+	tests := []struct {
+		name   string
+		cfg    Config
+		expect bool
+	}{
+		{"empty config", Config{}, false},
+		{"proxmox secret", Config{Proxmox: ProxmoxConfig{Secret: "s"}}, true},
+		{"proxmox token_id", Config{Proxmox: ProxmoxConfig{TokenID: "t"}}, true},
+		{"ai api key", Config{AIAgent: AIAgentConfig{APIKey: "k"}}, true},
+		{"all secrets", Config{
+			Proxmox: ProxmoxConfig{Secret: "s", TokenID: "t"},
+			AIAgent: AIAgentConfig{APIKey: "k"},
+		}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expect, tt.cfg.HasSecrets())
+		})
+	}
+}
+
+func TestLoadWithEnvOverride_PermissionWarnings(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping permission test on Windows")
+	}
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Write config with insecure permissions (0644) but no secrets
+	err := os.WriteFile(configPath, []byte("logging:\n  level: info\n"), 0o644)
+	require.NoError(t, err)
+
+	_, warnings, err := LoadWithEnvOverride(configPath)
+	require.NoError(t, err)
+	// Should have permission warning but NOT the secrets warning
+	assert.NotEmpty(t, warnings)
+	assert.Contains(t, warnings[0], "insecure permissions")
+	// Only 1 warning - no secrets present
+	assert.Len(t, warnings, 1)
+}
+
+func TestLoadWithEnvOverride_SecureFileNoWarnings(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	err := os.WriteFile(configPath, []byte("logging:\n  level: info\n"), 0o600)
+	require.NoError(t, err)
+
+	_, warnings, err := LoadWithEnvOverride(configPath)
+	require.NoError(t, err)
+	assert.Empty(t, warnings)
+}
+
+func TestLoadWithEnvOverride_InsecureWithSecrets(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping permission test on Windows")
+	}
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Config with secrets and insecure permissions
+	yamlContent := `
+proxmox:
+  secret: "my-secret-token"
+`
+	err := os.WriteFile(configPath, []byte(yamlContent), 0o644)
+	require.NoError(t, err)
+
+	_, warnings, err := LoadWithEnvOverride(configPath)
+	require.NoError(t, err)
+	// Should have both: permission warning + secrets warning
+	assert.Len(t, warnings, 2)
+	assert.Contains(t, warnings[0], "insecure permissions")
+	assert.Contains(t, warnings[1], "contains secrets")
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -299,18 +300,36 @@ func applyDefaults(cfg *Config) {
 	}
 }
 
+// HasSecrets returns true if the config contains any sensitive credentials
+// (Proxmox API tokens or AI agent API keys).
+func (c *Config) HasSecrets() bool {
+	return c.Proxmox.Secret != "" || c.Proxmox.TokenID != "" || c.AIAgent.APIKey != ""
+}
+
 // LoadWithEnvOverride loads config from YAML and allows env vars to override.
 // Env vars use the pattern: VIRSH_SANDBOX_<SECTION>_<KEY> (uppercase, underscores).
-func LoadWithEnvOverride(path string) (*Config, error) {
+// Returns the config, any permission warnings, and an error if loading fails.
+// If the config file has insecure permissions and contains secrets, an additional
+// warning about exposed credentials is included.
+func LoadWithEnvOverride(path string) (*Config, []string, error) {
 	cfg, err := Load(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Apply environment variable overrides
 	applyEnvOverrides(cfg)
 
-	return cfg, nil
+	// Check file permissions
+	warnings := CheckFilePermissions(path)
+	if len(warnings) > 0 && cfg.HasSecrets() {
+		warnings = append(warnings, fmt.Sprintf(
+			"config file %s contains secrets (API tokens/keys) with insecure permissions - credentials may be exposed to other users",
+			path,
+		))
+	}
+
+	return cfg, warnings, nil
 }
 
 // applyEnvOverrides applies environment variable overrides to config.
@@ -350,6 +369,30 @@ func applyEnvOverrides(cfg *Config) {
 	}
 }
 
+// CheckFilePermissions checks if a config file has secure permissions.
+// Returns a slice of warning strings if permissions are too open (e.g., group/other readable).
+// Returns nil if the file doesn't exist or permissions are fine.
+func CheckFilePermissions(path string) []string {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil
+	}
+
+	var warnings []string
+
+	if runtime.GOOS != "windows" {
+		mode := info.Mode().Perm()
+		if mode&0o077 != 0 {
+			warnings = append(warnings, fmt.Sprintf(
+				"config file %s has insecure permissions %o, should be 0600 - run: chmod 600 %s",
+				path, mode, path,
+			))
+		}
+	}
+
+	return warnings
+}
+
 func atoi(s string) int {
 	var i int
 	_, _ = fmt.Sscanf(s, "%d", &i)
@@ -375,7 +418,7 @@ func (c *Config) Save(path string) error {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("writing config file: %w", err)
 	}
 

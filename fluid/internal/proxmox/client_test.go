@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -1029,5 +1030,133 @@ func TestNewClient_NilLogger(t *testing.T) {
 	client := NewClient(cfg, nil)
 	if client.logger == nil {
 		t.Error("expected default logger, got nil")
+	}
+}
+
+func TestNewClient_CustomTimeout(t *testing.T) {
+	// Create a slow server that takes longer than the custom timeout
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(500 * time.Millisecond)
+		_, _ = w.Write(envelope([]VMListEntry{}))
+	}))
+	defer server.Close()
+
+	cfg := Config{
+		Host:    server.URL,
+		TokenID: "test@pam!test",
+		Secret:  "test-secret",
+		Node:    "pve1",
+		Timeout: 100 * time.Millisecond, // Shorter than server delay
+	}
+	client := NewClient(cfg, nil)
+
+	// Request should fail due to client timeout
+	_, err := client.ListVMs(context.Background())
+	if err == nil {
+		t.Fatal("expected timeout error with custom short timeout")
+	}
+
+	// Now verify a longer timeout works
+	cfg.Timeout = 5 * time.Second
+	client = NewClient(cfg, nil)
+	vms, err := client.ListVMs(context.Background())
+	if err != nil {
+		t.Fatalf("expected success with longer timeout, got: %v", err)
+	}
+	if len(vms) != 0 {
+		t.Errorf("expected 0 VMs, got %d", len(vms))
+	}
+}
+
+func TestNewClient_InsecureTLSWarning(t *testing.T) {
+	var records []slog.Record
+	handler := &captureHandler{records: &records}
+	logger := slog.New(handler)
+
+	cfg := Config{
+		Host:      "https://pve.example.com:8006",
+		TokenID:   "test",
+		Secret:    "secret",
+		Node:      "pve1",
+		VerifySSL: false,
+	}
+	_ = NewClient(cfg, logger)
+
+	found := false
+	for _, r := range records {
+		if r.Level == slog.LevelWarn && strings.Contains(r.Message, "TLS certificate verification is disabled") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected TLS warning log when VerifySSL is false")
+	}
+}
+
+// captureHandler is a slog.Handler that captures log records for testing.
+type captureHandler struct {
+	records *[]slog.Record
+}
+
+func (h *captureHandler) Enabled(_ context.Context, _ slog.Level) bool { return true }
+
+func (h *captureHandler) Handle(_ context.Context, r slog.Record) error {
+	*h.records = append(*h.records, r)
+	return nil
+}
+
+func (h *captureHandler) WithAttrs(_ []slog.Attr) slog.Handler { return h }
+
+func (h *captureHandler) WithGroup(_ string) slog.Handler { return h }
+
+// --- HTTP Retry ---
+
+func TestHTTPRetry_TransientError(t *testing.T) {
+	var requestCount int32
+	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&requestCount, 1)
+		if n < 3 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("Service Unavailable"))
+			return
+		}
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 100, Name: "test-vm"}}))
+	})
+	defer server.Close()
+
+	vms, err := client.ListVMs(context.Background())
+	if err != nil {
+		t.Fatalf("expected success after retries, got: %v", err)
+	}
+	if len(vms) != 1 {
+		t.Fatalf("expected 1 VM, got %d", len(vms))
+	}
+	if vms[0].Name != "test-vm" {
+		t.Errorf("expected test-vm, got %s", vms[0].Name)
+	}
+	if atomic.LoadInt32(&requestCount) != 3 {
+		t.Errorf("expected 3 requests total, got %d", requestCount)
+	}
+}
+
+func TestHTTPRetry_NoRetryOn4xx(t *testing.T) {
+	var requestCount int32
+	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requestCount, 1)
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"errors":{"vmid":"does not exist"}}`))
+	})
+	defer server.Close()
+
+	_, err := client.GetVMStatus(context.Background(), 999)
+	if err == nil {
+		t.Fatal("expected error for 404")
+	}
+	if !strings.Contains(err.Error(), "404") {
+		t.Errorf("expected 404 in error, got: %s", err.Error())
+	}
+	if atomic.LoadInt32(&requestCount) != 1 {
+		t.Errorf("expected exactly 1 request (no retries for 4xx), got %d", requestCount)
 	}
 }
