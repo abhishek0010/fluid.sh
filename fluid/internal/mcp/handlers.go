@@ -27,22 +27,6 @@ func jsonResult(v any) (*mcp.CallToolResult, error) {
 	return mcp.NewToolResultText(string(data)), nil
 }
 
-// intFromArgs extracts an int from MCP args (JSON numbers arrive as float64).
-func intFromArgs(args map[string]any, key string) int {
-	v, ok := args[key]
-	if !ok {
-		return 0
-	}
-	switch n := v.(type) {
-	case float64:
-		return int(n)
-	case int:
-		return n
-	default:
-		return 0
-	}
-}
-
 // shellEscape safely escapes a string for use in a shell command.
 func shellEscape(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
