@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -227,6 +228,83 @@ func testServerWithSandboxes(sandboxes ...*store.Sandbox) *Server {
 		vmService: vmSvc,
 		logger:    noopLogger(),
 	}
+}
+
+// --- mock telemetry ---
+
+type mockTelemetry struct {
+	mu     sync.Mutex
+	events []telemetryEvent
+}
+
+type telemetryEvent struct {
+	name       string
+	properties map[string]any
+}
+
+func (m *mockTelemetry) Track(event string, properties map[string]any) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.events = append(m.events, telemetryEvent{name: event, properties: properties})
+}
+
+func (m *mockTelemetry) Close() {}
+
+func (m *mockTelemetry) getEvents() []telemetryEvent {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cp := make([]telemetryEvent, len(m.events))
+	copy(cp, m.events)
+	return cp
+}
+
+// --- trackToolCall tests ---
+
+func TestTrackToolCall(t *testing.T) {
+	mt := &mockTelemetry{}
+	srv := &Server{
+		telemetry: mt,
+		logger:    noopLogger(),
+	}
+
+	srv.trackToolCall("list_sandboxes")
+
+	events := mt.getEvents()
+	require.Len(t, events, 1)
+	assert.Equal(t, "mcp_tool_call", events[0].name)
+	assert.Equal(t, "list_sandboxes", events[0].properties["tool_name"])
+}
+
+func TestTrackToolCall_NilTelemetry(t *testing.T) {
+	srv := &Server{
+		telemetry: nil,
+		logger:    noopLogger(),
+	}
+
+	// Should not panic with nil telemetry
+	srv.trackToolCall("list_sandboxes")
+}
+
+func TestTrackToolCall_HandlerIntegration(t *testing.T) {
+	mt := &mockTelemetry{}
+	st := newMockStore()
+	cfg := testConfig()
+	vmSvc := vm.NewService(nil, st, vm.Config{})
+	srv := &Server{
+		cfg:       cfg,
+		store:     st,
+		vmService: vmSvc,
+		telemetry: mt,
+		logger:    noopLogger(),
+	}
+	ctx := context.Background()
+
+	_, _ = srv.handleListSandboxes(ctx, newRequest("list_sandboxes", nil))
+
+	events := mt.getEvents()
+	require.Len(t, events, 1)
+	assert.Equal(t, "mcp_tool_call", events[0].name)
+	assert.Equal(t, "list_sandboxes", events[0].properties["tool_name"])
 }
 
 // --- shellEscape tests ---

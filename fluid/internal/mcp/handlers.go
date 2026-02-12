@@ -70,11 +70,22 @@ func (s *Server) findHostForSourceVM(ctx context.Context, sourceVM, hostName str
 	return host, nil
 }
 
+// trackToolCall records an mcp_tool_call telemetry event.
+func (s *Server) trackToolCall(toolName string) {
+	if s.telemetry != nil {
+		s.telemetry.Track("mcp_tool_call", map[string]any{
+			"tool_name": toolName,
+		})
+	}
+}
+
 // --- Handlers ---
 
 func (s *Server) handleListSandboxes(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("list_sandboxes")
 	sandboxes, err := s.vmService.GetSandboxes(ctx, store.SandboxFilter{}, nil)
 	if err != nil {
+		s.logger.Error("list_sandboxes failed", "error", err)
 		return errorResult(map[string]any{"error": fmt.Sprintf("list sandboxes: %s", err)})
 	}
 
@@ -106,6 +117,8 @@ func (s *Server) handleListSandboxes(ctx context.Context, request mcp.CallToolRe
 }
 
 func (s *Server) handleCreateSandbox(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("create_sandbox")
+
 	sourceVM := request.GetString("source_vm", "")
 	if sourceVM == "" {
 		return nil, fmt.Errorf("source_vm is required")
@@ -119,6 +132,7 @@ func (s *Server) handleCreateSandbox(ctx context.Context, request mcp.CallToolRe
 		var err error
 		host, err = s.findHostForSourceVM(ctx, sourceVM, hostName)
 		if err != nil {
+			s.logger.Error("create_sandbox failed", "error", err, "source_vm", sourceVM)
 			return errorResult(map[string]any{"source_vm": sourceVM, "error": fmt.Sprintf("find host for source VM: %s", err)})
 		}
 	}
@@ -126,6 +140,7 @@ func (s *Server) handleCreateSandbox(ctx context.Context, request mcp.CallToolRe
 	if host != nil {
 		sb, ip, err := s.vmService.CreateSandboxOnHost(ctx, host, sourceVM, mcpAgentID, "", cpu, memoryMB, nil, true, true)
 		if err != nil {
+			s.logger.Error("create_sandbox failed", "error", err, "source_vm", sourceVM, "host", host.Name)
 			return errorResult(map[string]any{"source_vm": sourceVM, "host": host.Name, "error": fmt.Sprintf("create sandbox on host: %s", err)})
 		}
 		result := map[string]any{
@@ -142,6 +157,7 @@ func (s *Server) handleCreateSandbox(ctx context.Context, request mcp.CallToolRe
 
 	sb, ip, err := s.vmService.CreateSandbox(ctx, sourceVM, mcpAgentID, "", cpu, memoryMB, nil, true, true)
 	if err != nil {
+		s.logger.Error("create_sandbox failed", "error", err, "source_vm", sourceVM)
 		return errorResult(map[string]any{"source_vm": sourceVM, "error": fmt.Sprintf("create sandbox: %s", err)})
 	}
 	result := map[string]any{
@@ -156,6 +172,8 @@ func (s *Server) handleCreateSandbox(ctx context.Context, request mcp.CallToolRe
 }
 
 func (s *Server) handleDestroySandbox(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("destroy_sandbox")
+
 	id := request.GetString("sandbox_id", "")
 	if id == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
@@ -163,6 +181,7 @@ func (s *Server) handleDestroySandbox(ctx context.Context, request mcp.CallToolR
 
 	_, err := s.vmService.DestroySandbox(ctx, id)
 	if err != nil {
+		s.logger.Error("destroy_sandbox failed", "error", err, "sandbox_id", id)
 		return errorResult(map[string]any{"sandbox_id": id, "error": fmt.Sprintf("destroy sandbox: %s", err)})
 	}
 
@@ -173,6 +192,8 @@ func (s *Server) handleDestroySandbox(ctx context.Context, request mcp.CallToolR
 }
 
 func (s *Server) handleRunCommand(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("run_command")
+
 	sandboxID := request.GetString("sandbox_id", "")
 	command := request.GetString("command", "")
 	if sandboxID == "" {
@@ -188,6 +209,7 @@ func (s *Server) handleRunCommand(ctx context.Context, request mcp.CallToolReque
 	user := s.cfg.SSH.DefaultUser
 	result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", command, timeout, nil)
 	if err != nil {
+		s.logger.Error("run_command failed", "error", err, "sandbox_id", sandboxID, "command", command)
 		resp := map[string]any{
 			"sandbox_id": sandboxID,
 			"command":    command,
@@ -210,6 +232,8 @@ func (s *Server) handleRunCommand(ctx context.Context, request mcp.CallToolReque
 }
 
 func (s *Server) handleStartSandbox(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("start_sandbox")
+
 	id := request.GetString("sandbox_id", "")
 	if id == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
@@ -217,6 +241,7 @@ func (s *Server) handleStartSandbox(ctx context.Context, request mcp.CallToolReq
 
 	ip, err := s.vmService.StartSandbox(ctx, id, true)
 	if err != nil {
+		s.logger.Error("start_sandbox failed", "error", err, "sandbox_id", id)
 		return errorResult(map[string]any{"sandbox_id": id, "error": fmt.Sprintf("start sandbox: %s", err)})
 	}
 
@@ -231,6 +256,8 @@ func (s *Server) handleStartSandbox(ctx context.Context, request mcp.CallToolReq
 }
 
 func (s *Server) handleStopSandbox(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("stop_sandbox")
+
 	id := request.GetString("sandbox_id", "")
 	if id == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
@@ -238,6 +265,7 @@ func (s *Server) handleStopSandbox(ctx context.Context, request mcp.CallToolRequ
 
 	err := s.vmService.StopSandbox(ctx, id, false)
 	if err != nil {
+		s.logger.Error("stop_sandbox failed", "error", err, "sandbox_id", id)
 		return errorResult(map[string]any{"sandbox_id": id, "error": fmt.Sprintf("stop sandbox: %s", err)})
 	}
 
@@ -248,6 +276,8 @@ func (s *Server) handleStopSandbox(ctx context.Context, request mcp.CallToolRequ
 }
 
 func (s *Server) handleGetSandbox(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("get_sandbox")
+
 	id := request.GetString("sandbox_id", "")
 	if id == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
@@ -255,6 +285,7 @@ func (s *Server) handleGetSandbox(ctx context.Context, request mcp.CallToolReque
 
 	sb, err := s.vmService.GetSandbox(ctx, id)
 	if err != nil {
+		s.logger.Error("get_sandbox failed", "error", err, "sandbox_id", id)
 		return errorResult(map[string]any{"sandbox_id": id, "error": fmt.Sprintf("get sandbox: %s", err)})
 	}
 
@@ -282,6 +313,8 @@ func (s *Server) handleGetSandbox(ctx context.Context, request mcp.CallToolReque
 }
 
 func (s *Server) handleListVMs(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("list_vms")
+
 	if s.multiHostMgr != nil {
 		return s.listVMsFromHosts(ctx)
 	}
@@ -291,6 +324,7 @@ func (s *Server) handleListVMs(ctx context.Context, request mcp.CallToolRequest)
 func (s *Server) listVMsFromHosts(ctx context.Context) (*mcp.CallToolResult, error) {
 	listResult, err := s.multiHostMgr.ListDomains(ctx)
 	if err != nil {
+		s.logger.Error("list_vms failed", "error", err)
 		return errorResult(map[string]any{"error": fmt.Sprintf("list domains from hosts: %s", err)})
 	}
 
@@ -338,6 +372,7 @@ func (s *Server) listVMsLocal(ctx context.Context) (*mcp.CallToolResult, error) 
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
+		s.logger.Error("list_vms failed", "error", err)
 		return errorResult(map[string]any{"error": fmt.Sprintf("virsh list: %s: %s", err, stderr.String())})
 	}
 
@@ -361,6 +396,8 @@ func (s *Server) listVMsLocal(ctx context.Context) (*mcp.CallToolResult, error) 
 }
 
 func (s *Server) handleCreateSnapshot(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("create_snapshot")
+
 	sandboxID := request.GetString("sandbox_id", "")
 	if sandboxID == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
@@ -372,6 +409,7 @@ func (s *Server) handleCreateSnapshot(ctx context.Context, request mcp.CallToolR
 
 	snap, err := s.vmService.CreateSnapshot(ctx, sandboxID, name, false)
 	if err != nil {
+		s.logger.Error("create_snapshot failed", "error", err, "sandbox_id", sandboxID)
 		return errorResult(map[string]any{"sandbox_id": sandboxID, "error": fmt.Sprintf("create snapshot: %s", err)})
 	}
 
@@ -384,6 +422,8 @@ func (s *Server) handleCreateSnapshot(ctx context.Context, request mcp.CallToolR
 }
 
 func (s *Server) handleCreatePlaybook(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("create_playbook")
+
 	name := request.GetString("name", "")
 	if name == "" {
 		return nil, fmt.Errorf("name is required")
@@ -397,6 +437,7 @@ func (s *Server) handleCreatePlaybook(ctx context.Context, request mcp.CallToolR
 		Become: become,
 	})
 	if err != nil {
+		s.logger.Error("create_playbook failed", "error", err, "name", name)
 		return errorResult(map[string]any{"name": name, "error": fmt.Sprintf("create playbook: %s", err)})
 	}
 
@@ -414,6 +455,8 @@ func (s *Server) handleCreatePlaybook(ctx context.Context, request mcp.CallToolR
 }
 
 func (s *Server) handleAddPlaybookTask(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("add_playbook_task")
+
 	playbookID := request.GetString("playbook_id", "")
 	if playbookID == "" {
 		return nil, fmt.Errorf("playbook_id is required")
@@ -441,6 +484,7 @@ func (s *Server) handleAddPlaybookTask(ctx context.Context, request mcp.CallTool
 		Params: params,
 	})
 	if err != nil {
+		s.logger.Error("add_playbook_task failed", "error", err, "playbook_id", playbookID)
 		return errorResult(map[string]any{"playbook_id": playbookID, "error": fmt.Sprintf("add playbook task: %s", err)})
 	}
 
@@ -454,6 +498,8 @@ func (s *Server) handleAddPlaybookTask(ctx context.Context, request mcp.CallTool
 }
 
 func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("edit_file")
+
 	sandboxID := request.GetString("sandbox_id", "")
 	if sandboxID == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
@@ -468,6 +514,7 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 	user := s.cfg.SSH.DefaultUser
 
 	if err := checkFileSize(int64(len(newStr))); err != nil {
+		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("file too large: %s", err)})
 	}
 
@@ -476,11 +523,13 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 		encoded := base64.StdEncoding.EncodeToString([]byte(newStr))
 		escapedPath, err := shellEscape(path)
 		if err != nil {
+			s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 			return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
 		}
 		cmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, escapedPath)
 		result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", cmd, 0, nil)
 		if err != nil {
+			s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 			resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("create file: %s", err)}
 			if result != nil {
 				resp["exit_code"] = result.ExitCode
@@ -489,6 +538,7 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 			return errorResult(resp)
 		}
 		if result.ExitCode != 0 {
+			s.logger.Error("edit_file failed", "error", fmt.Sprintf("exit code %d", result.ExitCode), "sandbox_id", sandboxID, "path", path)
 			return errorResult(map[string]any{
 				"sandbox_id": sandboxID, "path": path,
 				"exit_code": result.ExitCode, "stderr": result.Stderr,
@@ -505,10 +555,12 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 	// Read existing file
 	escapedPath, err := shellEscape(path)
 	if err != nil {
+		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
 	}
 	readResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 %s", escapedPath), 0, nil)
 	if err != nil {
+		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 		resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("read file for edit: %s", err)}
 		if readResult != nil {
 			resp["exit_code"] = readResult.ExitCode
@@ -517,6 +569,7 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 		return errorResult(resp)
 	}
 	if readResult.ExitCode != 0 {
+		s.logger.Error("edit_file failed", "error", fmt.Sprintf("exit code %d", readResult.ExitCode), "sandbox_id", sandboxID, "path", path)
 		return errorResult(map[string]any{
 			"sandbox_id": sandboxID, "path": path,
 			"exit_code": readResult.ExitCode, "stderr": readResult.Stderr,
@@ -526,6 +579,7 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 
 	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(readResult.Stdout))
 	if err != nil {
+		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("decode file content: %s", err)})
 	}
 	original := string(decoded)
@@ -542,11 +596,13 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 	encoded := base64.StdEncoding.EncodeToString([]byte(edited))
 	escapedPathW, err := shellEscape(path)
 	if err != nil {
+		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
 	}
 	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, escapedPathW)
 	writeResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", writeCmd, 0, nil)
 	if err != nil {
+		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 		resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("write file: %s", err)}
 		if writeResult != nil {
 			resp["exit_code"] = writeResult.ExitCode
@@ -555,6 +611,7 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 		return errorResult(resp)
 	}
 	if writeResult.ExitCode != 0 {
+		s.logger.Error("edit_file failed", "error", fmt.Sprintf("exit code %d", writeResult.ExitCode), "sandbox_id", sandboxID, "path", path)
 		return errorResult(map[string]any{
 			"sandbox_id": sandboxID, "path": path,
 			"exit_code": writeResult.ExitCode, "stderr": writeResult.Stderr,
@@ -570,6 +627,8 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 }
 
 func (s *Server) handleReadFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("read_file")
+
 	sandboxID := request.GetString("sandbox_id", "")
 	if sandboxID == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
@@ -582,10 +641,12 @@ func (s *Server) handleReadFile(ctx context.Context, request mcp.CallToolRequest
 	user := s.cfg.SSH.DefaultUser
 	escapedPath, err := shellEscape(path)
 	if err != nil {
+		s.logger.Error("read_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
 	}
 	result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 %s", escapedPath), 0, nil)
 	if err != nil {
+		s.logger.Error("read_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 		resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("read file: %s", err)}
 		if result != nil {
 			resp["exit_code"] = result.ExitCode
@@ -594,6 +655,7 @@ func (s *Server) handleReadFile(ctx context.Context, request mcp.CallToolRequest
 		return errorResult(resp)
 	}
 	if result.ExitCode != 0 {
+		s.logger.Error("read_file failed", "error", fmt.Sprintf("exit code %d", result.ExitCode), "sandbox_id", sandboxID, "path", path)
 		return errorResult(map[string]any{
 			"sandbox_id": sandboxID, "path": path,
 			"exit_code": result.ExitCode, "stderr": result.Stderr,
@@ -603,6 +665,7 @@ func (s *Server) handleReadFile(ctx context.Context, request mcp.CallToolRequest
 
 	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(result.Stdout))
 	if err != nil {
+		s.logger.Error("read_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("decode file content: %s", err)})
 	}
 
@@ -614,8 +677,11 @@ func (s *Server) handleReadFile(ctx context.Context, request mcp.CallToolRequest
 }
 
 func (s *Server) handleListPlaybooks(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("list_playbooks")
+
 	playbooks, err := s.playbookService.ListPlaybooks(ctx, nil)
 	if err != nil {
+		s.logger.Error("list_playbooks failed", "error", err)
 		return errorResult(map[string]any{"error": fmt.Sprintf("list playbooks: %s", err)})
 	}
 
@@ -642,6 +708,8 @@ func (s *Server) handleListPlaybooks(ctx context.Context, request mcp.CallToolRe
 }
 
 func (s *Server) handleGetPlaybook(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("get_playbook")
+
 	playbookID := request.GetString("playbook_id", "")
 	if playbookID == "" {
 		return nil, fmt.Errorf("playbook_id is required")
@@ -649,11 +717,13 @@ func (s *Server) handleGetPlaybook(ctx context.Context, request mcp.CallToolRequ
 
 	pbWithTasks, err := s.playbookService.GetPlaybookWithTasks(ctx, playbookID)
 	if err != nil {
+		s.logger.Error("get_playbook failed", "error", err, "playbook_id", playbookID)
 		return errorResult(map[string]any{"playbook_id": playbookID, "error": fmt.Sprintf("get playbook: %s", err)})
 	}
 
 	yamlContent, err := s.playbookService.ExportPlaybook(ctx, playbookID)
 	if err != nil {
+		s.logger.Error("get_playbook failed", "error", err, "playbook_id", playbookID)
 		return errorResult(map[string]any{"playbook_id": playbookID, "error": fmt.Sprintf("export playbook: %s", err)})
 	}
 
@@ -685,6 +755,8 @@ func (s *Server) handleGetPlaybook(ctx context.Context, request mcp.CallToolRequ
 }
 
 func (s *Server) handleRunSourceCommand(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("run_source_command")
+
 	sourceVM := request.GetString("source_vm", "")
 	if sourceVM == "" {
 		return nil, fmt.Errorf("source_vm is required")
@@ -699,6 +771,7 @@ func (s *Server) handleRunSourceCommand(ctx context.Context, request mcp.CallToo
 
 	result, err := s.vmService.RunSourceVMCommand(ctx, sourceVM, command, timeout)
 	if err != nil {
+		s.logger.Error("run_source_command failed", "error", err, "source_vm", sourceVM, "command", command)
 		resp := map[string]any{
 			"source_vm": sourceVM,
 			"command":   command,
@@ -721,6 +794,8 @@ func (s *Server) handleRunSourceCommand(ctx context.Context, request mcp.CallToo
 }
 
 func (s *Server) handleReadSourceFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.trackToolCall("read_source_file")
+
 	sourceVM := request.GetString("source_vm", "")
 	if sourceVM == "" {
 		return nil, fmt.Errorf("source_vm is required")
@@ -732,11 +807,13 @@ func (s *Server) handleReadSourceFile(ctx context.Context, request mcp.CallToolR
 
 	escapedPath, err := shellEscape(path)
 	if err != nil {
+		s.logger.Error("read_source_file failed", "error", err, "source_vm", sourceVM, "path", path)
 		return errorResult(map[string]any{"source_vm": sourceVM, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
 	}
 	cmd := fmt.Sprintf("base64 %s", escapedPath)
 	result, err := s.vmService.RunSourceVMCommand(ctx, sourceVM, cmd, 0)
 	if err != nil {
+		s.logger.Error("read_source_file failed", "error", err, "source_vm", sourceVM, "path", path)
 		resp := map[string]any{"source_vm": sourceVM, "path": path, "error": fmt.Sprintf("read source file: %s", err)}
 		if result != nil {
 			resp["exit_code"] = result.ExitCode
@@ -745,6 +822,7 @@ func (s *Server) handleReadSourceFile(ctx context.Context, request mcp.CallToolR
 		return errorResult(resp)
 	}
 	if result.ExitCode != 0 {
+		s.logger.Error("read_source_file failed", "error", fmt.Sprintf("exit code %d", result.ExitCode), "source_vm", sourceVM, "path", path)
 		return errorResult(map[string]any{
 			"source_vm": sourceVM, "path": path,
 			"exit_code": result.ExitCode, "stderr": result.Stderr,
@@ -754,6 +832,7 @@ func (s *Server) handleReadSourceFile(ctx context.Context, request mcp.CallToolR
 
 	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(result.Stdout))
 	if err != nil {
+		s.logger.Error("read_source_file failed", "error", err, "source_vm", sourceVM, "path", path)
 		return errorResult(map[string]any{"source_vm": sourceVM, "path": path, "error": fmt.Sprintf("decode file content: %s", err)})
 	}
 
