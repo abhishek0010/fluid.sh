@@ -11,15 +11,31 @@ import (
 
 // Config is the root configuration for virsh-sandbox API.
 type Config struct {
+	Provider           string          `yaml:"provider"` // "libvirt" (default) or "proxmox"
 	Libvirt            LibvirtConfig   `yaml:"libvirt"`
+	Proxmox            ProxmoxConfig   `yaml:"proxmox"`
 	VM                 VMConfig        `yaml:"vm"`
 	SSH                SSHConfig       `yaml:"ssh"`
 	Ansible            AnsibleConfig   `yaml:"ansible"`
 	Logging            LoggingConfig   `yaml:"logging"`
 	Telemetry          TelemetryConfig `yaml:"telemetry"`
 	AIAgent            AIAgentConfig   `yaml:"ai_agent"`
-	Hosts              []HostConfig    `yaml:"hosts"`               // Remote libvirt hosts for multi-host VM management
+	Hosts              []HostConfig    `yaml:"hosts"`               // Remote hosts for multi-host VM management
 	OnboardingComplete bool            `yaml:"onboarding_complete"` // Whether onboarding wizard has been completed
+}
+
+// ProxmoxConfig holds Proxmox VE API settings.
+type ProxmoxConfig struct {
+	Host      string `yaml:"host"`       // e.g., "https://pve.example.com:8006"
+	TokenID   string `yaml:"token_id"`   // e.g., "root@pam!fluid"
+	Secret    string `yaml:"secret"`     // API token secret
+	Node      string `yaml:"node"`       // Target node name, e.g., "pve1"
+	VerifySSL bool   `yaml:"verify_ssl"` // Verify TLS certificates (default: true)
+	Storage   string `yaml:"storage"`    // Storage for VM disks, e.g., "local-lvm"
+	Bridge    string `yaml:"bridge"`     // Network bridge, e.g., "vmbr0"
+	CloneMode string `yaml:"clone_mode"` // "full" or "linked" (default: "full")
+	VMIDStart int    `yaml:"vmid_start"` // Start of VMID range for sandboxes (default: 9000)
+	VMIDEnd   int    `yaml:"vmid_end"`   // End of VMID range for sandboxes (default: 9999)
 }
 
 // AIAgentConfig holds settings for LLM integration.
@@ -104,6 +120,13 @@ func DefaultConfig() *Config {
 	configDir := filepath.Join(home, ".fluid")
 
 	return &Config{
+		Provider: "libvirt",
+		Proxmox: ProxmoxConfig{
+			VerifySSL: true,
+			CloneMode: "full",
+			VMIDStart: 9000,
+			VMIDEnd:   9999,
+		},
 		Telemetry: TelemetryConfig{
 			EnableAnonymousUsage: true,
 		},
@@ -208,6 +231,22 @@ func applyDefaults(cfg *Config) {
 		cfg.SSH.MaxTTL = defaults.SSH.MaxTTL
 	}
 
+	// Provider default
+	if cfg.Provider == "" {
+		cfg.Provider = defaults.Provider
+	}
+
+	// Proxmox defaults
+	if cfg.Proxmox.CloneMode == "" {
+		cfg.Proxmox.CloneMode = defaults.Proxmox.CloneMode
+	}
+	if cfg.Proxmox.VMIDStart == 0 {
+		cfg.Proxmox.VMIDStart = defaults.Proxmox.VMIDStart
+	}
+	if cfg.Proxmox.VMIDEnd == 0 {
+		cfg.Proxmox.VMIDEnd = defaults.Proxmox.VMIDEnd
+	}
+
 	// Libvirt defaults
 	if cfg.Libvirt.URI == "" {
 		cfg.Libvirt.URI = defaults.Libvirt.URI
@@ -293,6 +332,21 @@ func applyEnvOverrides(cfg *Config) {
 	// Prioritize environment variables for API Key
 	if v := os.Getenv("OPENROUTER_API_KEY"); v != "" {
 		cfg.AIAgent.APIKey = v
+	}
+
+	// Proxmox env overrides
+	if v := os.Getenv("PROXMOX_HOST"); v != "" {
+		cfg.Proxmox.Host = v
+		cfg.Provider = "proxmox"
+	}
+	if v := os.Getenv("PROXMOX_TOKEN_ID"); v != "" {
+		cfg.Proxmox.TokenID = v
+	}
+	if v := os.Getenv("PROXMOX_SECRET"); v != "" {
+		cfg.Proxmox.Secret = v
+	}
+	if v := os.Getenv("PROXMOX_NODE"); v != "" {
+		cfg.Proxmox.Node = v
 	}
 }
 

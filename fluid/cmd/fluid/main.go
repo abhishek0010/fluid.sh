@@ -18,6 +18,8 @@ import (
 
 	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid/internal/provider"
+	"github.com/aspectrr/fluid.sh/fluid/internal/proxmox"
 	"github.com/aspectrr/fluid.sh/fluid/internal/readonly"
 	"github.com/aspectrr/fluid.sh/fluid/internal/sshca"
 	"github.com/aspectrr/fluid.sh/fluid/internal/sshkeys"
@@ -34,7 +36,7 @@ var (
 	cfg              *config.Config
 	dataStore        store.Store
 	vmService        *vm.Service
-	libvirtMgr       libvirt.Manager
+	providerMgr      provider.Manager
 	telemetryService telemetry.Service
 )
 
@@ -172,15 +174,41 @@ func initServices() error {
 		sshCAPubKey = strings.TrimSpace(string(pubKeyBytes))
 	}
 
-	// Create libvirt manager
-	libvirtMgr = libvirt.NewVirshManager(libvirt.Config{
-		LibvirtURI:         cfg.Libvirt.URI,
-		BaseImageDir:       cfg.Libvirt.BaseImageDir,
-		WorkDir:            cfg.Libvirt.WorkDir,
-		SSHKeyInjectMethod: cfg.Libvirt.SSHKeyInjectMethod,
-		SocketVMNetWrapper: cfg.Libvirt.SocketVMNetWrapper,
-		SSHCAPubKey:        sshCAPubKey,
-	}, slog.Default())
+	// Create provider manager based on configured provider
+	var remoteFactory vm.RemoteManagerFactory
+	switch cfg.Provider {
+	case "proxmox":
+		proxmoxCfg := proxmox.Config{
+			Host:      cfg.Proxmox.Host,
+			TokenID:   cfg.Proxmox.TokenID,
+			Secret:    cfg.Proxmox.Secret,
+			Node:      cfg.Proxmox.Node,
+			VerifySSL: cfg.Proxmox.VerifySSL,
+			Storage:   cfg.Proxmox.Storage,
+			Bridge:    cfg.Proxmox.Bridge,
+			CloneMode: cfg.Proxmox.CloneMode,
+			VMIDStart: cfg.Proxmox.VMIDStart,
+			VMIDEnd:   cfg.Proxmox.VMIDEnd,
+		}
+		mgr, mgrErr := proxmox.NewProxmoxManager(proxmoxCfg, slog.Default())
+		if mgrErr != nil {
+			return fmt.Errorf("create proxmox manager: %w", mgrErr)
+		}
+		providerMgr = mgr
+	default:
+		virshCfg := libvirt.Config{
+			LibvirtURI:         cfg.Libvirt.URI,
+			BaseImageDir:       cfg.Libvirt.BaseImageDir,
+			WorkDir:            cfg.Libvirt.WorkDir,
+			SSHKeyInjectMethod: cfg.Libvirt.SSHKeyInjectMethod,
+			SocketVMNetWrapper: cfg.Libvirt.SocketVMNetWrapper,
+			SSHCAPubKey:        sshCAPubKey,
+		}
+		providerMgr = libvirt.NewVirshManager(virshCfg, slog.Default())
+		remoteFactory = func(host config.HostConfig) provider.Manager {
+			return libvirt.NewRemoteVirshManager(host, virshCfg, slog.Default())
+		}
+	}
 
 	// Initialize telemetry
 	telemetryService, err = telemetry.NewService(cfg.Telemetry)
@@ -189,15 +217,20 @@ func initServices() error {
 		telemetryService = telemetry.NewNoopService()
 	}
 
-	// Create VM service with key manager
-	vmService = vm.NewService(libvirtMgr, dataStore, vm.Config{
+	// Create VM service with key manager and remote factory
+	var serviceOpts []vm.Option
+	serviceOpts = append(serviceOpts, vm.WithKeyManager(keyMgr), vm.WithTelemetry(telemetryService))
+	if remoteFactory != nil {
+		serviceOpts = append(serviceOpts, vm.WithRemoteManagerFactory(remoteFactory))
+	}
+	vmService = vm.NewService(providerMgr, dataStore, vm.Config{
 		Network:            cfg.Libvirt.Network,
 		DefaultVCPUs:       cfg.VM.DefaultVCPUs,
 		DefaultMemoryMB:    cfg.VM.DefaultMemoryMB,
 		CommandTimeout:     cfg.VM.CommandTimeout,
 		IPDiscoveryTimeout: cfg.VM.IPDiscoveryTimeout,
 		SSHProxyJump:       cfg.SSH.ProxyJump,
-	}, vm.WithKeyManager(keyMgr), vm.WithTelemetry(telemetryService))
+	}, serviceOpts...)
 
 	return nil
 }
@@ -756,11 +789,11 @@ func init() {
 var vmsCmd = &cobra.Command{
 	Use:   "vms",
 	Short: "List available VMs",
-	Long:  `List all VMs available in libvirt (potential source VMs for cloning)`,
+	Long:  `List all VMs available for cloning (libvirt or Proxmox depending on provider)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 
-		// Load config to check for hosts
+		// Load config to check for provider and hosts
 		configPath := cfgFile
 		if configPath == "" {
 			home, _ := os.UserHomeDir()
@@ -781,7 +814,55 @@ var vmsCmd = &cobra.Command{
 			return nil
 		}
 
-		// If hosts are configured, query remote hosts
+		// Proxmox provider: list VMs via API
+		if loadedCfg.Provider == "proxmox" {
+			proxmoxCfg := proxmox.Config{
+				Host:      loadedCfg.Proxmox.Host,
+				TokenID:   loadedCfg.Proxmox.TokenID,
+				Secret:    loadedCfg.Proxmox.Secret,
+				Node:      loadedCfg.Proxmox.Node,
+				VerifySSL: loadedCfg.Proxmox.VerifySSL,
+				VMIDStart: loadedCfg.Proxmox.VMIDStart,
+				VMIDEnd:   loadedCfg.Proxmox.VMIDEnd,
+			}
+			mnm := proxmox.NewMultiNodeManager(proxmoxCfg, slog.Default())
+			result, err := mnm.ListVMs(ctx)
+			if err != nil {
+				return fmt.Errorf("query proxmox: %w", err)
+			}
+
+			vms := make([]map[string]any, 0, len(result.VMs))
+			for _, vm := range result.VMs {
+				vms = append(vms, map[string]any{
+					"name":  vm.Name,
+					"vmid":  vm.UUID,
+					"state": vm.State,
+					"host":  vm.HostName,
+				})
+			}
+
+			resp := map[string]any{
+				"vms":      vms,
+				"count":    len(vms),
+				"provider": "proxmox",
+			}
+
+			if len(result.HostErrors) > 0 {
+				errors := make([]map[string]any, 0, len(result.HostErrors))
+				for _, e := range result.HostErrors {
+					errors = append(errors, map[string]any{
+						"host":  e.HostName,
+						"error": e.Error,
+					})
+				}
+				resp["host_errors"] = errors
+			}
+
+			output(resp)
+			return nil
+		}
+
+		// Libvirt provider: if hosts are configured, query remote hosts
 		if len(loadedCfg.Hosts) > 0 {
 			multiHostMgr := libvirt.NewMultiHostDomainManager(loadedCfg.Hosts, slog.Default())
 			result, err := multiHostMgr.ListDomains(ctx)
@@ -853,17 +934,17 @@ func listVMsViaVirsh(ctx context.Context) ([]map[string]any, error) {
 			"name": name,
 		}
 
-		// Get additional info about each VM if libvirtMgr is available
-		if libvirtMgr != nil {
+		// Get additional info about each VM if providerMgr is available
+		if providerMgr != nil {
 			// Get VM state
-			state, err := libvirtMgr.GetVMState(ctx, name)
+			state, err := providerMgr.GetVMState(ctx, name)
 			if err == nil {
 				vmInfo["state"] = string(state)
 			}
 
 			// Get IP address (only for running VMs)
 			if state == libvirt.VMStateRunning {
-				ip, mac, err := libvirtMgr.GetIPAddress(ctx, name, 1*time.Second)
+				ip, mac, err := providerMgr.GetIPAddress(ctx, name, 1*time.Second)
 				if err == nil && ip != "" {
 					vmInfo["ip"] = ip
 					vmInfo["mac"] = mac
@@ -909,7 +990,7 @@ This command checks:
 		var allErrors []string
 
 		// Validate source VM
-		vmValidation, err := libvirtMgr.ValidateSourceVM(ctx, sourceVM)
+		vmValidation, err := providerMgr.ValidateSourceVM(ctx, sourceVM)
 		if err != nil {
 			allErrors = append(allErrors, fmt.Sprintf("Failed to validate source VM: %v", err))
 			result["valid"] = false
@@ -936,7 +1017,7 @@ This command checks:
 		}
 		// Use default CPU count if not specified (for validation purposes)
 		cpuToCheck := cfg.VM.DefaultVCPUs
-		resourceCheck, err := libvirtMgr.CheckHostResources(ctx, cpuToCheck, memoryToCheck)
+		resourceCheck, err := providerMgr.CheckHostResources(ctx, cpuToCheck, memoryToCheck)
 		if err != nil {
 			allWarnings = append(allWarnings, fmt.Sprintf("Failed to check host resources: %v", err))
 		} else {
@@ -1161,7 +1242,7 @@ func runTUI() error {
 		return fmt.Errorf("init services: %w", err)
 	}
 
-	agent := tui.NewFluidAgent(cfg, dataStore, vmService, libvirtMgr, telemetryService, fileLogger)
+	agent := tui.NewFluidAgent(cfg, dataStore, vmService, providerMgr, telemetryService, fileLogger)
 
 	// Cleanup now happens in the TUI cleanup page when user presses Ctrl+C twice
 
@@ -1224,21 +1305,44 @@ func initServicesWithConfigAndLogger(loadedCfg *config.Config, logger *slog.Logg
 		sshCAPubKey = strings.TrimSpace(string(pubKeyBytes))
 	}
 
-	// Create libvirt config (shared between local and remote managers)
-	virshCfg := libvirt.Config{
-		LibvirtURI:         cfg.Libvirt.URI,
-		BaseImageDir:       cfg.Libvirt.BaseImageDir,
-		WorkDir:            cfg.Libvirt.WorkDir,
-		SSHKeyInjectMethod: cfg.Libvirt.SSHKeyInjectMethod,
-		SocketVMNetWrapper: cfg.Libvirt.SocketVMNetWrapper,
-		DefaultNetwork:     cfg.Libvirt.Network,
-		DefaultVCPUs:       cfg.VM.DefaultVCPUs,
-		DefaultMemoryMB:    cfg.VM.DefaultMemoryMB,
-		SSHCAPubKey:        sshCAPubKey,
+	// Create provider manager based on configured provider
+	var remoteFactory vm.RemoteManagerFactory
+	switch cfg.Provider {
+	case "proxmox":
+		proxmoxCfg := proxmox.Config{
+			Host:      cfg.Proxmox.Host,
+			TokenID:   cfg.Proxmox.TokenID,
+			Secret:    cfg.Proxmox.Secret,
+			Node:      cfg.Proxmox.Node,
+			VerifySSL: cfg.Proxmox.VerifySSL,
+			Storage:   cfg.Proxmox.Storage,
+			Bridge:    cfg.Proxmox.Bridge,
+			CloneMode: cfg.Proxmox.CloneMode,
+			VMIDStart: cfg.Proxmox.VMIDStart,
+			VMIDEnd:   cfg.Proxmox.VMIDEnd,
+		}
+		mgr, mgrErr := proxmox.NewProxmoxManager(proxmoxCfg, logger)
+		if mgrErr != nil {
+			return fmt.Errorf("create proxmox manager: %w", mgrErr)
+		}
+		providerMgr = mgr
+	default:
+		virshCfg := libvirt.Config{
+			LibvirtURI:         cfg.Libvirt.URI,
+			BaseImageDir:       cfg.Libvirt.BaseImageDir,
+			WorkDir:            cfg.Libvirt.WorkDir,
+			SSHKeyInjectMethod: cfg.Libvirt.SSHKeyInjectMethod,
+			SocketVMNetWrapper: cfg.Libvirt.SocketVMNetWrapper,
+			DefaultNetwork:     cfg.Libvirt.Network,
+			DefaultVCPUs:       cfg.VM.DefaultVCPUs,
+			DefaultMemoryMB:    cfg.VM.DefaultMemoryMB,
+			SSHCAPubKey:        sshCAPubKey,
+		}
+		providerMgr = libvirt.NewVirshManager(virshCfg, logger)
+		remoteFactory = func(host config.HostConfig) provider.Manager {
+			return libvirt.NewRemoteVirshManager(host, virshCfg, logger)
+		}
 	}
-
-	// Create libvirt manager
-	libvirtMgr = libvirt.NewVirshManager(virshCfg, logger)
 
 	// Initialize telemetry
 	telemetryService, err = telemetry.NewService(cfg.Telemetry)
@@ -1247,15 +1351,20 @@ func initServicesWithConfigAndLogger(loadedCfg *config.Config, logger *slog.Logg
 		telemetryService = telemetry.NewNoopService()
 	}
 
-	// Create VM service with virsh config for remote host support
-	vmService = vm.NewService(libvirtMgr, dataStore, vm.Config{
+	// Create VM service with remote factory for multi-host support
+	var serviceOpts []vm.Option
+	serviceOpts = append(serviceOpts, vm.WithLogger(logger), vm.WithKeyManager(keyMgr), vm.WithTelemetry(telemetryService))
+	if remoteFactory != nil {
+		serviceOpts = append(serviceOpts, vm.WithRemoteManagerFactory(remoteFactory))
+	}
+	vmService = vm.NewService(providerMgr, dataStore, vm.Config{
 		Network:            cfg.Libvirt.Network,
 		DefaultVCPUs:       cfg.VM.DefaultVCPUs,
 		DefaultMemoryMB:    cfg.VM.DefaultMemoryMB,
 		CommandTimeout:     cfg.VM.CommandTimeout,
 		IPDiscoveryTimeout: cfg.VM.IPDiscoveryTimeout,
 		SSHProxyJump:       cfg.SSH.ProxyJump,
-	}, vm.WithVirshConfig(virshCfg), vm.WithLogger(logger), vm.WithKeyManager(keyMgr), vm.WithTelemetry(telemetryService))
+	}, serviceOpts...)
 
 	return nil
 }
@@ -1315,7 +1424,7 @@ var sourcePrepareCmd = &cobra.Command{
 
 		// Discover VM IP.
 		ctx := context.Background()
-		ip, _, err := libvirtMgr.GetIPAddress(ctx, vmName, 2*time.Minute)
+		ip, _, err := providerMgr.GetIPAddress(ctx, vmName, 2*time.Minute)
 		if err != nil {
 			return fmt.Errorf("discover IP for VM %s: %w", vmName, err)
 		}
