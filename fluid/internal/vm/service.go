@@ -1682,8 +1682,23 @@ func (s *Service) RunSourceVMCommandWithCallback(ctx context.Context, sourceVMNa
 		return nil, fmt.Errorf("key manager is required for source VM access")
 	}
 
-	// Discover VM IP.
-	ip, _, err := s.mgr.GetIPAddress(ctx, sourceVMName, s.cfg.IPDiscoveryTimeout)
+	// Look up source VM host info from store for remote IP discovery and proxy jump.
+	var remoteHost *config.HostConfig
+	if s.store != nil {
+		if svm, err := s.store.GetSourceVM(ctx, sourceVMName); err == nil && svm.HostAddress != nil && *svm.HostAddress != "" {
+			remoteHost = &config.HostConfig{
+				Name:    derefStr(svm.HostName),
+				Address: *svm.HostAddress,
+			}
+		}
+	}
+
+	// Discover VM IP using remote manager if VM is on a remote host.
+	ipMgr := s.mgr
+	if remoteHost != nil {
+		ipMgr = libvirt.NewRemoteVirshManager(*remoteHost, s.virshCfg, s.logger)
+	}
+	ip, _, err := ipMgr.GetIPAddress(ctx, sourceVMName, s.cfg.IPDiscoveryTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("discover IP for source VM %s: %w", sourceVMName, err)
 	}
@@ -1694,8 +1709,15 @@ func (s *Service) RunSourceVMCommandWithCallback(ctx context.Context, sourceVMNa
 		return nil, fmt.Errorf("get source VM credentials: %w", err)
 	}
 
-	// Determine proxy jump.
+	// Determine proxy jump. Use remote host as jump host if VM is on a remote network.
 	proxyJump := s.cfg.SSHProxyJump
+	if remoteHost != nil && proxyJump == "" {
+		sshUser := remoteHost.SSHUser
+		if sshUser == "" {
+			sshUser = "root"
+		}
+		proxyJump = fmt.Sprintf("%s@%s", sshUser, remoteHost.Address)
+	}
 
 	// Pass command directly - the restricted shell on source VMs handles execution.
 	var stdout, stderr string
@@ -1755,6 +1777,13 @@ func snapshotKindFromString(k string) store.SnapshotKind {
 	default:
 		return store.SnapshotKindInternal
 	}
+}
+
+func derefStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 func shortID() string {

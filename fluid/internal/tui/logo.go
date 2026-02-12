@@ -107,11 +107,12 @@ func RenderBanner(modelName string, hosts string, provider string, width int) st
 }
 
 // RenderStatusBarBottom renders the bottom status bar with model, sandbox, mode, and context usage
-func RenderStatusBarBottom(modelName string, sandboxID string, sandboxHost string, contextUsage float64, readOnly bool, width int) string {
+func RenderStatusBarBottom(modelName string, sandboxID string, sandboxHost string, sandboxBaseImage string, sourceVM string, contextUsage float64, readOnly bool, width int) string {
 	// Styles
 	dividerStyle := lipgloss.NewStyle().Foreground(mutedColor)
 	modelStyle := lipgloss.NewStyle().Foreground(textColor)
 	sandboxStyle := lipgloss.NewStyle().Foreground(secondaryColor)
+	sourceVMStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EAB308")) // Amber
 	progressStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#A3BE8C")) // Olive/green
 
 	divider := dividerStyle.Render(" | ")
@@ -127,16 +128,21 @@ func RenderStatusBarBottom(modelName string, sandboxID string, sandboxHost strin
 		modePart = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#10B981")).Render("EDIT")
 	}
 
-	// Sandbox
-	var sandboxPart string
-	if sandboxID != "" {
-		if sandboxHost != "" {
-			sandboxPart = sandboxStyle.Render(sandboxID + " (" + sandboxHost + ")")
+	// Target: source VM or sandbox
+	var targetPart string
+	if sourceVM != "" {
+		// Currently operating on a source VM
+		targetPart = sourceVMStyle.Render(sourceVM + " (read-only)")
+	} else if sandboxID != "" {
+		if sandboxBaseImage != "" {
+			targetPart = sandboxStyle.Render(sandboxID + " (from " + sandboxBaseImage + ")")
+		} else if sandboxHost != "" {
+			targetPart = sandboxStyle.Render(sandboxID + " (" + sandboxHost + ")")
 		} else {
-			sandboxPart = sandboxStyle.Render(sandboxID)
+			targetPart = sandboxStyle.Render(sandboxID)
 		}
 	} else {
-		sandboxPart = dividerStyle.Render("no sandbox")
+		targetPart = dividerStyle.Render("no sandbox")
 	}
 
 	// Context bar
@@ -153,7 +159,7 @@ func RenderStatusBarBottom(modelName string, sandboxID string, sandboxHost strin
 	contextPart := progressStyle.Render(bar) + " " + dividerStyle.Render(fmt.Sprintf("%d%%", percentage))
 
 	// Combine all parts
-	fullBar := modelPart + divider + modePart + divider + sandboxPart + divider + contextPart
+	fullBar := modelPart + divider + modePart + divider + targetPart + divider + contextPart
 
 	// Render with full width
 	barStyle := lipgloss.NewStyle().

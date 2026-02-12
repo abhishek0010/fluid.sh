@@ -139,6 +139,16 @@ rm -rf /var/lib/libvirt/images/sandboxes/* 2>/dev/null || true
 
 log_success "Cleanup complete."
 
+# Flush stale DHCP leases by bouncing the default network
+# Prevents multiple IPs when reusing deterministic MAC addresses
+log_info "Flushing DHCP leases by restarting default network..."
+virsh net-destroy default > /dev/null 2>&1 || true
+# Delete on-disk lease files so dnsmasq doesn't reload stale leases
+rm -f /var/lib/libvirt/dnsmasq/virbr0.status /var/lib/libvirt/dnsmasq/virbr0.leases 2>/dev/null || true
+rm -f /var/lib/libvirt/dnsmasq/default.leases 2>/dev/null || true
+virsh net-start default > /dev/null 2>&1 || true
+log_success "DHCP leases flushed."
+
 # ============================================================================
 # STEP 3: Create Test VM (Ubuntu 22.04 Cloud Image)
 # ============================================================================
@@ -203,6 +213,7 @@ EOF
 if [[ -n "$SSH_USERS_FILE" ]] && [[ -f "$SSH_USERS_FILE" ]]; then
     echo "" >> "$USER_DATA"
     echo "users:" >> "$USER_DATA"
+    echo "  - default" >> "$USER_DATA"
     while IFS= read -r line || [[ -n "$line" ]]; do
         [[ -z "$line" ]] && continue
         [[ "$line" =~ ^#.*$ ]] && continue
@@ -229,6 +240,26 @@ runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
 EOF
+
+# Add SSH public keys to KVM host for proxy jump access
+if [[ -n "$SSH_USERS_FILE" ]] && [[ -f "$SSH_USERS_FILE" ]]; then
+    log_info "Adding SSH public keys to KVM host authorized_keys..."
+    HOST_SSH_DIR="/root/.ssh"
+    mkdir -p "$HOST_SSH_DIR"
+    chmod 700 "$HOST_SSH_DIR"
+    touch "$HOST_SSH_DIR/authorized_keys"
+    chmod 600 "$HOST_SSH_DIR/authorized_keys"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -z "$line" ]] && continue
+        [[ "$line" =~ ^#.*$ ]] && continue
+        pubkey="${line#* }"
+        if ! grep -qF "$pubkey" "$HOST_SSH_DIR/authorized_keys"; then
+            echo "$pubkey" >> "$HOST_SSH_DIR/authorized_keys"
+            username="${line%% *}"
+            log_success "Added key for ${username} to host authorized_keys"
+        fi
+    done < "$SSH_USERS_FILE"
+fi
 
 # Meta-data: unique instance-id is CRITICAL for cloud-init to run on clones
 cat > "$META_DATA" <<EOF

@@ -4,10 +4,18 @@
 # Copies and executes a specified local script on multiple remote hosts.
 # The local script is copied to /tmp/ on the remote machine and executed with sudo.
 #
-# Usage: ./run-on-remotes.sh <HOSTS_FILE> <SCRIPT_PATH> [SSH_USERS_FILE]
+# Reads hosts from the HOSTS env var (newline-separated). Each line can be:
+#   user:password@host  - per-host credentials (password auth via sshpass)
+#   user@host           - key-based auth
+#   host                - key-based auth
+#
+# Usage: HOSTS="root:pass@1.2.3.4" ./run-on-remotes.sh <SCRIPT_PATH> [SSH_USERS_FILE]
+#
+# Environment:
+#   HOSTS            (Required) Newline-separated host entries.
+#   SSH_KEY          (Optional) Path to SSH private key for key-based auth.
 #
 # Arguments:
-#   HOSTS_FILE       Path to a text file containing one "user@host" per line.
 #   SCRIPT_PATH      Path to the local script to execute remotely.
 #   SSH_USERS_FILE   (Optional) Path to ssh-users.conf to copy and pass to the script.
 
@@ -37,21 +45,24 @@ log_error() {
 }
 
 # Check arguments
-if [[ $# -lt 2 ]] || [[ $# -gt 3 ]]; then
-    echo "Usage: $0 <HOSTS_FILE> <SCRIPT_PATH> [SSH_USERS_FILE]"
-    echo "Example: $0 hosts.txt ./setup-ubuntu.sh ./ssh-users.conf"
+if [[ $# -lt 1 ]] || [[ $# -gt 2 ]]; then
+    echo "Usage: HOSTS='user:pass@host' $0 <SCRIPT_PATH> [SSH_USERS_FILE]"
     exit 1
 fi
 
-HOSTS_FILE="$1"
-SCRIPT_PATH="$2"
-SSH_USERS_FILE="${3:-}"
+SCRIPT_PATH="$1"
+SSH_USERS_FILE="${2:-}"
 
-# Validate inputs
-if [[ ! -f "$HOSTS_FILE" ]]; then
-    log_error "Hosts file not found: $HOSTS_FILE"
+# HOSTS env var is required
+if [[ -z "${HOSTS:-}" ]]; then
+    log_error "HOSTS env var is required (newline-separated user:password@host entries)"
     exit 1
 fi
+
+HOSTS_FILE=$(mktemp)
+trap 'rm -f "$HOSTS_FILE"' EXIT INT TERM
+printf '%s\n' "$HOSTS" > "$HOSTS_FILE"
+log_info "Loaded $(grep -c '[^[:space:]]' "$HOSTS_FILE") host(s) from HOSTS env var"
 
 if [[ ! -f "$SCRIPT_PATH" ]]; then
     log_error "Script file not found: $SCRIPT_PATH"
@@ -66,7 +77,7 @@ fi
 SCRIPT_NAME=$(basename "$SCRIPT_PATH")
 REMOTE_DEST="/tmp/$SCRIPT_NAME"
 
-log_info "Deploying $SCRIPT_NAME to hosts listed in $HOSTS_FILE..."
+log_info "Deploying $SCRIPT_NAME to remote hosts..."
 
 COUNT=1
 
@@ -76,17 +87,62 @@ while IFS= read -r HOST <&3 || [[ -n "$HOST" ]]; do
     [[ -z "$HOST" ]] && continue
     [[ "$HOST" =~ ^#.*$ ]] && continue
 
+    # Parse per-host credentials. Supported line formats:
+    #   user:password@host  - password auth via sshpass
+    #   user@host           - key-based auth
+    #   host                - key-based auth
+    HOST_USER=""
+    HOST_PASS=""
+    HOST_ADDR=""
+
+    if [[ "$HOST" == *:*@* ]]; then
+        HOST_USER="${HOST%%:*}"
+        local_remainder="${HOST#*:}"
+        HOST_PASS="${local_remainder%%@*}"
+        HOST_ADDR="${local_remainder#*@}"
+    elif [[ "$HOST" == *@* ]]; then
+        HOST_USER="${HOST%%@*}"
+        HOST_ADDR="${HOST#*@}"
+    else
+        HOST_ADDR="$HOST"
+    fi
+
+    # Build SSH target
+    if [[ -n "$HOST_USER" ]]; then
+        TARGET="${HOST_USER}@${HOST_ADDR}"
+    else
+        TARGET="$HOST_ADDR"
+    fi
+
+    # Build per-host SSH/SCP commands
+    SSH_OPTS="-o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new"
+    if [[ -n "${SSH_KEY:-}" ]]; then
+        SSH_OPTS="$SSH_OPTS -i $SSH_KEY"
+    fi
+    SCP_CMD="scp"
+    SSH_CMD="ssh"
+
+    if [[ -n "$HOST_PASS" ]]; then
+        if ! command -v sshpass &> /dev/null; then
+            log_error "sshpass is required for password-based SSH but is not installed"
+            exit 1
+        fi
+        export SSHPASS="$HOST_PASS"
+        SCP_CMD="sshpass -e scp"
+        SSH_CMD="sshpass -e ssh"
+    fi
+
     echo ""
     echo "----------------------------------------------------------------------------"
-    log_info "Processing host: $HOST (Index: $COUNT)"
+    log_info "Processing host: $TARGET (Index: $COUNT)"
     echo "----------------------------------------------------------------------------"
 
     # 1. Copy the script
-    log_info "Copying script to $HOST:$REMOTE_DEST..."
-    if scp -o ConnectTimeout=5 "$SCRIPT_PATH" "${HOST}:${REMOTE_DEST}"; then
+    log_info "Copying script to $TARGET:$REMOTE_DEST..."
+    if $SCP_CMD $SSH_OPTS "$SCRIPT_PATH" "${TARGET}:${REMOTE_DEST}"; then
         log_success "Script copied successfully."
     else
-        log_error "Failed to copy script to $HOST. Skipping..."
+        log_error "Failed to copy script to $TARGET. Skipping..."
         continue
     fi
 
@@ -94,36 +150,34 @@ while IFS= read -r HOST <&3 || [[ -n "$HOST" ]]; do
     REMOTE_USERS_FILE="/tmp/ssh-users.conf"
     EXTRA_ARGS=""
     if [[ -n "$SSH_USERS_FILE" ]]; then
-        log_info "Copying SSH users file to $HOST:$REMOTE_USERS_FILE..."
-        if scp -o ConnectTimeout=5 "$SSH_USERS_FILE" "${HOST}:${REMOTE_USERS_FILE}"; then
+        log_info "Copying SSH users file to $TARGET:$REMOTE_USERS_FILE..."
+        if $SCP_CMD $SSH_OPTS "$SSH_USERS_FILE" "${TARGET}:${REMOTE_USERS_FILE}"; then
             log_success "SSH users file copied."
             EXTRA_ARGS="--ssh-users-file $REMOTE_USERS_FILE"
         else
-            log_warn "Failed to copy SSH users file to $HOST. Continuing without it."
+            log_warn "Failed to copy SSH users file to $TARGET. Continuing without it."
         fi
     fi
 
     # 2. Make executable
     log_info "Setting executable permissions..."
-    if ssh -o ConnectTimeout=5 "$HOST" "chmod +x $REMOTE_DEST"; then
+    if $SSH_CMD $SSH_OPTS "$TARGET" "chmod +x $REMOTE_DEST"; then
          log_success "Permissions set."
     else
-        log_error "Failed to set permissions on $HOST. Skipping..."
+        log_error "Failed to set permissions on $TARGET. Skipping..."
         continue
     fi
 
     # 3. Execute with sudo
     log_info "Executing script (sudo required)..."
-    # We use -t to force pseudo-terminal allocation for sudo prompts if needed
-    # Pass the COUNT as the first argument to the script
-    if ssh -t -o ConnectTimeout=5 "$HOST" "sudo $REMOTE_DEST $COUNT $EXTRA_ARGS"; then
-        log_success "Script execution completed successfully on $HOST."
-
-        # Optional: Cleanup
-        # ssh "$HOST" "rm $REMOTE_DEST"
+    if $SSH_CMD -t $SSH_OPTS "$TARGET" "sudo $REMOTE_DEST $COUNT $EXTRA_ARGS"; then
+        log_success "Script execution completed successfully on $TARGET."
     else
-        log_error "Script execution failed on $HOST."
+        log_error "Script execution failed on $TARGET."
     fi
+
+    # Clear per-host password so it doesn't leak to the next iteration
+    unset SSHPASS
 
     ((COUNT++))
 

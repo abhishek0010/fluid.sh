@@ -3,13 +3,18 @@ FROM alpine:3.19
 # Install bash + ssh client
 RUN apk add --no-cache bash openssh
 
+# HOSTS (required): newline-separated host entries.
+#   Format: user@host (one per line)
+# Only used to SSH into the Hetzner hosts - never passed into VMs.
+ENV HOSTS=""
+
 WORKDIR /app
 
-# Copy scripts + host list + SSH users config
-COPY run-on-remotes.sh hosts.txt reset-ubuntu.sh ssh-users.conf ./
+# Copy scripts (ssh-users.conf is mounted at /etc/secrets/ at runtime)
+COPY entrypoint.sh run-on-remotes.sh reset-ubuntu.sh ./
 
 # Make scripts executable
-RUN chmod +x run-on-remotes.sh reset-ubuntu.sh
+RUN chmod +x entrypoint.sh run-on-remotes.sh reset-ubuntu.sh
 
-# Default command
-ENTRYPOINT ["bash", "./run-on-remotes.sh", "./hosts.txt", "./reset-ubuntu.sh", "./ssh-users.conf"]
+ENTRYPOINT ["sh", "./entrypoint.sh"]
+CMD ["./reset-ubuntu.sh", "/etc/secrets/ssh-users.conf"]

@@ -260,6 +260,7 @@ EOF
 if [[ -n "$SSH_USERS_FILE" ]] && [[ -f "$SSH_USERS_FILE" ]]; then
     echo "" >> "$USER_DATA"
     echo "users:" >> "$USER_DATA"
+    echo "  - default" >> "$USER_DATA"
     while IFS= read -r line || [[ -n "$line" ]]; do
         [[ -z "$line" ]] && continue
         [[ "$line" =~ ^#.*$ ]] && continue
@@ -286,6 +287,26 @@ runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
 EOF
+
+# Add SSH public keys to KVM host for proxy jump access
+if [[ -n "$SSH_USERS_FILE" ]] && [[ -f "$SSH_USERS_FILE" ]]; then
+    log_info "Adding SSH public keys to KVM host authorized_keys..."
+    HOST_SSH_DIR="/root/.ssh"
+    mkdir -p "$HOST_SSH_DIR"
+    chmod 700 "$HOST_SSH_DIR"
+    touch "$HOST_SSH_DIR/authorized_keys"
+    chmod 600 "$HOST_SSH_DIR/authorized_keys"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -z "$line" ]] && continue
+        [[ "$line" =~ ^#.*$ ]] && continue
+        pubkey="${line#* }"
+        if ! grep -qF "$pubkey" "$HOST_SSH_DIR/authorized_keys"; then
+            echo "$pubkey" >> "$HOST_SSH_DIR/authorized_keys"
+            username="${line%% *}"
+            log_success "Added key for ${username} to host authorized_keys"
+        fi
+    done < "$SSH_USERS_FILE"
+fi
 
 # Meta-data: unique instance-id is CRITICAL for cloud-init to run on clones
 cat > "$META_DATA" <<EOF

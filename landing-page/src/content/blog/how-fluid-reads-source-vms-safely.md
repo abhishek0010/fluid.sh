@@ -21,26 +21,191 @@ The question is simple: how do you let an untrusted AI agent SSH into a producti
 
 The answer is defense-in-depth. No single mechanism is trusted to enforce read-only access. Instead, three independent layers each enforce the constraint, so a bypass in any one layer is still contained by the other two.
 
-```
-Agent sends command: "cat /etc/nginx/nginx.conf"
-         |
-         v
-  Layer 1: Client-side allowlist (Go, in fluid CLI)
-         |  Parses pipeline. Checks each segment against ~70 allowed commands.
-         |  Blocks shell metacharacters: $(), backticks, >>, <(), newlines.
-         v
-  Layer 2: SSH principal separation
-         |  Certificate issued with principal "fluid-readonly"
-         |  VM's sshd maps this principal to the fluid-readonly user
-         |  That user's login shell is the restricted shell
-         v
-  Layer 3: Server-side restricted shell (bash, on the VM)
-         |  Parses pipeline segments again independently.
-         |  Blocks ~90 destructive command patterns.
-         |  Blocks metacharacters again.
-         v
-  Command executes (or exits 126 if blocked)
-```
+<div class="ro-container">
+  <div class="ro-header">Defense-in-Depth: Three Independent Walls</div>
+  <div class="ro-input-bar">
+    <span class="ro-prompt">$</span> Agent sends command: <span class="ro-cmd">cat /etc/nginx/nginx.conf</span>
+  </div>
+  <div class="ro-connector"></div>
+  <div class="ro-layer">
+    <div class="ro-layer-header">
+      <div class="ro-layer-num">1</div>
+      <div>
+        <div class="ro-layer-title">Client-side allowlist</div>
+        <div class="ro-tech">Go, in fluid CLI</div>
+      </div>
+    </div>
+    <ul class="ro-layer-details">
+      <li>Parses pipeline. Checks each segment against ~70 allowed commands.</li>
+      <li>Blocks shell metacharacters: $(), backticks, &gt;&gt;, &lt;(), newlines.</li>
+    </ul>
+  </div>
+  <div class="ro-connector"></div>
+  <div class="ro-layer">
+    <div class="ro-layer-header">
+      <div class="ro-layer-num">2</div>
+      <div>
+        <div class="ro-layer-title">SSH principal separation</div>
+        <div class="ro-tech">sshd + certificate auth</div>
+      </div>
+    </div>
+    <ul class="ro-layer-details">
+      <li>Certificate issued with principal "fluid-readonly"</li>
+      <li>VM's sshd maps this principal to the fluid-readonly user</li>
+      <li>That user's login shell is the restricted shell</li>
+    </ul>
+  </div>
+  <div class="ro-connector"></div>
+  <div class="ro-layer">
+    <div class="ro-layer-header">
+      <div class="ro-layer-num">3</div>
+      <div>
+        <div class="ro-layer-title">Server-side restricted shell</div>
+        <div class="ro-tech">bash, on the VM</div>
+      </div>
+    </div>
+    <ul class="ro-layer-details">
+      <li>Parses pipeline segments again independently.</li>
+      <li>Blocks ~90 destructive command patterns.</li>
+      <li>Blocks metacharacters again.</li>
+    </ul>
+  </div>
+  <div class="ro-connector"></div>
+  <div class="ro-output-bar">
+    <span class="ro-check">v</span> Command executes (or exits 126 if blocked)
+  </div>
+</div>
+
+<style>
+.ro-container {
+  background: linear-gradient(135deg, #0a0a0a 0%, #0c1929 100%);
+  border: 1px solid #1e3a5f;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  box-shadow: 0 0 30px rgba(96, 165, 250, 0.1);
+}
+.ro-header {
+  text-align: center;
+  color: #60a5fa;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #1e3a5f;
+  margin-bottom: 1.5rem;
+}
+.ro-input-bar {
+  background: #111827;
+  border: 1px solid #60a5fa;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: #e5e5e5;
+  font-size: 0.8rem;
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.15);
+}
+.ro-prompt {
+  color: #60a5fa;
+  font-weight: 700;
+  margin-right: 0.25rem;
+}
+.ro-cmd {
+  color: #93c5fd;
+}
+.ro-connector {
+  width: 2px;
+  height: 24px;
+  background: #60a5fa;
+  margin: 0 auto;
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.4);
+}
+.ro-layer {
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+.ro-layer-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.ro-layer-num {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  background: #1e3a5f;
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid #60a5fa;
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+}
+.ro-layer-title {
+  color: #e5e5e5;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.ro-tech {
+  color: #737373;
+  font-size: 0.7rem;
+  margin-top: 0.125rem;
+}
+.ro-layer-details {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.ro-layer-details li {
+  color: #a3a3a3;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  position: relative;
+  padding-left: 0.875rem;
+}
+.ro-layer-details li::before {
+  content: "-";
+  position: absolute;
+  left: 0;
+  color: #525252;
+}
+.ro-output-bar {
+  background: #111827;
+  border: 1px solid #4ade80;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: #e5e5e5;
+  font-size: 0.8rem;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.15);
+}
+.ro-check {
+  color: #4ade80;
+  font-weight: 700;
+  margin-right: 0.5rem;
+}
+@media (max-width: 640px) {
+  .ro-container {
+    padding: 1rem;
+  }
+  .ro-layer-details {
+    margin-left: 0;
+  }
+  .ro-input-bar,
+  .ro-output-bar {
+    font-size: 0.7rem;
+  }
+}
+</style>
 
 If an attacker somehow gets past the client-side validation, the SSH certificate still routes them to a user whose login shell is a restricted script. If they somehow forge a certificate with the wrong principal, the client-side validation already rejected the dangerous command. If both fail, the restricted shell on the VM still blocks it.
 
@@ -205,44 +370,266 @@ When the restricted shell blocks a command, it exits with code **126** -- the co
 
 Here's the complete path when an AI agent runs a read-only command on a source VM:
 
-```
-1. Agent calls fluid CLI:
-   $ fluid run-source my-golden-vm "systemctl status nginx"
+<div class="exec-container">
+  <div class="exec-header">Full Execution Path</div>
+  <div class="exec-step exec-step-blue">
+    <div class="exec-step-header">
+      <div class="exec-step-num exec-num-blue">1</div>
+      <div class="exec-step-title">Agent calls fluid CLI</div>
+    </div>
+    <div class="exec-step-body">
+      <div class="exec-cmd"><span class="exec-prompt">$</span> fluid run-source my-golden-vm "systemctl status nginx"</div>
+    </div>
+  </div>
+  <div class="exec-conn exec-conn-blue"></div>
+  <div class="exec-step exec-step-blue">
+    <div class="exec-step-header">
+      <div class="exec-step-num exec-num-blue">2</div>
+      <div>
+        <div class="exec-step-title">Client-side validation</div>
+        <div class="exec-tech">validate.go</div>
+      </div>
+    </div>
+    <ul class="exec-step-details">
+      <li>Split into segments: ["systemctl status nginx"]</li>
+      <li>Check metacharacters: none found</li>
+      <li>Check base command: "systemctl" is in allowlist</li>
+      <li>Check subcommand: "status" is in allowed subcommands</li>
+    </ul>
+    <div class="exec-pass exec-pass-blue"><span class="exec-check exec-check-blue">v</span> Passes</div>
+  </div>
+  <div class="exec-conn exec-conn-purple"></div>
+  <div class="exec-step exec-step-purple">
+    <div class="exec-step-header">
+      <div class="exec-step-num exec-num-purple">3</div>
+      <div class="exec-step-title">IP discovery</div>
+    </div>
+    <ul class="exec-step-details">
+      <li>Query libvirt for my-golden-vm's IP via DHCP lease or agent</li>
+    </ul>
+  </div>
+  <div class="exec-conn exec-conn-purple"></div>
+  <div class="exec-step exec-step-purple">
+    <div class="exec-step-header">
+      <div class="exec-step-num exec-num-purple">4</div>
+      <div>
+        <div class="exec-step-title">Credential generation</div>
+        <div class="exec-tech">sshkeys/manager.go</div>
+      </div>
+    </div>
+    <ul class="exec-step-details">
+      <li>Check cache for "sourcevm:my-golden-vm:fluid-readonly"</li>
+      <li>If expired: generate Ed25519 keypair, sign certificate with principal "fluid-readonly" and 30-min TTL</li>
+      <li>Write to ~/.fluid/keys/sourcevm-my-golden-vm/</li>
+    </ul>
+  </div>
+  <div class="exec-conn exec-conn-orange"></div>
+  <div class="exec-step exec-step-orange">
+    <div class="exec-step-header">
+      <div class="exec-step-num exec-num-orange">5</div>
+      <div class="exec-step-title">SSH connection</div>
+    </div>
+    <ul class="exec-step-details">
+      <li>Connect to VM IP as user "fluid-readonly"</li>
+      <li>Authenticate with short-lived certificate</li>
+      <li>sshd verifies cert against /etc/ssh/fluid_ca.pub</li>
+      <li>sshd verifies principal matches authorized_principals</li>
+      <li>sshd invokes login shell: fluid-readonly-shell</li>
+    </ul>
+  </div>
+  <div class="exec-conn exec-conn-orange"></div>
+  <div class="exec-step exec-step-orange">
+    <div class="exec-step-header">
+      <div class="exec-step-num exec-num-orange">6</div>
+      <div class="exec-step-title">Server-side restricted shell</div>
+    </div>
+    <ul class="exec-step-details">
+      <li>Receives SSH_ORIGINAL_COMMAND="systemctl status nginx"</li>
+      <li>Check metacharacters: none found</li>
+      <li>Parse segments, check against blocklist</li>
+      <li>Executes: exec /bin/bash -c "systemctl status nginx"</li>
+    </ul>
+    <div class="exec-pass exec-pass-orange"><span class="exec-check exec-check-orange">v</span> Passes</div>
+  </div>
+  <div class="exec-conn exec-conn-green"></div>
+  <div class="exec-step exec-step-green">
+    <div class="exec-step-header">
+      <div class="exec-step-num exec-num-green">7</div>
+      <div class="exec-step-title">Return result to agent</div>
+    </div>
+    <ul class="exec-step-details">
+      <li>Command output returned via SSH</li>
+      <li>Not persisted to database (tracked via telemetry)</li>
+    </ul>
+  </div>
+</div>
 
-2. Client-side validation (validate.go):
-   - Split "systemctl status nginx" into segments: ["systemctl status nginx"]
-   - Check metacharacters: none found
-   - Check base command: "systemctl" is in allowlist
-   - Check subcommand: "status" is in systemctl's allowed subcommands
-   ✓ Passes
-
-3. IP discovery:
-   - Query libvirt for my-golden-vm's IP via DHCP lease or agent
-
-4. Credential generation (sshkeys/manager.go):
-   - Check cache for "sourcevm:my-golden-vm:fluid-readonly"
-   - If expired/missing: generate Ed25519 keypair, sign certificate
-     with principal "fluid-readonly" and 30-min TTL
-   - Write to ~/.fluid/keys/sourcevm-my-golden-vm/key{,-cert.pub}
-
-5. SSH connection:
-   - Connect to VM IP as user "fluid-readonly"
-   - Authenticate with short-lived certificate
-   - sshd verifies cert against /etc/ssh/fluid_ca.pub
-   - sshd verifies principal matches /etc/ssh/authorized_principals/fluid-readonly
-   - sshd invokes login shell: /usr/local/bin/fluid-readonly-shell
-
-6. Server-side restricted shell:
-   - Receives SSH_ORIGINAL_COMMAND="systemctl status nginx"
-   - Check metacharacters: none found
-   - Parse segments: ["systemctl status nginx"]
-   - Check against blocklist: "systemctl status" not matched
-     (only "systemctl start", "systemctl stop", etc. are blocked)
-   ✓ Passes
-   - Executes: exec /bin/bash -c "systemctl status nginx"
-
-7. Return result to agent (not persisted to database)
-```
+<style>
+.exec-container {
+  background: linear-gradient(135deg, #0a0a0a 0%, #0c1929 100%);
+  border: 1px solid #1e3a5f;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  box-shadow: 0 0 30px rgba(96, 165, 250, 0.1);
+}
+.exec-header {
+  text-align: center;
+  color: #60a5fa;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #1e3a5f;
+  margin-bottom: 1.5rem;
+}
+.exec-step {
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+.exec-step-blue { border-color: rgba(96, 165, 250, 0.4); }
+.exec-step-purple { border-color: rgba(167, 139, 250, 0.4); }
+.exec-step-orange { border-color: rgba(251, 146, 60, 0.4); }
+.exec-step-green { border-color: rgba(74, 222, 128, 0.4); }
+.exec-step-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.exec-step-num {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.exec-num-blue {
+  background: #1e3a5f;
+  color: #60a5fa;
+  border: 1px solid #60a5fa;
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+}
+.exec-num-purple {
+  background: #2e1065;
+  color: #a78bfa;
+  border: 1px solid #a78bfa;
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.3);
+}
+.exec-num-orange {
+  background: #431407;
+  color: #fb923c;
+  border: 1px solid #fb923c;
+  box-shadow: 0 0 8px rgba(251, 146, 60, 0.3);
+}
+.exec-num-green {
+  background: #052e16;
+  color: #4ade80;
+  border: 1px solid #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
+}
+.exec-step-title {
+  color: #e5e5e5;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.exec-tech {
+  color: #737373;
+  font-size: 0.7rem;
+  margin-top: 0.125rem;
+}
+.exec-step-body {
+  margin-left: 2.5rem;
+}
+.exec-cmd {
+  background: #0a0a0a;
+  border: 1px solid #374151;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  color: #a3a3a3;
+  font-size: 0.75rem;
+}
+.exec-prompt {
+  color: #60a5fa;
+  font-weight: 700;
+  margin-right: 0.25rem;
+}
+.exec-step-details {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.exec-step-details li {
+  color: #a3a3a3;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  position: relative;
+  padding-left: 0.875rem;
+}
+.exec-step-details li::before {
+  content: "-";
+  position: absolute;
+  left: 0;
+  color: #525252;
+}
+.exec-conn {
+  width: 2px;
+  height: 24px;
+  margin: 0 auto;
+}
+.exec-conn-blue {
+  background: #60a5fa;
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.4);
+}
+.exec-conn-purple {
+  background: #a78bfa;
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
+}
+.exec-conn-orange {
+  background: #fb923c;
+  box-shadow: 0 0 8px rgba(251, 146, 60, 0.4);
+}
+.exec-conn-green {
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+}
+.exec-pass {
+  margin-top: 0.5rem;
+  margin-left: 2.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.exec-pass-blue { color: #60a5fa; }
+.exec-pass-orange { color: #fb923c; }
+.exec-check {
+  font-weight: 700;
+  margin-right: 0.375rem;
+}
+.exec-check-blue { color: #60a5fa; }
+.exec-check-orange { color: #fb923c; }
+@media (max-width: 640px) {
+  .exec-container {
+    padding: 1rem;
+  }
+  .exec-step-details {
+    margin-left: 0;
+  }
+  .exec-cmd {
+    font-size: 0.65rem;
+  }
+}
+</style>
 
 ## Why Source VM Preparation is One-Time
 
