@@ -28,30 +28,30 @@ func mockProxmoxAPI(t *testing.T) (*ProxmoxManager, *httptest.Server) {
 			{VMID: 103, Name: "no-net-vm", Status: "stopped"},
 			{VMID: 104, Name: "no-agent-vm", Status: "stopped"},
 		}
-		w.Write(envelope(vms))
+		_, _ = w.Write(envelope(vms))
 	})
 
 	// VM status endpoints
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/status/current", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(VMStatus{VMID: 100, Name: "ubuntu-template", Status: "stopped"}))
+		_, _ = w.Write(envelope(VMStatus{VMID: 100, Name: "ubuntu-template", Status: "stopped"}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/101/status/current", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(VMStatus{VMID: 101, Name: "sandbox-1", Status: "running"}))
+		_, _ = w.Write(envelope(VMStatus{VMID: 101, Name: "sandbox-1", Status: "running"}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/102/status/current", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(VMStatus{VMID: 102, Name: "sandbox-paused", Status: "paused"}))
+		_, _ = w.Write(envelope(VMStatus{VMID: 102, Name: "sandbox-paused", Status: "paused"}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/103/status/current", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(VMStatus{VMID: 103, Name: "no-net-vm", Status: "stopped"}))
+		_, _ = w.Write(envelope(VMStatus{VMID: 103, Name: "no-net-vm", Status: "stopped"}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/104/status/current", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(VMStatus{VMID: 104, Name: "no-agent-vm", Status: "stopped"}))
+		_, _ = w.Write(envelope(VMStatus{VMID: 104, Name: "no-agent-vm", Status: "stopped"}))
 	})
 
 	// VM config endpoints
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/config", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			w.Write(envelope(VMConfig{
+			_, _ = w.Write(envelope(VMConfig{
 				Name:    "ubuntu-template",
 				Memory:  4096,
 				Cores:   2,
@@ -60,12 +60,12 @@ func mockProxmoxAPI(t *testing.T) (*ProxmoxManager, *httptest.Server) {
 				Agent:   "1",
 			}))
 		} else {
-			w.Write(envelope(nil))
+			_, _ = w.Write(envelope(nil))
 		}
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			w.Write(envelope(VMConfig{
+			_, _ = w.Write(envelope(VMConfig{
 				Name:   "sandbox-1",
 				Memory: 2048,
 				Cores:  1,
@@ -73,49 +73,49 @@ func mockProxmoxAPI(t *testing.T) (*ProxmoxManager, *httptest.Server) {
 				Agent:  "1",
 			}))
 		} else {
-			w.Write(envelope(nil))
+			_, _ = w.Write(envelope(nil))
 		}
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/103/config", func(w http.ResponseWriter, r *http.Request) {
 		// VM with no network
-		w.Write(envelope(VMConfig{Name: "no-net-vm", Memory: 1024, Cores: 1, Agent: "1"}))
+		_, _ = w.Write(envelope(VMConfig{Name: "no-net-vm", Memory: 1024, Cores: 1, Agent: "1"}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/104/config", func(w http.ResponseWriter, r *http.Request) {
 		// VM with no guest agent
-		w.Write(envelope(VMConfig{Name: "no-agent-vm", Memory: 1024, Cores: 1, Net0: "virtio=FF:FF:FF:FF:FF:FF,bridge=vmbr0"}))
+		_, _ = w.Write(envelope(VMConfig{Name: "no-agent-vm", Memory: 1024, Cores: 1, Net0: "virtio=FF:FF:FF:FF:FF:FF,bridge=vmbr0"}))
 	})
 
 	// Clone
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/clone", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope("UPID:pve1:00001234:clone"))
+		_, _ = w.Write(envelope("UPID:pve1:00001234:clone"))
 	})
 
 	// Start/Stop/Shutdown
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/status/start", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope("UPID:pve1:start:100"))
+		_, _ = w.Write(envelope("UPID:pve1:start:100"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/101/status/start", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope("UPID:pve1:start:101"))
+		_, _ = w.Write(envelope("UPID:pve1:start:101"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/101/status/stop", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope("UPID:pve1:stop:101"))
+		_, _ = w.Write(envelope("UPID:pve1:stop:101"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/status/stop", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope("UPID:pve1:stop:100"))
+		_, _ = w.Write(envelope("UPID:pve1:stop:100"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/101/status/shutdown", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope("UPID:pve1:shutdown:101"))
+		_, _ = w.Write(envelope("UPID:pve1:shutdown:101"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/status/shutdown", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope("UPID:pve1:shutdown:100"))
+		_, _ = w.Write(envelope("UPID:pve1:shutdown:100"))
 	})
 
 	// Snapshot
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/101/snapshot", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope("UPID:pve1:snapshot:101"))
+		_, _ = w.Write(envelope("UPID:pve1:snapshot:101"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/snapshot", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope("UPID:pve1:snapshot:100"))
+		_, _ = w.Write(envelope("UPID:pve1:snapshot:100"))
 	})
 
 	// Guest agent
@@ -136,12 +136,12 @@ func mockProxmoxAPI(t *testing.T) (*ProxmoxManager, *httptest.Server) {
 				},
 			},
 		}
-		w.Write(envelope(ifaces))
+		_, _ = w.Write(envelope(ifaces))
 	})
 
 	// Node status
 	mux.HandleFunc("/api2/json/nodes/pve1/status", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(NodeStatus{
+		_, _ = w.Write(envelope(NodeStatus{
 			CPU:    0.15,
 			MaxCPU: 16,
 			Memory: MemoryStatus{
@@ -159,24 +159,24 @@ func mockProxmoxAPI(t *testing.T) (*ProxmoxManager, *httptest.Server) {
 
 	// Task status - always return completed
 	mux.HandleFunc("/api2/json/nodes/pve1/tasks/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
+		_, _ = w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
 	})
 
 	// Delete VMs
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/101", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
-			w.Write(envelope("UPID:pve1:delete:101"))
+			_, _ = w.Write(envelope("UPID:pve1:delete:101"))
 		}
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
-			w.Write(envelope("UPID:pve1:delete:100"))
+			_, _ = w.Write(envelope("UPID:pve1:delete:100"))
 		}
 	})
 
 	// Config for newly cloned VMs
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000/config", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(nil))
+		_, _ = w.Write(envelope(nil))
 	})
 
 	server := httptest.NewServer(mux)
@@ -210,7 +210,7 @@ var (
 
 func TestNewProxmoxManager_Valid(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(nil))
+		_, _ = w.Write(envelope(nil))
 	}))
 	defer server.Close()
 
@@ -498,10 +498,10 @@ func TestManagerGetIPAddress(t *testing.T) {
 func TestManagerGetIPAddress_SkipsLoopback(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope([]VMListEntry{{VMID: 200, Name: "lo-only"}}))
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 200, Name: "lo-only"}}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/200/agent/network-get-interfaces", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(struct {
+		_, _ = w.Write(envelope(struct {
 			Result []NetworkInterface `json:"result"`
 		}{
 			Result: []NetworkInterface{
@@ -533,10 +533,10 @@ func TestManagerGetIPAddress_SkipsLoopback(t *testing.T) {
 func TestManagerGetIPAddress_IPv6Only(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope([]VMListEntry{{VMID: 201, Name: "v6-only"}}))
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 201, Name: "v6-only"}}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/201/agent/network-get-interfaces", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(struct {
+		_, _ = w.Write(envelope(struct {
 			Result []NetworkInterface `json:"result"`
 		}{
 			Result: []NetworkInterface{
@@ -565,7 +565,7 @@ func TestManagerGetIPAddress_IPv6Only(t *testing.T) {
 func TestManagerGetIPAddress_ContextCancelled(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope([]VMListEntry{{VMID: 202, Name: "slow-vm"}}))
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 202, Name: "slow-vm"}}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/202/agent/network-get-interfaces", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -732,7 +732,7 @@ func TestManagerCheckHostResources_Sufficient(t *testing.T) {
 func TestManagerCheckHostResources_InsufficientMemory(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api2/json/nodes/pve1/status", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(NodeStatus{
+		_, _ = w.Write(envelope(NodeStatus{
 			CPU:    0.10,
 			MaxCPU: 4,
 			Memory: MemoryStatus{
@@ -766,7 +766,7 @@ func TestManagerCheckHostResources_InsufficientMemory(t *testing.T) {
 func TestManagerCheckHostResources_HighCPU(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api2/json/nodes/pve1/status", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(NodeStatus{
+		_, _ = w.Write(envelope(NodeStatus{
 			CPU:    0.92, // 92% usage
 			MaxCPU: 4,
 			Memory: MemoryStatus{
@@ -911,7 +911,7 @@ func TestVMResolverCaching(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&callCount, 1)
 		vms := []VMListEntry{{VMID: 100, Name: "cached-vm"}}
-		w.Write(envelope(vms))
+		_, _ = w.Write(envelope(vms))
 	})
 	defer server.Close()
 
@@ -928,7 +928,7 @@ func TestVMResolverCaching(t *testing.T) {
 	firstCount := atomic.LoadInt32(&callCount)
 
 	// Second call: cache hit
-	vmid, err = resolver.ResolveVMID(context.Background(), "cached-vm")
+	_, err = resolver.ResolveVMID(context.Background(), "cached-vm")
 	if err != nil {
 		t.Fatalf("ResolveVMID: %v", err)
 	}
@@ -942,10 +942,10 @@ func TestVMResolverRefresh(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		n := atomic.AddInt32(&callCount, 1)
 		if n <= 1 {
-			w.Write(envelope([]VMListEntry{{VMID: 100, Name: "vm1"}}))
+			_, _ = w.Write(envelope([]VMListEntry{{VMID: 100, Name: "vm1"}}))
 		} else {
 			// After refresh, new VM appears
-			w.Write(envelope([]VMListEntry{
+			_, _ = w.Write(envelope([]VMListEntry{
 				{VMID: 100, Name: "vm1"},
 				{VMID: 101, Name: "vm2"},
 			}))
@@ -982,7 +982,7 @@ func TestVMResolverResolveName(t *testing.T) {
 			{VMID: 100, Name: "test-vm"},
 			{VMID: 200, Name: "other-vm"},
 		}
-		w.Write(envelope(vms))
+		_, _ = w.Write(envelope(vms))
 	})
 	defer server.Close()
 
@@ -999,7 +999,7 @@ func TestVMResolverResolveName(t *testing.T) {
 
 func TestVMResolverResolveName_NotFound(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope([]VMListEntry{{VMID: 100, Name: "vm1"}}))
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 100, Name: "vm1"}}))
 	})
 	defer server.Close()
 
@@ -1021,7 +1021,7 @@ func TestVMResolverListAll(t *testing.T) {
 			{VMID: 101, Name: "vm2"},
 			{VMID: 102, Name: "vm3"},
 		}
-		w.Write(envelope(vms))
+		_, _ = w.Write(envelope(vms))
 	})
 	defer server.Close()
 
@@ -1040,7 +1040,7 @@ func TestVMResolverListAll_Cached(t *testing.T) {
 	var callCount int32
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&callCount, 1)
-		w.Write(envelope([]VMListEntry{{VMID: 100, Name: "vm1"}}))
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 100, Name: "vm1"}}))
 	})
 	defer server.Close()
 
@@ -1190,7 +1190,7 @@ func TestMultiNodeManager_ListVMs(t *testing.T) {
 			{VMID: 101, Name: "vm2", Status: "stopped"},
 			{VMID: 102, Name: "vm3", Status: "paused"},
 		}
-		w.Write(envelope(vms))
+		_, _ = w.Write(envelope(vms))
 	}))
 	defer server.Close()
 
@@ -1259,7 +1259,7 @@ func TestMultiNodeManager_ListVMs_APIError(t *testing.T) {
 
 func TestMultiNodeManager_ListVMs_Empty(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope([]VMListEntry{}))
+		_, _ = w.Write(envelope([]VMListEntry{}))
 	}))
 	defer server.Close()
 
@@ -1282,7 +1282,7 @@ func TestMultiNodeManager_FindHostForVM(t *testing.T) {
 			{VMID: 100, Name: "vm-alpha"},
 			{VMID: 101, Name: "vm-beta"},
 		}
-		w.Write(envelope(vms))
+		_, _ = w.Write(envelope(vms))
 	}))
 	defer server.Close()
 
@@ -1334,7 +1334,7 @@ func TestMultiNodeManager_FindHostForVM_APIError(t *testing.T) {
 func TestManagerCloneFromVM_LinkedClone(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope([]VMListEntry{{VMID: 100, Name: "template"}}))
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 100, Name: "template"}}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/clone", func(w http.ResponseWriter, r *http.Request) {
 		// Verify linked clone does NOT send full=1
@@ -1344,13 +1344,13 @@ func TestManagerCloneFromVM_LinkedClone(t *testing.T) {
 		if r.FormValue("full") != "" {
 			t.Error("linked clone should not have full param")
 		}
-		w.Write(envelope("UPID:pve1:linked-clone"))
+		_, _ = w.Write(envelope("UPID:pve1:linked-clone"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000/config", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(nil))
+		_, _ = w.Write(envelope(nil))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/tasks/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
+		_, _ = w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
 	})
 	server := httptest.NewServer(mux)
 	defer server.Close()
@@ -1377,41 +1377,41 @@ func TestManagerCloneFromVM_LinkedClone(t *testing.T) {
 
 func TestManagerFullLifecycle(t *testing.T) {
 	// Simulate: clone -> start -> get IP -> snapshot -> stop -> destroy
-	var vmState string = "stopped"
+	vmState := "stopped"
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope([]VMListEntry{
+		_, _ = w.Write(envelope([]VMListEntry{
 			{VMID: 100, Name: "template", Status: "stopped"},
 			{VMID: 9000, Name: "lifecycle-vm", Status: vmState},
 		}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/clone", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope("UPID:clone"))
+		_, _ = w.Write(envelope("UPID:clone"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000/status/current", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(VMStatus{VMID: 9000, Name: "lifecycle-vm", Status: vmState}))
+		_, _ = w.Write(envelope(VMStatus{VMID: 9000, Name: "lifecycle-vm", Status: vmState}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000/status/start", func(w http.ResponseWriter, r *http.Request) {
 		vmState = "running"
-		w.Write(envelope("UPID:start"))
+		_, _ = w.Write(envelope("UPID:start"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000/status/stop", func(w http.ResponseWriter, r *http.Request) {
 		vmState = "stopped"
-		w.Write(envelope("UPID:stop"))
+		_, _ = w.Write(envelope("UPID:stop"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000/status/shutdown", func(w http.ResponseWriter, r *http.Request) {
 		vmState = "stopped"
-		w.Write(envelope("UPID:shutdown"))
+		_, _ = w.Write(envelope("UPID:shutdown"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000/config", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(nil))
+		_, _ = w.Write(envelope(nil))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000/snapshot", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope("UPID:snapshot"))
+		_, _ = w.Write(envelope("UPID:snapshot"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000/agent/network-get-interfaces", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(struct {
+		_, _ = w.Write(envelope(struct {
 			Result []NetworkInterface `json:"result"`
 		}{
 			Result: []NetworkInterface{
@@ -1424,11 +1424,11 @@ func TestManagerFullLifecycle(t *testing.T) {
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/9000", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
-			w.Write(envelope("UPID:delete"))
+			_, _ = w.Write(envelope("UPID:delete"))
 		}
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/tasks/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
+		_, _ = w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
 	})
 
 	server := httptest.NewServer(mux)
@@ -1496,10 +1496,10 @@ func TestManagerFullLifecycle(t *testing.T) {
 func TestManagerVMNameWithSpaces(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope([]VMListEntry{{VMID: 100, Name: "my special vm"}}))
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 100, Name: "my special vm"}}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/status/current", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(VMStatus{VMID: 100, Status: "stopped"}))
+		_, _ = w.Write(envelope(VMStatus{VMID: 100, Status: "stopped"}))
 	})
 	server := httptest.NewServer(mux)
 	defer server.Close()
@@ -1527,7 +1527,7 @@ func TestVMResolverConcurrent(t *testing.T) {
 			{VMID: 101, Name: "vm2"},
 			{VMID: 102, Name: "vm3"},
 		}
-		w.Write(envelope(vms))
+		_, _ = w.Write(envelope(vms))
 	})
 	defer server.Close()
 
@@ -1566,18 +1566,18 @@ func TestManagerStopVM_VerifyGracefulRoute(t *testing.T) {
 	var shutdownCalled, stopCalled bool
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope([]VMListEntry{{VMID: 100, Name: "vm1"}}))
+		_, _ = w.Write(envelope([]VMListEntry{{VMID: 100, Name: "vm1"}}))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/status/shutdown", func(w http.ResponseWriter, r *http.Request) {
 		shutdownCalled = true
-		w.Write(envelope("UPID:shutdown"))
+		_, _ = w.Write(envelope("UPID:shutdown"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/100/status/stop", func(w http.ResponseWriter, r *http.Request) {
 		stopCalled = true
-		w.Write(envelope("UPID:stop"))
+		_, _ = w.Write(envelope("UPID:stop"))
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/tasks/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
+		_, _ = w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
 	})
 	server := httptest.NewServer(mux)
 	defer server.Close()

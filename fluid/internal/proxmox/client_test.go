@@ -45,7 +45,7 @@ func TestAuthHeader(t *testing.T) {
 		if auth != "PVEAPIToken=test@pam!test=test-secret" {
 			t.Errorf("unexpected auth header: %s", auth)
 		}
-		w.Write(envelope([]VMListEntry{}))
+		_, _ = w.Write(envelope([]VMListEntry{}))
 	})
 	defer server.Close()
 	_, _ = client.ListVMs(context.Background())
@@ -59,7 +59,7 @@ func TestContentTypeSetForPOST(t *testing.T) {
 				t.Errorf("expected form content-type for POST with body, got %q", ct)
 			}
 		}
-		w.Write(envelope("UPID:test"))
+		_, _ = w.Write(envelope("UPID:test"))
 	})
 	defer server.Close()
 	// CloneVM sends a POST with url.Values body, so Content-Type should be set
@@ -72,7 +72,7 @@ func TestContentTypeNotSetForGET(t *testing.T) {
 		if r.Method == http.MethodGet && ct != "" {
 			t.Errorf("expected no content-type for GET, got %q", ct)
 		}
-		w.Write(envelope([]VMListEntry{}))
+		_, _ = w.Write(envelope([]VMListEntry{}))
 	})
 	defer server.Close()
 	_, _ = client.ListVMs(context.Background())
@@ -92,7 +92,7 @@ func TestListVMs(t *testing.T) {
 			{VMID: 100, Name: "ubuntu-base", Status: "stopped", Template: 1, MaxMem: 4294967296},
 			{VMID: 101, Name: "sandbox-1", Status: "running", CPU: 0.15, Mem: 1073741824},
 		}
-		w.Write(envelope(vms))
+		_, _ = w.Write(envelope(vms))
 	})
 	defer server.Close()
 
@@ -122,7 +122,7 @@ func TestListVMs(t *testing.T) {
 
 func TestListVMs_Empty(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope([]VMListEntry{}))
+		_, _ = w.Write(envelope([]VMListEntry{}))
 	})
 	defer server.Close()
 
@@ -154,7 +154,7 @@ func TestGetVMStatus(t *testing.T) {
 			Uptime:    3600,
 			PID:       12345,
 		}
-		w.Write(envelope(status))
+		_, _ = w.Write(envelope(status))
 	})
 	defer server.Close()
 
@@ -181,7 +181,7 @@ func TestGetVMStatus(t *testing.T) {
 
 func TestGetVMStatus_Stopped(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(VMStatus{VMID: 200, Status: "stopped", Template: 1}))
+		_, _ = w.Write(envelope(VMStatus{VMID: 200, Status: "stopped", Template: 1}))
 	})
 	defer server.Close()
 
@@ -199,7 +199,7 @@ func TestGetVMStatus_Stopped(t *testing.T) {
 
 func TestGetVMStatus_Locked(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(VMStatus{VMID: 300, Status: "running", Lock: "clone"}))
+		_, _ = w.Write(envelope(VMStatus{VMID: 300, Status: "running", Lock: "clone"}))
 	})
 	defer server.Close()
 
@@ -231,7 +231,7 @@ func TestGetVMConfig(t *testing.T) {
 			CIUser:    "ubuntu",
 			Boot:      "order=scsi0",
 		}
-		w.Write(envelope(cfg))
+		_, _ = w.Write(envelope(cfg))
 	})
 	defer server.Close()
 
@@ -261,7 +261,7 @@ func TestGetVMConfig(t *testing.T) {
 
 func TestGetVMConfig_Minimal(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(VMConfig{Name: "minimal", Memory: 512, Cores: 1}))
+		_, _ = w.Write(envelope(VMConfig{Name: "minimal", Memory: 512, Cores: 1}))
 	})
 	defer server.Close()
 
@@ -298,7 +298,7 @@ func TestCloneVM_Full(t *testing.T) {
 		if !strings.Contains(bodyStr, "full=1") {
 			t.Errorf("expected full=1 in body, got: %s", bodyStr)
 		}
-		w.Write(envelope("UPID:pve1:00001234:00000000:12345678:qmclone:100:root@pam:"))
+		_, _ = w.Write(envelope("UPID:pve1:00001234:00000000:12345678:qmclone:100:root@pam:"))
 	})
 	defer server.Close()
 
@@ -318,7 +318,7 @@ func TestCloneVM_Linked(t *testing.T) {
 		if strings.Contains(bodyStr, "full=") {
 			t.Errorf("linked clone should not have full param, got: %s", bodyStr)
 		}
-		w.Write(envelope("UPID:pve1:linked"))
+		_, _ = w.Write(envelope("UPID:pve1:linked"))
 	})
 	defer server.Close()
 
@@ -349,7 +349,7 @@ func TestSetVMConfig(t *testing.T) {
 		if !strings.Contains(bodyStr, "memory=8192") {
 			t.Errorf("expected memory=8192 in body, got: %s", bodyStr)
 		}
-		w.Write(envelope(nil))
+		_, _ = w.Write(envelope(nil))
 	})
 	defer server.Close()
 
@@ -372,7 +372,7 @@ func TestStartVM(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
-		w.Write(envelope("UPID:pve1:00001234:start"))
+		_, _ = w.Write(envelope("UPID:pve1:00001234:start"))
 	})
 	defer server.Close()
 
@@ -392,7 +392,7 @@ func TestStopVM(t *testing.T) {
 		if r.URL.Path != "/api2/json/nodes/pve1/qemu/100/status/stop" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		w.Write(envelope("UPID:pve1:00001234:stop"))
+		_, _ = w.Write(envelope("UPID:pve1:00001234:stop"))
 	})
 	defer server.Close()
 
@@ -415,7 +415,7 @@ func TestShutdownVM(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
-		w.Write(envelope("UPID:pve1:00001234:shutdown"))
+		_, _ = w.Write(envelope("UPID:pve1:00001234:shutdown"))
 	})
 	defer server.Close()
 
@@ -442,7 +442,7 @@ func TestDeleteVM(t *testing.T) {
 		if !strings.Contains(r.URL.RawQuery, "destroy-unreferenced-disks=1") {
 			t.Errorf("expected destroy-unreferenced-disks=1, got %s", r.URL.RawQuery)
 		}
-		w.Write(envelope("UPID:pve1:00001234:delete"))
+		_, _ = w.Write(envelope("UPID:pve1:00001234:delete"))
 	})
 	defer server.Close()
 
@@ -468,7 +468,7 @@ func TestGetTaskStatus(t *testing.T) {
 			StartTime:  1700000000,
 			EndTime:    1700000060,
 		}
-		w.Write(envelope(status))
+		_, _ = w.Write(envelope(status))
 	})
 	defer server.Close()
 
@@ -492,7 +492,7 @@ func TestGetTaskStatus(t *testing.T) {
 
 func TestGetTaskStatus_Running(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(TaskStatus{Status: "running", Type: "qmstart"}))
+		_, _ = w.Write(envelope(TaskStatus{Status: "running", Type: "qmstart"}))
 	})
 	defer server.Close()
 
@@ -509,7 +509,7 @@ func TestGetTaskStatus_Running(t *testing.T) {
 
 func TestWaitForTask_ImmediateSuccess(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
+		_, _ = w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
 	})
 	defer server.Close()
 
@@ -534,7 +534,7 @@ func TestWaitForTask_EmptyUPID(t *testing.T) {
 
 func TestWaitForTask_TaskFailure(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "command 'qm clone' failed: storage error"}))
+		_, _ = w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "command 'qm clone' failed: storage error"}))
 	})
 	defer server.Close()
 
@@ -552,7 +552,7 @@ func TestWaitForTask_TaskFailure(t *testing.T) {
 
 func TestWaitForTask_ContextCancelled(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(TaskStatus{Status: "running"}))
+		_, _ = w.Write(envelope(TaskStatus{Status: "running"}))
 	})
 	defer server.Close()
 
@@ -570,9 +570,9 @@ func TestWaitForTask_PollsUntilDone(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		n := atomic.AddInt32(&callCount, 1)
 		if n < 3 {
-			w.Write(envelope(TaskStatus{Status: "running"}))
+			_, _ = w.Write(envelope(TaskStatus{Status: "running"}))
 		} else {
-			w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
+			_, _ = w.Write(envelope(TaskStatus{Status: "stopped", ExitStatus: "OK"}))
 		}
 	})
 	defer server.Close()
@@ -601,7 +601,7 @@ func TestCreateSnapshot_WithDescription(t *testing.T) {
 		if !strings.Contains(bodyStr, "description=test+snapshot") {
 			t.Errorf("expected description in body, got: %s", bodyStr)
 		}
-		w.Write(envelope("UPID:pve1:snapshot"))
+		_, _ = w.Write(envelope("UPID:pve1:snapshot"))
 	})
 	defer server.Close()
 
@@ -621,7 +621,7 @@ func TestCreateSnapshot_WithoutDescription(t *testing.T) {
 		if strings.Contains(bodyStr, "description") {
 			t.Errorf("expected no description, got: %s", bodyStr)
 		}
-		w.Write(envelope("UPID:pve1:snapshot"))
+		_, _ = w.Write(envelope("UPID:pve1:snapshot"))
 	})
 	defer server.Close()
 
@@ -634,7 +634,7 @@ func TestCreateSnapshot_WithoutDescription(t *testing.T) {
 func TestCreateSnapshot_SyncReturn(t *testing.T) {
 	// Proxmox sometimes returns null data for synchronous snapshot completion
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(nil))
+		_, _ = w.Write(envelope(nil))
 	})
 	defer server.Close()
 
@@ -676,7 +676,7 @@ func TestGetGuestAgentInterfaces_WrappedResult(t *testing.T) {
 				},
 			},
 		}
-		w.Write(envelope(ifaces))
+		_, _ = w.Write(envelope(ifaces))
 	})
 	defer server.Close()
 
@@ -710,7 +710,7 @@ func TestGetGuestAgentInterfaces_DirectArray(t *testing.T) {
 				},
 			},
 		}
-		w.Write(envelope(ifaces))
+		_, _ = w.Write(envelope(ifaces))
 	})
 	defer server.Close()
 
@@ -728,7 +728,7 @@ func TestGetGuestAgentInterfaces_DirectArray(t *testing.T) {
 
 func TestGetGuestAgentInterfaces_Empty(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope(struct {
+		_, _ = w.Write(envelope(struct {
 			Result []NetworkInterface `json:"result"`
 		}{}))
 	})
@@ -766,7 +766,7 @@ func TestGetNodeStatus(t *testing.T) {
 			Uptime:   86400,
 			KVersion: "6.1.0-amd64",
 		}
-		w.Write(envelope(status))
+		_, _ = w.Write(envelope(status))
 	})
 	defer server.Close()
 
@@ -800,7 +800,7 @@ func TestNextVMID_Gap(t *testing.T) {
 			{VMID: 9001, Name: "vm2"},
 			{VMID: 9003, Name: "vm3"},
 		}
-		w.Write(envelope(vms))
+		_, _ = w.Write(envelope(vms))
 	})
 	defer server.Close()
 
@@ -815,7 +815,7 @@ func TestNextVMID_Gap(t *testing.T) {
 
 func TestNextVMID_FirstAvailable(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(envelope([]VMListEntry{}))
+		_, _ = w.Write(envelope([]VMListEntry{}))
 	})
 	defer server.Close()
 
@@ -833,7 +833,7 @@ func TestNextVMID_AllUsed(t *testing.T) {
 		vms := []VMListEntry{
 			{VMID: 9000}, {VMID: 9001}, {VMID: 9002},
 		}
-		w.Write(envelope(vms))
+		_, _ = w.Write(envelope(vms))
 	})
 	defer server.Close()
 
@@ -852,7 +852,7 @@ func TestNextVMID_OutOfRangeVMsIgnored(t *testing.T) {
 			{VMID: 100, Name: "outside-range"},
 			{VMID: 200, Name: "also-outside"},
 		}
-		w.Write(envelope(vms))
+		_, _ = w.Write(envelope(vms))
 	})
 	defer server.Close()
 
@@ -880,7 +880,7 @@ func TestResizeVM(t *testing.T) {
 		if !strings.Contains(bodyStr, "memory=8192") {
 			t.Errorf("expected memory=8192, got: %s", bodyStr)
 		}
-		w.Write(envelope(nil))
+		_, _ = w.Write(envelope(nil))
 	})
 	defer server.Close()
 
@@ -991,7 +991,7 @@ func TestAPIError_ConnectionRefused(t *testing.T) {
 func TestAPIError_ContextCancelled(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)
-		w.Write(envelope([]VMListEntry{}))
+		_, _ = w.Write(envelope([]VMListEntry{}))
 	})
 	defer server.Close()
 

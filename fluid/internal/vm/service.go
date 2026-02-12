@@ -1700,7 +1700,7 @@ func (s *Service) RunSourceVMCommandWithCallback(ctx context.Context, sourceVMNa
 	}
 
 	// Discover VM IP using remote manager if VM is on a remote host.
-	var ipMgr provider.Manager = s.mgr
+	ipMgr := s.mgr
 	if remoteHost != nil && s.remoteManagerFactory != nil {
 		ipMgr = s.remoteManagerFactory(*remoteHost)
 	}
