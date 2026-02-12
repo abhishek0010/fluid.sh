@@ -271,6 +271,25 @@ func TestJsonResult_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "marshal result")
 }
 
+// --- errorResult tests ---
+
+func TestErrorResult(t *testing.T) {
+	result, err := errorResult(map[string]any{"sandbox_id": "SBX-1", "error": "something failed"})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.True(t, result.IsError, "expected IsError to be true")
+
+	m := parseJSON(t, result)
+	assert.Equal(t, "SBX-1", m["sandbox_id"])
+	assert.Equal(t, "something failed", m["error"])
+}
+
+func TestErrorResult_MarshalError(t *testing.T) {
+	_, err := errorResult(make(chan int))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "marshal error result")
+}
+
 // --- handleListSandboxes tests ---
 
 func TestHandleListSandboxes_Empty(t *testing.T) {
@@ -336,9 +355,11 @@ func TestHandleListSandboxes_StoreError(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	_, err := srv.handleListSandboxes(ctx, newRequest("list_sandboxes", nil))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "list sandboxes")
+	result, err := srv.handleListSandboxes(ctx, newRequest("list_sandboxes", nil))
+	require.NoError(t, err)
+	require.True(t, result.IsError, "expected IsError to be true")
+	m := parseJSON(t, result)
+	assert.Contains(t, m["error"], "list sandboxes")
 }
 
 // --- handleGetSandbox tests ---
@@ -389,11 +410,14 @@ func TestHandleGetSandbox_NotFound(t *testing.T) {
 	srv := testServerWithSandboxes()
 	ctx := context.Background()
 
-	_, err := srv.handleGetSandbox(ctx, newRequest("get_sandbox", map[string]any{
+	result, err := srv.handleGetSandbox(ctx, newRequest("get_sandbox", map[string]any{
 		"sandbox_id": "SBX-nonexistent",
 	}))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "get sandbox")
+	require.NoError(t, err)
+	require.True(t, result.IsError, "expected IsError to be true")
+	m := parseJSON(t, result)
+	assert.Contains(t, m["error"], "get sandbox")
+	assert.Equal(t, "SBX-nonexistent", m["sandbox_id"])
 }
 
 // --- handleDestroySandbox tests ---

@@ -27,6 +27,18 @@ func jsonResult(v any) (*mcp.CallToolResult, error) {
 	return mcp.NewToolResultText(string(data)), nil
 }
 
+// errorResult marshals v to JSON and returns it as a tool result with IsError set.
+// This gives AI agents structured error context instead of opaque error strings.
+func errorResult(v any) (*mcp.CallToolResult, error) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("marshal error result: %w", err)
+	}
+	result := mcp.NewToolResultText(string(data))
+	result.IsError = true
+	return result, nil
+}
+
 // shellEscape safely escapes a string for use in a shell command.
 func shellEscape(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
@@ -60,7 +72,7 @@ func (s *Server) findHostForSourceVM(ctx context.Context, sourceVM, hostName str
 func (s *Server) handleListSandboxes(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	sandboxes, err := s.vmService.GetSandboxes(ctx, store.SandboxFilter{}, nil)
 	if err != nil {
-		return nil, fmt.Errorf("list sandboxes: %w", err)
+		return errorResult(map[string]any{"error": fmt.Sprintf("list sandboxes: %s", err)})
 	}
 
 	result := make([]map[string]any, 0, len(sandboxes))
@@ -104,14 +116,14 @@ func (s *Server) handleCreateSandbox(ctx context.Context, request mcp.CallToolRe
 		var err error
 		host, err = s.findHostForSourceVM(ctx, sourceVM, hostName)
 		if err != nil {
-			return nil, fmt.Errorf("find host for source VM: %w", err)
+			return errorResult(map[string]any{"source_vm": sourceVM, "error": fmt.Sprintf("find host for source VM: %s", err)})
 		}
 	}
 
 	if host != nil {
 		sb, ip, err := s.vmService.CreateSandboxOnHost(ctx, host, sourceVM, "mcp-agent", "", cpu, memoryMB, nil, true, true)
 		if err != nil {
-			return nil, fmt.Errorf("create sandbox on host: %w", err)
+			return errorResult(map[string]any{"source_vm": sourceVM, "host": host.Name, "error": fmt.Sprintf("create sandbox on host: %s", err)})
 		}
 		result := map[string]any{
 			"sandbox_id": sb.ID,
@@ -127,7 +139,7 @@ func (s *Server) handleCreateSandbox(ctx context.Context, request mcp.CallToolRe
 
 	sb, ip, err := s.vmService.CreateSandbox(ctx, sourceVM, "mcp-agent", "", cpu, memoryMB, nil, true, true)
 	if err != nil {
-		return nil, fmt.Errorf("create sandbox: %w", err)
+		return errorResult(map[string]any{"source_vm": sourceVM, "error": fmt.Sprintf("create sandbox: %s", err)})
 	}
 	result := map[string]any{
 		"sandbox_id": sb.ID,
@@ -148,7 +160,7 @@ func (s *Server) handleDestroySandbox(ctx context.Context, request mcp.CallToolR
 
 	_, err := s.vmService.DestroySandbox(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("destroy sandbox: %w", err)
+		return errorResult(map[string]any{"sandbox_id": id, "error": fmt.Sprintf("destroy sandbox: %s", err)})
 	}
 
 	return jsonResult(map[string]any{
@@ -170,16 +182,16 @@ func (s *Server) handleRunCommand(ctx context.Context, request mcp.CallToolReque
 	user := s.cfg.SSH.DefaultUser
 	result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", command, 0, nil)
 	if err != nil {
-		if result != nil {
-			return jsonResult(map[string]any{
-				"sandbox_id": sandboxID,
-				"exit_code":  result.ExitCode,
-				"stdout":     result.Stdout,
-				"stderr":     result.Stderr,
-				"error":      err.Error(),
-			})
+		resp := map[string]any{
+			"sandbox_id": sandboxID,
+			"error":      fmt.Sprintf("run command: %s", err),
 		}
-		return nil, fmt.Errorf("run command: %w", err)
+		if result != nil {
+			resp["exit_code"] = result.ExitCode
+			resp["stdout"] = result.Stdout
+			resp["stderr"] = result.Stderr
+		}
+		return errorResult(resp)
 	}
 
 	return jsonResult(map[string]any{
@@ -198,7 +210,7 @@ func (s *Server) handleStartSandbox(ctx context.Context, request mcp.CallToolReq
 
 	ip, err := s.vmService.StartSandbox(ctx, id, true)
 	if err != nil {
-		return nil, fmt.Errorf("start sandbox: %w", err)
+		return errorResult(map[string]any{"sandbox_id": id, "error": fmt.Sprintf("start sandbox: %s", err)})
 	}
 
 	result := map[string]any{
@@ -219,7 +231,7 @@ func (s *Server) handleStopSandbox(ctx context.Context, request mcp.CallToolRequ
 
 	err := s.vmService.StopSandbox(ctx, id, false)
 	if err != nil {
-		return nil, fmt.Errorf("stop sandbox: %w", err)
+		return errorResult(map[string]any{"sandbox_id": id, "error": fmt.Sprintf("stop sandbox: %s", err)})
 	}
 
 	return jsonResult(map[string]any{
@@ -236,7 +248,7 @@ func (s *Server) handleGetSandbox(ctx context.Context, request mcp.CallToolReque
 
 	sb, err := s.vmService.GetSandbox(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("get sandbox: %w", err)
+		return errorResult(map[string]any{"sandbox_id": id, "error": fmt.Sprintf("get sandbox: %s", err)})
 	}
 
 	result := map[string]any{
@@ -272,7 +284,7 @@ func (s *Server) handleListVMs(ctx context.Context, request mcp.CallToolRequest)
 func (s *Server) listVMsFromHosts(ctx context.Context) (*mcp.CallToolResult, error) {
 	listResult, err := s.multiHostMgr.ListDomains(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list domains from hosts: %w", err)
+		return errorResult(map[string]any{"error": fmt.Sprintf("list domains from hosts: %s", err)})
 	}
 
 	vms := make([]map[string]any, 0)
@@ -319,7 +331,7 @@ func (s *Server) listVMsLocal(ctx context.Context) (*mcp.CallToolResult, error) 
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("virsh list: %w: %s", err, stderr.String())
+		return errorResult(map[string]any{"error": fmt.Sprintf("virsh list: %s: %s", err, stderr.String())})
 	}
 
 	vms := make([]map[string]any, 0)
@@ -353,7 +365,7 @@ func (s *Server) handleCreateSnapshot(ctx context.Context, request mcp.CallToolR
 
 	snap, err := s.vmService.CreateSnapshot(ctx, sandboxID, name, false)
 	if err != nil {
-		return nil, fmt.Errorf("create snapshot: %w", err)
+		return errorResult(map[string]any{"sandbox_id": sandboxID, "error": fmt.Sprintf("create snapshot: %s", err)})
 	}
 
 	return jsonResult(map[string]any{
@@ -378,7 +390,7 @@ func (s *Server) handleCreatePlaybook(ctx context.Context, request mcp.CallToolR
 		Become: become,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("create playbook: %w", err)
+		return errorResult(map[string]any{"name": name, "error": fmt.Sprintf("create playbook: %s", err)})
 	}
 
 	result := map[string]any{
@@ -422,7 +434,7 @@ func (s *Server) handleAddPlaybookTask(ctx context.Context, request mcp.CallTool
 		Params: params,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("add playbook task: %w", err)
+		return errorResult(map[string]any{"playbook_id": playbookID, "error": fmt.Sprintf("add playbook task: %s", err)})
 	}
 
 	return jsonResult(map[string]any{
@@ -457,10 +469,19 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 		cmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, shellEscape(path))
 		result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", cmd, 0, nil)
 		if err != nil {
-			return nil, fmt.Errorf("create file: %w", err)
+			resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("create file: %s", err)}
+			if result != nil {
+				resp["exit_code"] = result.ExitCode
+				resp["stderr"] = result.Stderr
+			}
+			return errorResult(resp)
 		}
 		if result.ExitCode != 0 {
-			return nil, fmt.Errorf("create file: %s", result.Stderr)
+			return errorResult(map[string]any{
+				"sandbox_id": sandboxID, "path": path,
+				"exit_code": result.ExitCode, "stderr": result.Stderr,
+				"error": fmt.Sprintf("create file failed with exit code %d", result.ExitCode),
+			})
 		}
 		return jsonResult(map[string]any{
 			"sandbox_id": sandboxID,
@@ -472,15 +493,24 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 	// Read existing file
 	readResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 %s", shellEscape(path)), 0, nil)
 	if err != nil {
-		return nil, fmt.Errorf("read file for edit: %w", err)
+		resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("read file for edit: %s", err)}
+		if readResult != nil {
+			resp["exit_code"] = readResult.ExitCode
+			resp["stderr"] = readResult.Stderr
+		}
+		return errorResult(resp)
 	}
 	if readResult.ExitCode != 0 {
-		return nil, fmt.Errorf("read file: %s", readResult.Stderr)
+		return errorResult(map[string]any{
+			"sandbox_id": sandboxID, "path": path,
+			"exit_code": readResult.ExitCode, "stderr": readResult.Stderr,
+			"error": fmt.Sprintf("read file failed with exit code %d", readResult.ExitCode),
+		})
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(readResult.Stdout))
 	if err != nil {
-		return nil, fmt.Errorf("decode file content: %w", err)
+		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("decode file content: %s", err)})
 	}
 	original := string(decoded)
 
@@ -497,10 +527,19 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, shellEscape(path))
 	writeResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", writeCmd, 0, nil)
 	if err != nil {
-		return nil, fmt.Errorf("write file: %w", err)
+		resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("write file: %s", err)}
+		if writeResult != nil {
+			resp["exit_code"] = writeResult.ExitCode
+			resp["stderr"] = writeResult.Stderr
+		}
+		return errorResult(resp)
 	}
 	if writeResult.ExitCode != 0 {
-		return nil, fmt.Errorf("write file: %s", writeResult.Stderr)
+		return errorResult(map[string]any{
+			"sandbox_id": sandboxID, "path": path,
+			"exit_code": writeResult.ExitCode, "stderr": writeResult.Stderr,
+			"error": fmt.Sprintf("write file failed with exit code %d", writeResult.ExitCode),
+		})
 	}
 
 	return jsonResult(map[string]any{
@@ -526,15 +565,24 @@ func (s *Server) handleReadFile(ctx context.Context, request mcp.CallToolRequest
 	user := s.cfg.SSH.DefaultUser
 	result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 %s", shellEscape(path)), 0, nil)
 	if err != nil {
-		return nil, fmt.Errorf("read file: %w", err)
+		resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("read file: %s", err)}
+		if result != nil {
+			resp["exit_code"] = result.ExitCode
+			resp["stderr"] = result.Stderr
+		}
+		return errorResult(resp)
 	}
 	if result.ExitCode != 0 {
-		return nil, fmt.Errorf("read file: %s", result.Stderr)
+		return errorResult(map[string]any{
+			"sandbox_id": sandboxID, "path": path,
+			"exit_code": result.ExitCode, "stderr": result.Stderr,
+			"error": fmt.Sprintf("read file failed with exit code %d", result.ExitCode),
+		})
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(result.Stdout))
 	if err != nil {
-		return nil, fmt.Errorf("decode file content: %w", err)
+		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("decode file content: %s", err)})
 	}
 
 	return jsonResult(map[string]any{
@@ -547,7 +595,7 @@ func (s *Server) handleReadFile(ctx context.Context, request mcp.CallToolRequest
 func (s *Server) handleListPlaybooks(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	playbooks, err := s.playbookService.ListPlaybooks(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("list playbooks: %w", err)
+		return errorResult(map[string]any{"error": fmt.Sprintf("list playbooks: %s", err)})
 	}
 
 	result := make([]map[string]any, 0, len(playbooks))
@@ -580,12 +628,12 @@ func (s *Server) handleGetPlaybook(ctx context.Context, request mcp.CallToolRequ
 
 	pbWithTasks, err := s.playbookService.GetPlaybookWithTasks(ctx, playbookID)
 	if err != nil {
-		return nil, fmt.Errorf("get playbook: %w", err)
+		return errorResult(map[string]any{"playbook_id": playbookID, "error": fmt.Sprintf("get playbook: %s", err)})
 	}
 
 	yamlContent, err := s.playbookService.ExportPlaybook(ctx, playbookID)
 	if err != nil {
-		return nil, fmt.Errorf("export playbook: %w", err)
+		return errorResult(map[string]any{"playbook_id": playbookID, "error": fmt.Sprintf("export playbook: %s", err)})
 	}
 
 	tasks := make([]map[string]any, 0, len(pbWithTasks.Tasks))
@@ -627,16 +675,16 @@ func (s *Server) handleRunSourceCommand(ctx context.Context, request mcp.CallToo
 
 	result, err := s.vmService.RunSourceVMCommand(ctx, sourceVM, command, 0)
 	if err != nil {
-		if result != nil {
-			return jsonResult(map[string]any{
-				"source_vm": sourceVM,
-				"exit_code": result.ExitCode,
-				"stdout":    result.Stdout,
-				"stderr":    result.Stderr,
-				"error":     err.Error(),
-			})
+		resp := map[string]any{
+			"source_vm": sourceVM,
+			"error":     fmt.Sprintf("run source command: %s", err),
 		}
-		return nil, fmt.Errorf("run source command: %w", err)
+		if result != nil {
+			resp["exit_code"] = result.ExitCode
+			resp["stdout"] = result.Stdout
+			resp["stderr"] = result.Stderr
+		}
+		return errorResult(resp)
 	}
 
 	return jsonResult(map[string]any{
@@ -663,15 +711,24 @@ func (s *Server) handleReadSourceFile(ctx context.Context, request mcp.CallToolR
 	cmd := fmt.Sprintf("base64 %s", shellEscape(path))
 	result, err := s.vmService.RunSourceVMCommand(ctx, sourceVM, cmd, 0)
 	if err != nil {
-		return nil, fmt.Errorf("read source file: %w", err)
+		resp := map[string]any{"source_vm": sourceVM, "path": path, "error": fmt.Sprintf("read source file: %s", err)}
+		if result != nil {
+			resp["exit_code"] = result.ExitCode
+			resp["stderr"] = result.Stderr
+		}
+		return errorResult(resp)
 	}
 	if result.ExitCode != 0 {
-		return nil, fmt.Errorf("read source file: %s", result.Stderr)
+		return errorResult(map[string]any{
+			"source_vm": sourceVM, "path": path,
+			"exit_code": result.ExitCode, "stderr": result.Stderr,
+			"error": fmt.Sprintf("read source file failed with exit code %d", result.ExitCode),
+		})
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(result.Stdout))
 	if err != nil {
-		return nil, fmt.Errorf("decode file content: %w", err)
+		return errorResult(map[string]any{"source_vm": sourceVM, "path": path, "error": fmt.Sprintf("decode file content: %s", err)})
 	}
 
 	return jsonResult(map[string]any{
