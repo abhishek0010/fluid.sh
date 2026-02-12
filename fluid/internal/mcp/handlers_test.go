@@ -709,6 +709,20 @@ func TestHandleListPlaybooks_Empty(t *testing.T) {
 	assert.Equal(t, float64(0), m["count"])
 }
 
+func TestHandleListPlaybooks_NoPlaybooksDir(t *testing.T) {
+	st := newMockStore()
+	cfg := testConfig()
+	cfg.Ansible.PlaybooksDir = ""
+	srv := NewServer(cfg, st, nil, nil, nil, noopLogger())
+	ctx := context.Background()
+
+	result, err := srv.handleListPlaybooks(ctx, newRequest("list_playbooks", nil))
+	require.NoError(t, err)
+
+	m := parseJSON(t, result)
+	assert.Equal(t, float64(0), m["count"])
+}
+
 // --- findHostForSourceVM tests ---
 
 func TestFindHostForSourceVM_NoMultiHost(t *testing.T) {

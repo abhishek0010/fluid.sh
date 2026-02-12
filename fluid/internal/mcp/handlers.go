@@ -603,7 +603,7 @@ func (s *Server) handleListPlaybooks(ctx context.Context, request mcp.CallToolRe
 		path := ""
 		if pb.FilePath != nil && *pb.FilePath != "" {
 			path = *pb.FilePath
-		} else {
+		} else if s.cfg.Ansible.PlaybooksDir != "" {
 			path = filepath.Join(s.cfg.Ansible.PlaybooksDir, pb.Name+".yml")
 		}
 		result = append(result, map[string]any{
