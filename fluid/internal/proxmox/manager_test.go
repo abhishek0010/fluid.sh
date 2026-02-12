@@ -569,7 +569,7 @@ func TestManagerGetIPAddress_ContextCancelled(t *testing.T) {
 	})
 	mux.HandleFunc("/api2/json/nodes/pve1/qemu/202/agent/network-get-interfaces", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("guest agent not running"))
+		_, _ = w.Write([]byte("guest agent not running"))
 	})
 	server := httptest.NewServer(mux)
 	defer server.Close()
@@ -1062,7 +1062,7 @@ func TestVMResolverListAll_Cached(t *testing.T) {
 func TestVMResolverRefresh_APIError(t *testing.T) {
 	client, server := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("error"))
+		_, _ = w.Write([]byte("error"))
 	})
 	defer server.Close()
 
@@ -1234,7 +1234,7 @@ func TestMultiNodeManager_ListVMs(t *testing.T) {
 func TestMultiNodeManager_ListVMs_APIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("forbidden"))
+		_, _ = w.Write([]byte("forbidden"))
 	}))
 	defer server.Close()
 
@@ -1315,7 +1315,7 @@ func TestMultiNodeManager_FindHostForVM(t *testing.T) {
 func TestMultiNodeManager_FindHostForVM_APIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("error"))
+		_, _ = w.Write([]byte("error"))
 	}))
 	defer server.Close()
 
