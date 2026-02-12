@@ -10,11 +10,11 @@ ENV HOSTS=""
 
 WORKDIR /app
 
-# Copy scripts + SSH users config
-COPY entrypoint.sh run-on-remotes.sh reset-ubuntu.sh ssh-users.conf ./
+# Copy scripts (ssh-users.conf is mounted at /etc/secrets/ at runtime)
+COPY entrypoint.sh run-on-remotes.sh reset-ubuntu.sh ./
 
 # Make scripts executable
 RUN chmod +x entrypoint.sh run-on-remotes.sh reset-ubuntu.sh
 
 ENTRYPOINT ["sh", "./entrypoint.sh"]
-CMD ["./reset-ubuntu.sh", "./ssh-users.conf"]
+CMD ["./reset-ubuntu.sh", "/etc/secrets/ssh-users.conf"]
