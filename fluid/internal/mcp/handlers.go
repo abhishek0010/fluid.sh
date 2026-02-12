@@ -40,8 +40,11 @@ func errorResult(v any) (*mcp.CallToolResult, error) {
 }
 
 // shellEscape safely escapes a string for use in a shell command.
-func shellEscape(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+func shellEscape(s string) (string, error) {
+	if err := validateShellArg(s); err != nil {
+		return "", err
+	}
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'", nil
 }
 
 // findHostForSourceVM finds the host that has the given source VM.
@@ -121,7 +124,7 @@ func (s *Server) handleCreateSandbox(ctx context.Context, request mcp.CallToolRe
 	}
 
 	if host != nil {
-		sb, ip, err := s.vmService.CreateSandboxOnHost(ctx, host, sourceVM, "mcp-agent", "", cpu, memoryMB, nil, true, true)
+		sb, ip, err := s.vmService.CreateSandboxOnHost(ctx, host, sourceVM, mcpAgentID, "", cpu, memoryMB, nil, true, true)
 		if err != nil {
 			return errorResult(map[string]any{"source_vm": sourceVM, "host": host.Name, "error": fmt.Sprintf("create sandbox on host: %s", err)})
 		}
@@ -137,7 +140,7 @@ func (s *Server) handleCreateSandbox(ctx context.Context, request mcp.CallToolRe
 		return jsonResult(result)
 	}
 
-	sb, ip, err := s.vmService.CreateSandbox(ctx, sourceVM, "mcp-agent", "", cpu, memoryMB, nil, true, true)
+	sb, ip, err := s.vmService.CreateSandbox(ctx, sourceVM, mcpAgentID, "", cpu, memoryMB, nil, true, true)
 	if err != nil {
 		return errorResult(map[string]any{"source_vm": sourceVM, "error": fmt.Sprintf("create sandbox: %s", err)})
 	}
@@ -179,11 +182,15 @@ func (s *Server) handleRunCommand(ctx context.Context, request mcp.CallToolReque
 		return nil, fmt.Errorf("command is required")
 	}
 
+	timeoutSec := request.GetInt("timeout_seconds", 0)
+	timeout := time.Duration(timeoutSec) * time.Second
+
 	user := s.cfg.SSH.DefaultUser
-	result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", command, 0, nil)
+	result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", command, timeout, nil)
 	if err != nil {
 		resp := map[string]any{
 			"sandbox_id": sandboxID,
+			"command":    command,
 			"error":      fmt.Sprintf("run command: %s", err),
 		}
 		if result != nil {
@@ -451,22 +458,27 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 	if sandboxID == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
 	}
-	path := request.GetString("path", "")
-	if path == "" {
-		return nil, fmt.Errorf("path is required")
-	}
-	if !filepath.IsAbs(path) {
-		return nil, fmt.Errorf("path must be absolute: %s", path)
+	path, err := validateFilePath(request.GetString("path", ""))
+	if err != nil {
+		return nil, fmt.Errorf("invalid path: %w", err)
 	}
 	oldStr := request.GetString("old_str", "")
 	newStr := request.GetString("new_str", "")
 
 	user := s.cfg.SSH.DefaultUser
 
+	if err := checkFileSize(int64(len(newStr))); err != nil {
+		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("file too large: %s", err)})
+	}
+
 	if oldStr == "" {
 		// Create/overwrite file
 		encoded := base64.StdEncoding.EncodeToString([]byte(newStr))
-		cmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, shellEscape(path))
+		escapedPath, err := shellEscape(path)
+		if err != nil {
+			return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
+		}
+		cmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, escapedPath)
 		result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", cmd, 0, nil)
 		if err != nil {
 			resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("create file: %s", err)}
@@ -491,7 +503,11 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 	}
 
 	// Read existing file
-	readResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 %s", shellEscape(path)), 0, nil)
+	escapedPath, err := shellEscape(path)
+	if err != nil {
+		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
+	}
+	readResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 %s", escapedPath), 0, nil)
 	if err != nil {
 		resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("read file for edit: %s", err)}
 		if readResult != nil {
@@ -524,7 +540,11 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 
 	edited := strings.Replace(original, oldStr, newStr, 1)
 	encoded := base64.StdEncoding.EncodeToString([]byte(edited))
-	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, shellEscape(path))
+	escapedPathW, err := shellEscape(path)
+	if err != nil {
+		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
+	}
+	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, escapedPathW)
 	writeResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", writeCmd, 0, nil)
 	if err != nil {
 		resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("write file: %s", err)}
@@ -554,16 +574,17 @@ func (s *Server) handleReadFile(ctx context.Context, request mcp.CallToolRequest
 	if sandboxID == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
 	}
-	path := request.GetString("path", "")
-	if path == "" {
-		return nil, fmt.Errorf("path is required")
-	}
-	if !filepath.IsAbs(path) {
-		return nil, fmt.Errorf("path must be absolute: %s", path)
+	path, err := validateFilePath(request.GetString("path", ""))
+	if err != nil {
+		return nil, fmt.Errorf("invalid path: %w", err)
 	}
 
 	user := s.cfg.SSH.DefaultUser
-	result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 %s", shellEscape(path)), 0, nil)
+	escapedPath, err := shellEscape(path)
+	if err != nil {
+		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
+	}
+	result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 %s", escapedPath), 0, nil)
 	if err != nil {
 		resp := map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("read file: %s", err)}
 		if result != nil {
@@ -673,10 +694,14 @@ func (s *Server) handleRunSourceCommand(ctx context.Context, request mcp.CallToo
 		return nil, fmt.Errorf("command is required")
 	}
 
-	result, err := s.vmService.RunSourceVMCommand(ctx, sourceVM, command, 0)
+	timeoutSec := request.GetInt("timeout_seconds", 0)
+	timeout := time.Duration(timeoutSec) * time.Second
+
+	result, err := s.vmService.RunSourceVMCommand(ctx, sourceVM, command, timeout)
 	if err != nil {
 		resp := map[string]any{
 			"source_vm": sourceVM,
+			"command":   command,
 			"error":     fmt.Sprintf("run source command: %s", err),
 		}
 		if result != nil {
@@ -700,15 +725,16 @@ func (s *Server) handleReadSourceFile(ctx context.Context, request mcp.CallToolR
 	if sourceVM == "" {
 		return nil, fmt.Errorf("source_vm is required")
 	}
-	path := request.GetString("path", "")
-	if path == "" {
-		return nil, fmt.Errorf("path is required")
-	}
-	if !filepath.IsAbs(path) {
-		return nil, fmt.Errorf("path must be absolute: %s", path)
+	path, err := validateFilePath(request.GetString("path", ""))
+	if err != nil {
+		return nil, fmt.Errorf("invalid path: %w", err)
 	}
 
-	cmd := fmt.Sprintf("base64 %s", shellEscape(path))
+	escapedPath, err := shellEscape(path)
+	if err != nil {
+		return errorResult(map[string]any{"source_vm": sourceVM, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
+	}
+	cmd := fmt.Sprintf("base64 %s", escapedPath)
 	result, err := s.vmService.RunSourceVMCommand(ctx, sourceVM, cmd, 0)
 	if err != nil {
 		resp := map[string]any{"source_vm": sourceVM, "path": path, "error": fmt.Sprintf("read source file: %s", err)}

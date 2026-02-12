@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -247,8 +248,27 @@ func TestShellEscape(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			result := shellEscape(tt.input)
+			result, err := shellEscape(tt.input)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestShellEscape_ValidationErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"null byte", "hello\x00world"},
+		{"control char", "hello\x07world"},
+		{"empty string", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := shellEscape(tt.input)
+			assert.Error(t, err)
 		})
 	}
 }
@@ -584,7 +604,7 @@ func TestHandleEditFile_RelativePath(t *testing.T) {
 		"new_str":    "content",
 	}))
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "path must be absolute")
+	assert.Contains(t, err.Error(), "invalid path")
 }
 
 // --- handleReadFile tests ---
@@ -620,7 +640,7 @@ func TestHandleReadFile_RelativePath(t *testing.T) {
 		"path":       "relative/path",
 	}))
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "path must be absolute")
+	assert.Contains(t, err.Error(), "invalid path")
 }
 
 // --- handleGetPlaybook tests ---
@@ -691,7 +711,7 @@ func TestHandleReadSourceFile_RelativePath(t *testing.T) {
 		"path":      "relative/path",
 	}))
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "path must be absolute")
+	assert.Contains(t, err.Error(), "invalid path")
 }
 
 // --- handleListPlaybooks tests ---
@@ -746,4 +766,101 @@ func TestHandleListVMs_NoMultiHost_VirshUnavailable(t *testing.T) {
 	// On machines without virsh, this will return an error - that's expected behavior.
 	_, _ = srv.handleListVMs(ctx, newRequest("list_vms", nil))
 	// We just verify it doesn't panic
+}
+
+// --- security tests ---
+
+func TestHandleEditFile_NullByteInPath(t *testing.T) {
+	srv := testServer()
+	ctx := context.Background()
+
+	_, err := srv.handleEditFile(ctx, newRequest("edit_file", map[string]any{
+		"sandbox_id": "SBX-1",
+		"path":       "/etc/config\x00evil",
+		"new_str":    "content",
+	}))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid path")
+}
+
+func TestHandleReadFile_NullByteInPath(t *testing.T) {
+	srv := testServer()
+	ctx := context.Background()
+
+	_, err := srv.handleReadFile(ctx, newRequest("read_file", map[string]any{
+		"sandbox_id": "SBX-1",
+		"path":       "/etc/config\x00evil",
+	}))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid path")
+}
+
+func TestHandleEditFile_PathTraversal(t *testing.T) {
+	srv := testServerWithSandboxes(
+		&store.Sandbox{
+			ID:          "SBX-1",
+			SandboxName: "sbx-test",
+			State:       store.SandboxStateRunning,
+			BaseImage:   "ubuntu-base",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+	)
+	ctx := context.Background()
+
+	// Path traversal with absolute path - validateFilePath cleans it
+	// "/var/lib/../../etc/passwd" cleans to "/etc/passwd" which is valid
+	// So this should NOT return an error at the validation stage
+	// (it would fail later when trying to connect to the non-existent sandbox)
+	_, err := srv.handleEditFile(ctx, newRequest("edit_file", map[string]any{
+		"sandbox_id": "SBX-1",
+		"path":       "/var/lib/../../etc/passwd",
+		"new_str":    "content",
+	}))
+	// This passes path validation but fails at vmService level (no real SSH)
+	// The important thing is the path gets cleaned
+	// We can't easily test the cleaned path without a mock vmService,
+	// so just verify it doesn't fail at validation
+	assert.NotContains(t, fmt.Sprintf("%v", err), "invalid path")
+}
+
+func TestHandleEditFile_FileTooLarge(t *testing.T) {
+	srv := testServer()
+	ctx := context.Background()
+
+	largeContent := strings.Repeat("x", 11*1024*1024) // 11MB > 10MB limit
+	result, err := srv.handleEditFile(ctx, newRequest("edit_file", map[string]any{
+		"sandbox_id": "SBX-1",
+		"path":       "/etc/config",
+		"new_str":    largeContent,
+	}))
+	require.NoError(t, err) // errorResult returns nil error
+	require.True(t, result.IsError)
+	m := parseJSON(t, result)
+	assert.Contains(t, m["error"], "file too large")
+}
+
+func TestHandleRunCommand_IncludesCommandInError(t *testing.T) {
+	srv := testServerWithSandboxes(
+		&store.Sandbox{
+			ID:          "SBX-1",
+			SandboxName: "sbx-test",
+			State:       store.SandboxStateRunning,
+			BaseImage:   "ubuntu-base",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+	)
+	ctx := context.Background()
+
+	// This will fail because there's no real SSH connection, but the error
+	// response should include the command that was attempted
+	result, err := srv.handleRunCommand(ctx, newRequest("run_command", map[string]any{
+		"sandbox_id": "SBX-1",
+		"command":    "whoami",
+	}))
+	require.NoError(t, err) // errorResult returns nil error
+	require.True(t, result.IsError)
+	m := parseJSON(t, result)
+	assert.Equal(t, "whoami", m["command"])
 }

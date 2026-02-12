@@ -14,6 +14,15 @@ import (
 	"github.com/aspectrr/fluid.sh/fluid/internal/vm"
 )
 
+const (
+	// mcpAgentID identifies sandboxes created via the MCP server.
+	mcpAgentID = "mcp-agent"
+)
+
+// Note: The MCP server uses stdio transport with a single client connection.
+// Rate limiting is unnecessary for this architecture since there is at most
+// one concurrent client. If the transport changes to HTTP/SSE, add rate limiting.
+
 // Server wraps an MCP server that exposes fluid tools over stdio.
 type Server struct {
 	cfg             *config.Config
@@ -56,7 +65,7 @@ func (s *Server) Serve() error {
 	return server.ServeStdio(s.mcpServer)
 }
 
-// registerTools registers all 17 fluid tools on the MCP server.
+// registerTools registers all fluid tools on the MCP server.
 func (s *Server) registerTools() {
 	s.mcpServer.AddTool(mcp.NewTool("list_sandboxes",
 		mcp.WithDescription("List all existing sandboxes with their state and IP addresses."),
@@ -79,6 +88,7 @@ func (s *Server) registerTools() {
 		mcp.WithDescription("Execute a shell command inside a sandbox via SSH."),
 		mcp.WithString("sandbox_id", mcp.Required(), mcp.Description("The ID of the sandbox to run the command in.")),
 		mcp.WithString("command", mcp.Required(), mcp.Description("The shell command to execute.")),
+		mcp.WithNumber("timeout_seconds", mcp.Description("Optional command timeout in seconds. 0 or omitted uses the configured default.")),
 	), s.handleRunCommand)
 
 	s.mcpServer.AddTool(mcp.NewTool("start_sandbox",
@@ -148,6 +158,7 @@ func (s *Server) registerTools() {
 		mcp.WithDescription("Execute a read-only command on a source/golden VM. Only diagnostic commands are allowed (ps, ls, cat, systemctl status, etc.)."),
 		mcp.WithString("source_vm", mcp.Required(), mcp.Description("The name of the source VM to run the command on.")),
 		mcp.WithString("command", mcp.Required(), mcp.Description("The read-only diagnostic command to execute.")),
+		mcp.WithNumber("timeout_seconds", mcp.Description("Optional command timeout in seconds. 0 or omitted uses the configured default.")),
 	), s.handleRunSourceCommand)
 
 	s.mcpServer.AddTool(mcp.NewTool("read_source_file",
