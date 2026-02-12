@@ -200,49 +200,6 @@ func (m *mockStore) GetSourceVM(ctx context.Context, name string) (*store.Source
 func (m *mockStore) UpsertSourceVM(ctx context.Context, svm *store.SourceVM) error { return nil }
 func (m *mockStore) ListSourceVMs(ctx context.Context) ([]*store.SourceVM, error)  { return nil, nil }
 
-// --- mock manager ---
-
-type mockManager struct {
-	getSandboxFn func(ctx context.Context, id string) (*store.Sandbox, error)
-}
-
-func (m *mockManager) CloneVM(ctx context.Context, sourceVM, newName string, cpu, memoryMB int, network string) error {
-	return nil
-}
-func (m *mockManager) DestroyVM(ctx context.Context, name string) error { return nil }
-func (m *mockManager) StartVM(ctx context.Context, name string) error   { return nil }
-func (m *mockManager) StopVM(ctx context.Context, name string, force bool) error {
-	return nil
-}
-
-func (m *mockManager) GetVMState(ctx context.Context, name string) (interface{ String() string }, error) {
-	return nil, nil
-}
-
-func (m *mockManager) GetIPAddress(ctx context.Context, name string, timeout time.Duration) (string, string, error) {
-	return "", "", nil
-}
-
-func (m *mockManager) CreateSnapshot(ctx context.Context, vmName, snapshotName string, external bool) error {
-	return nil
-}
-
-func (m *mockManager) InjectSSHKey(ctx context.Context, vmName, user, pubkey string) error {
-	return nil
-}
-
-func (m *mockManager) InjectSSHKeyViaCloudInit(ctx context.Context, vmName, user, pubkey, caPubKey string) error {
-	return nil
-}
-
-func (m *mockManager) ValidateSourceVM(ctx context.Context, vmName string) (interface{ GetValid() bool }, error) {
-	return nil, nil
-}
-
-func (m *mockManager) CheckHostResources(ctx context.Context, cpus, memoryMB int) (interface{ GetValid() bool }, error) {
-	return nil, nil
-}
-
 // --- test server helper ---
 
 func testServer() *Server {
