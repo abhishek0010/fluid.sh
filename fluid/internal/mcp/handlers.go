@@ -454,7 +454,7 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 	if oldStr == "" {
 		// Create/overwrite file
 		encoded := base64.StdEncoding.EncodeToString([]byte(newStr))
-		cmd := fmt.Sprintf("echo '%s' | base64 -d > '%s'", encoded, path)
+		cmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, shellEscape(path))
 		result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", cmd, 0, nil)
 		if err != nil {
 			return nil, fmt.Errorf("create file: %w", err)
@@ -470,7 +470,7 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 	}
 
 	// Read existing file
-	readResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 '%s'", path), 0, nil)
+	readResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 %s", shellEscape(path)), 0, nil)
 	if err != nil {
 		return nil, fmt.Errorf("read file for edit: %w", err)
 	}
@@ -494,7 +494,7 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 
 	edited := strings.Replace(original, oldStr, newStr, 1)
 	encoded := base64.StdEncoding.EncodeToString([]byte(edited))
-	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > '%s'", encoded, path)
+	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, shellEscape(path))
 	writeResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", writeCmd, 0, nil)
 	if err != nil {
 		return nil, fmt.Errorf("write file: %w", err)
@@ -524,7 +524,7 @@ func (s *Server) handleReadFile(ctx context.Context, request mcp.CallToolRequest
 	}
 
 	user := s.cfg.SSH.DefaultUser
-	result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 '%s'", path), 0, nil)
+	result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 %s", shellEscape(path)), 0, nil)
 	if err != nil {
 		return nil, fmt.Errorf("read file: %w", err)
 	}

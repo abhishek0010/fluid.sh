@@ -59,6 +59,7 @@ make build
 | `fluid vms` | List available VMs |
 | `fluid version` | Print version |
 | `fluid tui` | Launch interactive TUI |
+| `fluid mcp` | Start MCP server on stdio |
 
 All commands output JSON by default for easy agent parsing.
 
@@ -156,6 +157,75 @@ Command completed (exit code: 0)
 **stdout:**
 root
 ```
+
+## MCP Server
+
+Fluid exposes all sandbox management tools via the [Model Context Protocol](https://modelcontextprotocol.io/) for use with Claude Code, Cursor, and other MCP clients.
+
+### Starting the MCP Server
+
+```bash
+./bin/fluid mcp
+```
+
+This starts a JSON-RPC server on stdio. All logging goes to `~/.fluid/fluid-mcp.log` since stdout is the MCP transport.
+
+### Client Configuration
+
+**Claude Code** (`~/.claude.json`):
+
+```json
+{
+  "mcpServers": {
+    "fluid": {
+      "command": "/path/to/fluid",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+**Cursor** (`.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "fluid": {
+      "command": "/path/to/fluid",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Available Tools
+
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `list_sandboxes` | (none) | List all sandboxes with state and IPs |
+| `create_sandbox` | `source_vm` (required), `host`, `cpu`, `memory_mb` | Create a sandbox by cloning a source VM |
+| `destroy_sandbox` | `sandbox_id` (required) | Destroy a sandbox and remove storage |
+| `run_command` | `sandbox_id` (required), `command` (required) | Execute a shell command via SSH |
+| `start_sandbox` | `sandbox_id` (required) | Start a stopped sandbox |
+| `stop_sandbox` | `sandbox_id` (required) | Stop a running sandbox |
+| `get_sandbox` | `sandbox_id` (required) | Get detailed sandbox info |
+| `list_vms` | (none) | List available VMs for cloning |
+| `create_snapshot` | `sandbox_id` (required), `name` | Snapshot current sandbox state |
+| `create_playbook` | `name` (required), `hosts`, `become` | Create an Ansible playbook |
+| `add_playbook_task` | `playbook_id` (required), `name` (required), `module` (required), `params` | Add a task to a playbook |
+| `edit_file` | `sandbox_id` (required), `path` (required), `new_str` (required), `old_str` | Edit or create a file in a sandbox |
+| `read_file` | `sandbox_id` (required), `path` (required) | Read a file from a sandbox |
+| `list_playbooks` | (none) | List all created playbooks |
+| `get_playbook` | `playbook_id` (required) | Get playbook definition and YAML |
+| `run_source_command` | `source_vm` (required), `command` (required) | Run read-only command on a source VM |
+| `read_source_file` | `source_vm` (required), `path` (required) | Read a file from a source VM |
+
+### Differences from TUI Agent
+
+- **No approval flows**: MCP clients handle their own approval. Sandbox creation and command execution proceed without interactive confirmation.
+- **No streaming**: Commands return complete results. Use `run_command` not the streaming variant.
+- **No source VM auto-preparation**: If a source VM isn't prepared for read-only access, the error propagates. Run `fluid source prepare <vm>` separately.
+- **Agent ID**: MCP-created sandboxes use `agent_id: "mcp-agent"` to distinguish from TUI-created ones.
 
 ## Configuration
 
