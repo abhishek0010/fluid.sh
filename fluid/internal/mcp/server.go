@@ -106,6 +106,8 @@ func (s *Server) registerTools() {
 
 	s.mcpServer.AddTool(mcp.NewTool("list_vms",
 		mcp.WithDescription("List available host VMs (base images) that can be cloned to create sandboxes. Does not include sandboxes - use list_sandboxes for those."),
+		mcp.WithNumber("limit", mcp.Description("Maximum number of VMs to return. 0 or omitted returns all.")),
+		mcp.WithNumber("offset", mcp.Description("Number of VMs to skip before returning results. Default: 0.")),
 	), s.handleListVMs)
 
 	s.mcpServer.AddTool(mcp.NewTool("create_snapshot",
@@ -130,11 +132,12 @@ func (s *Server) registerTools() {
 	), s.handleAddPlaybookTask)
 
 	s.mcpServer.AddTool(mcp.NewTool("edit_file",
-		mcp.WithDescription("Edit a file on a sandbox VM by replacing text or create a new file. If old_str is empty, creates/overwrites the file with new_str. Otherwise replaces the first occurrence of old_str with new_str."),
+		mcp.WithDescription("Edit a file on a sandbox VM by replacing text or create a new file. If old_str is empty, creates/overwrites the file with new_str. Otherwise replaces the first occurrence of old_str with new_str (or all occurrences if replace_all is true)."),
 		mcp.WithString("sandbox_id", mcp.Required(), mcp.Description("The ID of the sandbox containing the file.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("The absolute path to the file inside the sandbox.")),
 		mcp.WithString("old_str", mcp.Description("The string to find and replace. If empty, the file will be created/overwritten with new_str.")),
 		mcp.WithString("new_str", mcp.Required(), mcp.Description("The string to replace old_str with, or the content for a new file.")),
+		mcp.WithBoolean("replace_all", mcp.Description("Replace all occurrences of old_str. Default: false.")),
 	), s.handleEditFile)
 
 	s.mcpServer.AddTool(mcp.NewTool("read_file",

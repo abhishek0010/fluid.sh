@@ -83,6 +83,10 @@ func (s *Server) trackToolCall(toolName string) {
 
 func (s *Server) handleListSandboxes(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("list_sandboxes")
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	sandboxes, err := s.vmService.GetSandboxes(ctx, store.SandboxFilter{}, nil)
 	if err != nil {
 		s.logger.Error("list_sandboxes failed", "error", err)
@@ -118,6 +122,9 @@ func (s *Server) handleListSandboxes(ctx context.Context, request mcp.CallToolRe
 
 func (s *Server) handleCreateSandbox(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("create_sandbox")
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
 
 	sourceVM := request.GetString("source_vm", "")
 	if sourceVM == "" {
@@ -174,6 +181,9 @@ func (s *Server) handleCreateSandbox(ctx context.Context, request mcp.CallToolRe
 func (s *Server) handleDestroySandbox(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("destroy_sandbox")
 
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	id := request.GetString("sandbox_id", "")
 	if id == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
@@ -193,6 +203,9 @@ func (s *Server) handleDestroySandbox(ctx context.Context, request mcp.CallToolR
 
 func (s *Server) handleRunCommand(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("run_command")
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
 
 	sandboxID := request.GetString("sandbox_id", "")
 	command := request.GetString("command", "")
@@ -234,6 +247,9 @@ func (s *Server) handleRunCommand(ctx context.Context, request mcp.CallToolReque
 func (s *Server) handleStartSandbox(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("start_sandbox")
 
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	id := request.GetString("sandbox_id", "")
 	if id == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
@@ -258,6 +274,9 @@ func (s *Server) handleStartSandbox(ctx context.Context, request mcp.CallToolReq
 func (s *Server) handleStopSandbox(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("stop_sandbox")
 
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	id := request.GetString("sandbox_id", "")
 	if id == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
@@ -277,6 +296,9 @@ func (s *Server) handleStopSandbox(ctx context.Context, request mcp.CallToolRequ
 
 func (s *Server) handleGetSandbox(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("get_sandbox")
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
 
 	id := request.GetString("sandbox_id", "")
 	if id == "" {
@@ -315,17 +337,64 @@ func (s *Server) handleGetSandbox(ctx context.Context, request mcp.CallToolReque
 func (s *Server) handleListVMs(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("list_vms")
 
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
+	var vms []map[string]any
+	var hostErrors []map[string]any
+	var err error
+
 	if s.multiHostMgr != nil {
-		return s.listVMsFromHosts(ctx)
+		vms, hostErrors, err = s.listVMsFromHosts(ctx)
+	} else {
+		vms, err = s.listVMsLocal(ctx)
 	}
-	return s.listVMsLocal(ctx)
+	if err != nil {
+		return err.(*listVMsError).result()
+	}
+
+	total := len(vms)
+
+	limit := request.GetInt("limit", 0)
+	offset := request.GetInt("offset", 0)
+	if offset > 0 && offset < len(vms) {
+		vms = vms[offset:]
+	} else if offset >= len(vms) {
+		vms = vms[:0]
+	}
+	if limit > 0 && limit < len(vms) {
+		vms = vms[:limit]
+	}
+
+	response := map[string]any{
+		"vms":   vms,
+		"count": len(vms),
+		"total": total,
+	}
+	if len(hostErrors) > 0 {
+		response["host_errors"] = hostErrors
+	}
+
+	return jsonResult(response)
 }
 
-func (s *Server) listVMsFromHosts(ctx context.Context) (*mcp.CallToolResult, error) {
+// listVMsError wraps an error with a pre-built error result.
+type listVMsError struct {
+	res *mcp.CallToolResult
+	err error
+}
+
+func (e *listVMsError) Error() string { return e.err.Error() }
+func (e *listVMsError) result() (*mcp.CallToolResult, error) {
+	return e.res, nil
+}
+
+func (s *Server) listVMsFromHosts(ctx context.Context) ([]map[string]any, []map[string]any, error) {
 	listResult, err := s.multiHostMgr.ListDomains(ctx)
 	if err != nil {
 		s.logger.Error("list_vms failed", "error", err)
-		return errorResult(map[string]any{"error": fmt.Sprintf("list domains from hosts: %s", err)})
+		res, _ := errorResult(map[string]any{"error": fmt.Sprintf("list domains from hosts: %s", err)})
+		return nil, nil, &listVMsError{res: res, err: err}
 	}
 
 	vms := make([]map[string]any, 0)
@@ -345,27 +414,22 @@ func (s *Server) listVMsFromHosts(ctx context.Context) (*mcp.CallToolResult, err
 		vms = append(vms, item)
 	}
 
-	response := map[string]any{
-		"vms":   vms,
-		"count": len(vms),
-	}
-
+	var hostErrors []map[string]any
 	if len(listResult.HostErrors) > 0 {
-		errors := make([]map[string]any, 0, len(listResult.HostErrors))
+		hostErrors = make([]map[string]any, 0, len(listResult.HostErrors))
 		for _, he := range listResult.HostErrors {
-			errors = append(errors, map[string]any{
+			hostErrors = append(hostErrors, map[string]any{
 				"host":    he.HostName,
 				"address": he.HostAddress,
 				"error":   he.Error,
 			})
 		}
-		response["host_errors"] = errors
 	}
 
-	return jsonResult(response)
+	return vms, hostErrors, nil
 }
 
-func (s *Server) listVMsLocal(ctx context.Context) (*mcp.CallToolResult, error) {
+func (s *Server) listVMsLocal(ctx context.Context) ([]map[string]any, error) {
 	cmd := exec.CommandContext(ctx, "virsh", "list", "--all", "--name")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -373,7 +437,8 @@ func (s *Server) listVMsLocal(ctx context.Context) (*mcp.CallToolResult, error) 
 
 	if err := cmd.Run(); err != nil {
 		s.logger.Error("list_vms failed", "error", err)
-		return errorResult(map[string]any{"error": fmt.Sprintf("virsh list: %s: %s", err, stderr.String())})
+		res, _ := errorResult(map[string]any{"error": fmt.Sprintf("virsh list: %s: %s", err, stderr.String())})
+		return nil, &listVMsError{res: res, err: err}
 	}
 
 	vms := make([]map[string]any, 0)
@@ -389,14 +454,14 @@ func (s *Server) listVMsLocal(ctx context.Context) (*mcp.CallToolResult, error) 
 		})
 	}
 
-	return jsonResult(map[string]any{
-		"vms":   vms,
-		"count": len(vms),
-	})
+	return vms, nil
 }
 
 func (s *Server) handleCreateSnapshot(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("create_snapshot")
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
 
 	sandboxID := request.GetString("sandbox_id", "")
 	if sandboxID == "" {
@@ -500,6 +565,9 @@ func (s *Server) handleAddPlaybookTask(ctx context.Context, request mcp.CallTool
 func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("edit_file")
 
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	sandboxID := request.GetString("sandbox_id", "")
 	if sandboxID == "" {
 		return nil, fmt.Errorf("sandbox_id is required")
@@ -587,7 +655,12 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 		})
 	}
 
-	edited := strings.Replace(original, oldStr, newStr, 1)
+	replaceAll := request.GetBool("replace_all", false)
+	n := 1
+	if replaceAll {
+		n = -1
+	}
+	edited := strings.Replace(original, oldStr, newStr, n)
 	if err := checkFileSize(int64(len(edited))); err != nil {
 		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
 		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("edited file too large: %s", err)})
@@ -622,6 +695,9 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 
 func (s *Server) handleReadFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("read_file")
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
 
 	sandboxID := request.GetString("sandbox_id", "")
 	if sandboxID == "" {
@@ -751,6 +827,9 @@ func (s *Server) handleGetPlaybook(ctx context.Context, request mcp.CallToolRequ
 func (s *Server) handleRunSourceCommand(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("run_source_command")
 
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	sourceVM := request.GetString("source_vm", "")
 	if sourceVM == "" {
 		return nil, fmt.Errorf("source_vm is required")
@@ -789,6 +868,9 @@ func (s *Server) handleRunSourceCommand(ctx context.Context, request mcp.CallToo
 
 func (s *Server) handleReadSourceFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s.trackToolCall("read_source_file")
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
 
 	sourceVM := request.GetString("source_vm", "")
 	if sourceVM == "" {

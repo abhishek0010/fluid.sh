@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aspectrr/fluid.sh/fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid/internal/provider"
+	"github.com/aspectrr/fluid.sh/fluid/internal/sshkeys"
 	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 	"github.com/aspectrr/fluid.sh/fluid/internal/vm"
 )
@@ -941,4 +944,214 @@ func TestHandleRunCommand_IncludesCommandInError(t *testing.T) {
 	require.True(t, result.IsError)
 	m := parseJSON(t, result)
 	assert.Equal(t, "whoami", m["command"])
+}
+
+// --- mock provider.Manager ---
+
+type mockProviderManager struct{}
+
+func (m *mockProviderManager) CloneVM(_ context.Context, _, _ string, _, _ int, _ string) (provider.VMRef, error) {
+	return provider.VMRef{}, nil
+}
+
+func (m *mockProviderManager) CloneFromVM(_ context.Context, _, _ string, _, _ int, _ string) (provider.VMRef, error) {
+	return provider.VMRef{}, nil
+}
+func (m *mockProviderManager) InjectSSHKey(_ context.Context, _, _, _ string) error { return nil }
+func (m *mockProviderManager) StartVM(_ context.Context, _ string) error            { return nil }
+func (m *mockProviderManager) StopVM(_ context.Context, _ string, _ bool) error     { return nil }
+func (m *mockProviderManager) DestroyVM(_ context.Context, _ string) error          { return nil }
+func (m *mockProviderManager) CreateSnapshot(_ context.Context, _, _ string, _ bool) (provider.SnapshotRef, error) {
+	return provider.SnapshotRef{}, nil
+}
+
+func (m *mockProviderManager) DiffSnapshot(_ context.Context, _, _, _ string) (*provider.FSComparePlan, error) {
+	return nil, nil
+}
+
+func (m *mockProviderManager) GetIPAddress(_ context.Context, _ string, _ time.Duration) (string, string, error) {
+	return "192.168.122.100", "52:54:00:00:00:01", nil
+}
+
+func (m *mockProviderManager) GetVMState(_ context.Context, _ string) (provider.VMState, error) {
+	return provider.VMStateRunning, nil
+}
+
+func (m *mockProviderManager) ValidateSourceVM(_ context.Context, _ string) (*provider.VMValidationResult, error) {
+	return &provider.VMValidationResult{Valid: true}, nil
+}
+
+func (m *mockProviderManager) CheckHostResources(_ context.Context, _, _ int) (*provider.ResourceCheckResult, error) {
+	return &provider.ResourceCheckResult{Valid: true}, nil
+}
+
+// --- mock SSHRunner ---
+
+type mockSSHRunner struct {
+	runFn func(ctx context.Context, addr, user, privateKeyPath, command string, timeout time.Duration, env map[string]string, proxyJump string) (stdout, stderr string, exitCode int, err error)
+}
+
+func (m *mockSSHRunner) Run(ctx context.Context, addr, user, privateKeyPath, command string, timeout time.Duration, env map[string]string, proxyJump string) (string, string, int, error) {
+	if m.runFn != nil {
+		return m.runFn(ctx, addr, user, privateKeyPath, command, timeout, env, proxyJump)
+	}
+	return "", "", 0, nil
+}
+
+func (m *mockSSHRunner) RunWithCert(ctx context.Context, addr, user, privateKeyPath, certPath, command string, timeout time.Duration, env map[string]string, proxyJump string) (string, string, int, error) {
+	if m.runFn != nil {
+		return m.runFn(ctx, addr, user, privateKeyPath, command, timeout, env, proxyJump)
+	}
+	return "", "", 0, nil
+}
+
+func (m *mockSSHRunner) RunStreaming(ctx context.Context, addr, user, privateKeyPath, command string, timeout time.Duration, env map[string]string, proxyJump string, outputChan chan<- vm.OutputChunk) (string, string, int, error) {
+	if m.runFn != nil {
+		return m.runFn(ctx, addr, user, privateKeyPath, command, timeout, env, proxyJump)
+	}
+	return "", "", 0, nil
+}
+
+func (m *mockSSHRunner) RunWithCertStreaming(ctx context.Context, addr, user, privateKeyPath, certPath, command string, timeout time.Duration, env map[string]string, proxyJump string, outputChan chan<- vm.OutputChunk) (string, string, int, error) {
+	if m.runFn != nil {
+		return m.runFn(ctx, addr, user, privateKeyPath, command, timeout, env, proxyJump)
+	}
+	return "", "", 0, nil
+}
+
+// --- mock KeyProvider ---
+
+type mockKeyProvider struct{}
+
+func (m *mockKeyProvider) GetCredentials(_ context.Context, _, _ string) (*sshkeys.Credentials, error) {
+	return &sshkeys.Credentials{
+		PrivateKeyPath:  "/tmp/test-key",
+		CertificatePath: "/tmp/test-key-cert.pub",
+		PublicKey:       "ssh-ed25519 AAAA...",
+		Username:        "sandbox",
+	}, nil
+}
+
+func (m *mockKeyProvider) GetSourceVMCredentials(_ context.Context, _ string) (*sshkeys.Credentials, error) {
+	return &sshkeys.Credentials{
+		PrivateKeyPath:  "/tmp/test-key",
+		CertificatePath: "/tmp/test-key-cert.pub",
+		PublicKey:       "ssh-ed25519 AAAA...",
+		Username:        "sandbox",
+	}, nil
+}
+func (m *mockKeyProvider) CleanupSandbox(_ context.Context, _ string) error { return nil }
+func (m *mockKeyProvider) Close() error                                     { return nil }
+
+// --- test server with mock VM infrastructure ---
+
+func testServerWithMockVM(sshFn func(ctx context.Context, addr, user, privateKeyPath, command string, timeout time.Duration, env map[string]string, proxyJump string) (string, string, int, error), sandboxes ...*store.Sandbox) *Server {
+	st := newMockStore()
+	for _, sb := range sandboxes {
+		st.sandboxes[sb.ID] = sb
+	}
+	cfg := testConfig()
+	mockMgr := &mockProviderManager{}
+	mockSSH := &mockSSHRunner{runFn: sshFn}
+	mockKeys := &mockKeyProvider{}
+	vmSvc := vm.NewService(mockMgr, st, vm.Config{
+		CommandTimeout: 30 * time.Second,
+	}, vm.WithSSHRunner(mockSSH), vm.WithKeyManager(mockKeys))
+	return &Server{
+		cfg:       cfg,
+		store:     st,
+		vmService: vmSvc,
+		logger:    noopLogger(),
+	}
+}
+
+// --- handleEditFile old_str_not_found test ---
+
+func TestHandleEditFile_OldStrNotFound(t *testing.T) {
+	ip := "192.168.122.100"
+	srv := testServerWithMockVM(
+		func(_ context.Context, _, _, _, command string, _ time.Duration, _ map[string]string, _ string) (string, string, int, error) {
+			// Return base64-encoded "hello world" for any read command
+			return "aGVsbG8gd29ybGQ=", "", 0, nil
+		},
+		&store.Sandbox{
+			ID:          "SBX-1",
+			SandboxName: "sbx-test",
+			State:       store.SandboxStateRunning,
+			BaseImage:   "ubuntu-base",
+			IPAddress:   &ip,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+	)
+	ctx := context.Background()
+
+	result, err := srv.handleEditFile(ctx, newRequest("edit_file", map[string]any{
+		"sandbox_id": "SBX-1",
+		"path":       "/etc/config",
+		"old_str":    "nonexistent",
+		"new_str":    "replacement",
+	}))
+	require.NoError(t, err)
+	require.False(t, result.IsError, "expected IsError to be false")
+
+	m := parseJSON(t, result)
+	assert.Equal(t, "old_str_not_found", m["action"])
+	assert.Equal(t, "SBX-1", m["sandbox_id"])
+	assert.Equal(t, "/etc/config", m["path"])
+}
+
+func TestHandleEditFile_ReplaceAll(t *testing.T) {
+	ip := "192.168.122.100"
+	var writtenContent string
+	srv := testServerWithMockVM(
+		func(_ context.Context, _, _, _, command string, _ time.Duration, _ map[string]string, _ string) (string, string, int, error) {
+			if strings.Contains(command, "base64 -d >") {
+				// Write command - capture what was written
+				// Extract the base64 content between echo ' and ' | base64
+				parts := strings.SplitN(command, "'", 3)
+				if len(parts) >= 2 {
+					decoded, _ := base64Decode(parts[1])
+					writtenContent = decoded
+				}
+				return "", "", 0, nil
+			}
+			// Read command - return base64("aaa bbb aaa")
+			return "YWFhIGJiYiBhYWE=", "", 0, nil
+		},
+		&store.Sandbox{
+			ID:          "SBX-1",
+			SandboxName: "sbx-test",
+			State:       store.SandboxStateRunning,
+			BaseImage:   "ubuntu-base",
+			IPAddress:   &ip,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+	)
+	ctx := context.Background()
+
+	result, err := srv.handleEditFile(ctx, newRequest("edit_file", map[string]any{
+		"sandbox_id":  "SBX-1",
+		"path":        "/etc/config",
+		"old_str":     "aaa",
+		"new_str":     "zzz",
+		"replace_all": true,
+	}))
+	require.NoError(t, err)
+	require.False(t, result.IsError, "expected IsError to be false")
+
+	m := parseJSON(t, result)
+	assert.Equal(t, "edited", m["action"])
+
+	// Verify all occurrences were replaced
+	assert.Equal(t, "zzz bbb zzz", writtenContent)
+}
+
+func base64Decode(s string) (string, error) {
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
+	if err != nil {
+		return "", err
+	}
+	return string(decoded), nil
 }
