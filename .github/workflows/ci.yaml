@@ -39,7 +39,7 @@ jobs:
         with:
           version: latest
           working-directory: fluid
-          args: --build-tags=libvirt
+          args: --build-tags=libvirt --timeout=10m
 
       - name: Test
         run: go test -v -race --tags libvirt ./...

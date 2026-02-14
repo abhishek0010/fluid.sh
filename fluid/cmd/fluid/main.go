@@ -18,6 +18,7 @@ import (
 
 	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	fluidmcp "github.com/aspectrr/fluid.sh/fluid/internal/mcp"
 	"github.com/aspectrr/fluid.sh/fluid/internal/provider"
 	"github.com/aspectrr/fluid.sh/fluid/internal/proxmox"
 	"github.com/aspectrr/fluid.sh/fluid/internal/readonly"
@@ -53,7 +54,7 @@ var rootCmd = &cobra.Command{
 	Long:  "Fluid is a terminal agent that AI manage infrastructure via sandboxed resources, audit trails and human approval.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip init for these commands (they handle their own init)
-		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" || cmd.Name() == "fluid" {
+		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" || cmd.Name() == "mcp" || cmd.Name() == "fluid" {
 			return nil
 		}
 		return initServices()
@@ -95,6 +96,7 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(playbooksCmd)
 	rootCmd.AddCommand(tuiCmd)
+	rootCmd.AddCommand(mcpCmd)
 
 	sourceCmd.AddCommand(sourcePrepareCmd)
 	rootCmd.AddCommand(sourceCmd)
@@ -1191,6 +1193,53 @@ var tuiCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runTUI()
 	},
+}
+
+// --- MCP Command ---
+
+var mcpCmd = &cobra.Command{
+	Use:   "mcp",
+	Short: "Start MCP server on stdio",
+	Long:  `Start an MCP (Model Context Protocol) server that exposes fluid tools over stdio for use with Claude Code, Cursor, and other MCP clients.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runMCP()
+	},
+}
+
+// runMCP launches the MCP server on stdio
+func runMCP() error {
+	configPath := cfgFile
+	if configPath == "" {
+		home, _ := os.UserHomeDir()
+		configPath = filepath.Join(home, ".fluid", "config.yaml")
+	}
+
+	var err error
+	cfg, err = tui.EnsureConfigExists(configPath)
+	if err != nil {
+		return fmt.Errorf("ensure config: %w", err)
+	}
+
+	// Log to file - stdout is the MCP transport
+	logPath := filepath.Join(filepath.Dir(configPath), "fluid-mcp.log")
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		logFile = nil
+	}
+	var logger *slog.Logger
+	if logFile != nil {
+		defer func() { _ = logFile.Close() }()
+		logger = slog.New(slog.NewTextHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	} else {
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+
+	if err := initServicesWithConfigAndLogger(cfg, logger); err != nil {
+		return fmt.Errorf("init services: %w", err)
+	}
+
+	srv := fluidmcp.NewServer(cfg, dataStore, vmService, telemetryService, logger)
+	return srv.Serve()
 }
 
 // runTUI launches the interactive TUI
