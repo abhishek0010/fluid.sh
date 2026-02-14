@@ -13,7 +13,7 @@ func TestNewServer(t *testing.T) {
 	cfg := testConfig()
 	st := newMockStore()
 
-	srv := NewServer(cfg, st, nil, nil, nil, noopLogger())
+	srv := NewServer(cfg, st, nil, nil, noopLogger())
 	require.NotNil(t, srv)
 	assert.NotNil(t, srv.mcpServer)
 	assert.NotNil(t, srv.playbookService)
@@ -28,7 +28,7 @@ func TestNewServer_WithHosts(t *testing.T) {
 	}
 	st := newMockStore()
 
-	srv := NewServer(cfg, st, nil, nil, nil, noopLogger())
+	srv := NewServer(cfg, st, nil, nil, noopLogger())
 	require.NotNil(t, srv)
 	assert.NotNil(t, srv.multiHostMgr)
 }
@@ -37,7 +37,7 @@ func TestNewServer_RegistersAllTools(t *testing.T) {
 	cfg := testConfig()
 	st := newMockStore()
 
-	srv := NewServer(cfg, st, nil, nil, nil, noopLogger())
+	srv := NewServer(cfg, st, nil, nil, noopLogger())
 	require.NotNil(t, srv)
 
 	// The MCP server should have registered 17 tools.

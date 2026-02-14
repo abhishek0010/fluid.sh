@@ -1238,7 +1238,7 @@ func runMCP() error {
 		return fmt.Errorf("init services: %w", err)
 	}
 
-	srv := fluidmcp.NewServer(cfg, dataStore, vmService, libvirtMgr, telemetryService, logger)
+	srv := fluidmcp.NewServer(cfg, dataStore, vmService, telemetryService, logger)
 	return srv.Serve()
 }
 

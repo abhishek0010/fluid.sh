@@ -28,7 +28,6 @@ type Server struct {
 	cfg             *config.Config
 	store           store.Store
 	vmService       *vm.Service
-	manager         libvirt.Manager
 	playbookService *ansible.PlaybookService
 	telemetry       telemetry.Service
 	logger          *slog.Logger
@@ -37,12 +36,11 @@ type Server struct {
 }
 
 // NewServer creates a new MCP server wired to the fluid services.
-func NewServer(cfg *config.Config, st store.Store, vmService *vm.Service, manager libvirt.Manager, tele telemetry.Service, logger *slog.Logger) *Server {
+func NewServer(cfg *config.Config, st store.Store, vmService *vm.Service, tele telemetry.Service, logger *slog.Logger) *Server {
 	s := &Server{
 		cfg:             cfg,
 		store:           st,
 		vmService:       vmService,
-		manager:         manager,
 		playbookService: ansible.NewPlaybookService(st, cfg.Ansible.PlaybooksDir),
 		telemetry:       tele,
 		logger:          logger,

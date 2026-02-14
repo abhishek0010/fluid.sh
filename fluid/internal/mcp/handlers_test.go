@@ -797,7 +797,7 @@ func TestHandleReadSourceFile_RelativePath(t *testing.T) {
 func TestHandleListPlaybooks_Empty(t *testing.T) {
 	st := newMockStore()
 	cfg := testConfig()
-	srv := NewServer(cfg, st, nil, nil, nil, noopLogger())
+	srv := NewServer(cfg, st, nil, nil, noopLogger())
 	ctx := context.Background()
 
 	result, err := srv.handleListPlaybooks(ctx, newRequest("list_playbooks", nil))
@@ -811,7 +811,7 @@ func TestHandleListPlaybooks_NoPlaybooksDir(t *testing.T) {
 	st := newMockStore()
 	cfg := testConfig()
 	cfg.Ansible.PlaybooksDir = ""
-	srv := NewServer(cfg, st, nil, nil, nil, noopLogger())
+	srv := NewServer(cfg, st, nil, nil, noopLogger())
 	ctx := context.Background()
 
 	result, err := srv.handleListPlaybooks(ctx, newRequest("list_playbooks", nil))
