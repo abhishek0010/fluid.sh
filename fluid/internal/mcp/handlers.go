@@ -216,6 +216,7 @@ func (s *Server) handleRunCommand(ctx context.Context, request mcp.CallToolReque
 		return nil, fmt.Errorf("command is required")
 	}
 
+	// 0 means "use configured default" - vm.Service falls back to cfg.CommandTimeout (default 10m).
 	timeoutSec := request.GetInt("timeout_seconds", 0)
 	timeout := time.Duration(timeoutSec) * time.Second
 
@@ -594,7 +595,7 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 			return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("file too large: %s", err)})
 		}
 		encoded := base64.StdEncoding.EncodeToString([]byte(newStr))
-		cmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, escapedPath)
+		cmd := fmt.Sprintf("base64 -d > %s << '--FLUID_B64--'\n%s\n--FLUID_B64--", escapedPath, encoded)
 		result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", cmd, 0, nil)
 		if err != nil {
 			s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
@@ -666,7 +667,7 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("edited file too large: %s", err)})
 	}
 	encoded := base64.StdEncoding.EncodeToString([]byte(edited))
-	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, escapedPath)
+	writeCmd := fmt.Sprintf("base64 -d > %s << '--FLUID_B64--'\n%s\n--FLUID_B64--", escapedPath, encoded)
 	writeResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", writeCmd, 0, nil)
 	if err != nil {
 		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
@@ -839,6 +840,7 @@ func (s *Server) handleRunSourceCommand(ctx context.Context, request mcp.CallToo
 		return nil, fmt.Errorf("command is required")
 	}
 
+	// 0 means "use configured default" - vm.Service falls back to cfg.CommandTimeout (default 10m).
 	timeoutSec := request.GetInt("timeout_seconds", 0)
 	timeout := time.Duration(timeoutSec) * time.Second
 

@@ -1107,12 +1107,23 @@ func TestHandleEditFile_ReplaceAll(t *testing.T) {
 	srv := testServerWithMockVM(
 		func(_ context.Context, _, _, _, command string, _ time.Duration, _ map[string]string, _ string) (string, string, int, error) {
 			if strings.Contains(command, "base64 -d >") {
-				// Write command - capture what was written
-				// Extract the base64 content between echo ' and ' | base64
-				parts := strings.SplitN(command, "'", 3)
-				if len(parts) >= 2 {
-					decoded, _ := base64Decode(parts[1])
-					writtenContent = decoded
+				// Write command - capture the base64 content from the heredoc.
+				// commandWithEnv wraps with bash -lc %q, so the heredoc delimiter
+				// appears with surrounding quotes. Extract the base64 content between
+				// the first and second occurrence of the delimiter.
+				const delim = "--FLUID_B64--"
+				first := strings.Index(command, delim)
+				if first >= 0 {
+					rest := command[first+len(delim):]
+					second := strings.Index(rest, delim)
+					if second > 0 {
+						// Content is between delimiters, with separator chars on each side
+						b64 := rest[:second]
+						// Trim any separator characters (literal \n, actual newline, or quotes)
+						b64 = strings.Trim(b64, "\\n\n'\"")
+						decoded, _ := base64Decode(b64)
+						writtenContent = decoded
+					}
 				}
 				return "", "", 0, nil
 			}
