@@ -21,6 +21,7 @@ import (
 	"github.com/aspectrr/fluid.sh/fluid/internal/config"
 	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
 	"github.com/aspectrr/fluid.sh/fluid/internal/llm"
+	"github.com/aspectrr/fluid.sh/fluid/internal/provider"
 	"github.com/aspectrr/fluid.sh/fluid/internal/readonly"
 	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 	"github.com/aspectrr/fluid.sh/fluid/internal/telemetry"
@@ -41,7 +42,7 @@ type FluidAgent struct {
 	cfg             *config.Config
 	store           store.Store
 	vmService       *vm.Service
-	manager         libvirt.Manager
+	manager         provider.Manager
 	llmClient       llm.Client
 	playbookService *ansible.PlaybookService
 	telemetry       telemetry.Service
@@ -97,7 +98,7 @@ type PendingSourcePrepareApproval struct {
 }
 
 // NewFluidAgent creates a new fluid agent
-func NewFluidAgent(cfg *config.Config, store store.Store, vmService *vm.Service, manager libvirt.Manager, tele telemetry.Service, logger *slog.Logger) *FluidAgent {
+func NewFluidAgent(cfg *config.Config, store store.Store, vmService *vm.Service, manager provider.Manager, tele telemetry.Service, logger *slog.Logger) *FluidAgent {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
@@ -720,7 +721,7 @@ func (a *FluidAgent) createSandbox(ctx context.Context, sourceVM, hostName strin
 
 	// Determine target host and manager
 	var host *config.HostConfig
-	var mgr libvirt.Manager
+	var mgr provider.Manager
 
 	if a.multiHostMgr != nil {
 		var err error

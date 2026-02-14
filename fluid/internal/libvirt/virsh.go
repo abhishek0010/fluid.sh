@@ -16,6 +16,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/aspectrr/fluid.sh/fluid/internal/provider"
 	"github.com/beevik/etree"
 )
 
@@ -27,93 +28,27 @@ func generateMACAddress() string {
 	return fmt.Sprintf("52:54:00:%02x:%02x:%02x", buf[0], buf[1], buf[2])
 }
 
-// Manager defines the VM orchestration operations we support against libvirt/KVM via virsh.
-type Manager interface {
-	// CloneVM creates a linked-clone VM from a golden base image and defines a libvirt domain for it.
-	// cpu and memoryMB are the VM shape. network is the libvirt network name (e.g., "default").
-	CloneVM(ctx context.Context, baseImage, newVMName string, cpu, memoryMB int, network string) (DomainRef, error)
+// Manager is the provider-neutral VM manager interface.
+type Manager = provider.Manager
 
-	// CloneFromVM creates a linked-clone VM from an existing VM's disk.
-	// It looks up the source VM by name in libvirt, retrieves its disk path,
-	// and creates an overlay pointing to that disk as the backing file.
-	CloneFromVM(ctx context.Context, sourceVMName, newVMName string, cpu, memoryMB int, network string) (DomainRef, error)
+// Type aliases to provider types - keeps all existing imports working.
+type (
+	VMValidationResult  = provider.VMValidationResult
+	ResourceCheckResult = provider.ResourceCheckResult
+	VMState             = provider.VMState
+	DomainRef           = provider.VMRef
+	SnapshotRef         = provider.SnapshotRef
+	FSComparePlan       = provider.FSComparePlan
+)
 
-	// InjectSSHKey injects an SSH public key for a user into the VM disk before boot.
-	// The mechanism is determined by configuration (e.g., virt-customize or cloud-init seed).
-	InjectSSHKey(ctx context.Context, sandboxName, username, publicKey string) error
-
-	// StartVM boots a defined domain.
-	StartVM(ctx context.Context, vmName string) error
-
-	// StopVM gracefully shuts down a domain, or forces if force is true.
-	StopVM(ctx context.Context, vmName string, force bool) error
-
-	// DestroyVM undefines the domain and removes its workspace (overlay files, domain XML, seeds).
-	// If the domain is running, it will be destroyed first.
-	DestroyVM(ctx context.Context, vmName string) error
-
-	// CreateSnapshot creates a snapshot with the given name.
-	// If external is true, attempts a disk-only external snapshot.
-	CreateSnapshot(ctx context.Context, vmName, snapshotName string, external bool) (SnapshotRef, error)
-
-	// DiffSnapshot prepares a plan to compare two snapshots' filesystems.
-	// The returned plan includes advice or prepared mounts where possible.
-	DiffSnapshot(ctx context.Context, vmName, fromSnapshot, toSnapshot string) (*FSComparePlan, error)
-
-	// GetIPAddress attempts to fetch the VM's primary IP via libvirt leases.
-	// Returns the IP address and MAC address of the VM's primary interface.
-	GetIPAddress(ctx context.Context, vmName string, timeout time.Duration) (ip string, mac string, err error)
-
-	// GetVMState returns the current state of a VM using virsh domstate.
-	GetVMState(ctx context.Context, vmName string) (VMState, error)
-
-	// ValidateSourceVM performs pre-flight checks on a source VM before cloning.
-	// Returns a ValidationResult with warnings and errors about the VM's readiness.
-	ValidateSourceVM(ctx context.Context, vmName string) (*VMValidationResult, error)
-
-	// CheckHostResources validates that the host has sufficient resources for a new sandbox.
-	// Returns a ResourceCheckResult with available resources and any warnings.
-	CheckHostResources(ctx context.Context, requiredCPUs, requiredMemoryMB int) (*ResourceCheckResult, error)
-}
-
-// VMValidationResult contains the results of validating a source VM.
-type VMValidationResult struct {
-	VMName     string   `json:"vm_name"`
-	Valid      bool     `json:"valid"`
-	State      VMState  `json:"state"`
-	MACAddress string   `json:"mac_address,omitempty"`
-	IPAddress  string   `json:"ip_address,omitempty"`
-	HasNetwork bool     `json:"has_network"`
-	Warnings   []string `json:"warnings,omitempty"`
-	Errors     []string `json:"errors,omitempty"`
-}
-
-// ResourceCheckResult contains the results of checking host resources.
-type ResourceCheckResult struct {
-	Valid               bool     `json:"valid"`
-	AvailableMemoryMB   int64    `json:"available_memory_mb"`
-	TotalMemoryMB       int64    `json:"total_memory_mb"`
-	AvailableCPUs       int      `json:"available_cpus"`
-	TotalCPUs           int      `json:"total_cpus"`
-	AvailableDiskMB     int64    `json:"available_disk_mb"`
-	RequiredMemoryMB    int      `json:"required_memory_mb"`
-	RequiredCPUs        int      `json:"required_cpus"`
-	NeedsCPUApproval    bool     `json:"needs_cpu_approval"`
-	NeedsMemoryApproval bool     `json:"needs_memory_approval"`
-	Warnings            []string `json:"warnings,omitempty"`
-	Errors              []string `json:"errors,omitempty"`
-}
-
-// VMState represents possible VM states from virsh domstate.
-type VMState string
-
+// Forward VMState constants.
 const (
-	VMStateRunning   VMState = "running"
-	VMStatePaused    VMState = "paused"
-	VMStateShutOff   VMState = "shut off"
-	VMStateCrashed   VMState = "crashed"
-	VMStateSuspended VMState = "pmsuspended"
-	VMStateUnknown   VMState = "unknown"
+	VMStateRunning   = provider.VMStateRunning
+	VMStatePaused    = provider.VMStatePaused
+	VMStateShutOff   = provider.VMStateShutOff
+	VMStateCrashed   = provider.VMStateCrashed
+	VMStateSuspended = provider.VMStateSuspended
+	VMStateUnknown   = provider.VMStateUnknown
 )
 
 // Config controls how the virsh-based manager interacts with the host.
@@ -151,38 +86,7 @@ type Config struct {
 	DefaultMemoryMB int
 }
 
-// DomainRef is a minimal reference to a libvirt domain (VM).
-type DomainRef struct {
-	Name string
-	UUID string
-}
-
-// SnapshotRef references a snapshot created for a domain.
-type SnapshotRef struct {
-	Name string
-	// Kind: "INTERNAL" or "EXTERNAL"
-	Kind string
-	// Ref is driver-specific; could be an internal UUID or a file path for external snapshots.
-	Ref string
-}
-
-// FSComparePlan describes a plan for diffing two snapshots' filesystems.
-type FSComparePlan struct {
-	VMName       string
-	FromSnapshot string
-	ToSnapshot   string
-
-	// Best-effort mount points (if prepared); may be empty strings when not mounted automatically.
-	FromMount string
-	ToMount   string
-
-	// Devices or files used; informative.
-	FromRef string
-	ToRef   string
-
-	// Free-form notes with instructions if the manager couldn't mount automatically.
-	Notes []string
-}
+// DomainRef, SnapshotRef, FSComparePlan are aliased from provider package above.
 
 // VirshManager implements Manager using virsh/qemu-img/qemu-nbd/virt-customize and simple domain XML.
 type VirshManager struct {

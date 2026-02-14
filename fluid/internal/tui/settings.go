@@ -631,10 +631,12 @@ func (m SettingsModel) GetConfig() *config.Config {
 	return m.cfg
 }
 
-// EnsureConfigExists checks if config exists and creates it with defaults if not
+// EnsureConfigExists checks if config exists and creates it with defaults if not.
+// Returns the config and any permission warnings.
 func EnsureConfigExists(configPath string) (*config.Config, error) {
 	if _, err := os.Stat(configPath); err == nil {
-		return config.LoadWithEnvOverride(configPath)
+		cfg, _, err := config.LoadWithEnvOverride(configPath)
+		return cfg, err
 	}
 
 	cfg := config.DefaultConfig()

@@ -18,26 +18,31 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/aspectrr/fluid.sh/fluid/internal/config"
-	"github.com/aspectrr/fluid.sh/fluid/internal/libvirt"
+	"github.com/aspectrr/fluid.sh/fluid/internal/provider" // VM manager interface
 	"github.com/aspectrr/fluid.sh/fluid/internal/readonly"
 	"github.com/aspectrr/fluid.sh/fluid/internal/sshkeys"
 	"github.com/aspectrr/fluid.sh/fluid/internal/store"
 	"github.com/aspectrr/fluid.sh/fluid/internal/telemetry"
 )
 
-// Service orchestrates libvirt operations and data persistence.
+// RemoteManagerFactory creates a provider.Manager for a remote host.
+// This allows the service to create managers for sandboxes on different hosts
+// without depending on a specific provider implementation.
+type RemoteManagerFactory func(host config.HostConfig) provider.Manager
+
+// Service orchestrates VM operations and data persistence.
 // It represents the main application layer for sandbox lifecycle, command exec,
 // snapshotting, diffing, and artifact generation orchestration.
 type Service struct {
-	mgr       libvirt.Manager
-	store     store.Store
-	ssh       SSHRunner
-	keyMgr    sshkeys.KeyProvider // Optional: manages SSH keys for RunCommand
-	telemetry telemetry.Service
-	cfg       Config
-	virshCfg  libvirt.Config // Virsh config for creating remote managers
-	timeNowFn func() time.Time
-	logger    *slog.Logger
+	mgr                  provider.Manager
+	store                store.Store
+	ssh                  SSHRunner
+	keyMgr               sshkeys.KeyProvider // Optional: manages SSH keys for RunCommand
+	telemetry            telemetry.Service
+	cfg                  Config
+	remoteManagerFactory RemoteManagerFactory // Creates managers for remote hosts
+	timeNowFn            func() time.Time
+	logger               *slog.Logger
 }
 
 // Config controls default VM parameters and timeouts used by the service.
@@ -94,13 +99,13 @@ func WithKeyManager(km sshkeys.KeyProvider) Option {
 	return func(s *Service) { s.keyMgr = km }
 }
 
-// WithVirshConfig sets the libvirt/virsh configuration for creating remote managers.
-func WithVirshConfig(cfg libvirt.Config) Option {
-	return func(s *Service) { s.virshCfg = cfg }
+// WithRemoteManagerFactory sets the factory for creating remote managers.
+func WithRemoteManagerFactory(f RemoteManagerFactory) Option {
+	return func(s *Service) { s.remoteManagerFactory = f }
 }
 
-// NewService constructs a VM service with the provided libvirt manager, store and config.
-func NewService(mgr libvirt.Manager, st store.Store, cfg Config, opts ...Option) *Service {
+// NewService constructs a VM service with the provided manager, store and config.
+func NewService(mgr provider.Manager, st store.Store, cfg Config, opts ...Option) *Service {
 	if cfg.DefaultVCPUs <= 0 {
 		cfg.DefaultVCPUs = 2
 	}
@@ -138,12 +143,11 @@ func NewService(mgr libvirt.Manager, st store.Store, cfg Config, opts ...Option)
 	return s
 }
 
-// getManagerForSandbox returns the appropriate libvirt manager for a sandbox.
-// If the sandbox was created on a remote host, returns a remote manager.
-// Otherwise, returns the local manager.
-func (s *Service) getManagerForSandbox(sb *store.Sandbox) libvirt.Manager {
-	if sb.HostAddress != nil && *sb.HostAddress != "" {
-		// Sandbox is on a remote host - create a remote manager
+// getManagerForSandbox returns the appropriate manager for a sandbox.
+// If the sandbox was created on a remote host and a remote factory is available,
+// returns a remote manager. Otherwise, returns the local manager.
+func (s *Service) getManagerForSandbox(sb *store.Sandbox) provider.Manager {
+	if sb.HostAddress != nil && *sb.HostAddress != "" && s.remoteManagerFactory != nil {
 		hostName := ""
 		if sb.HostName != nil {
 			hostName = *sb.HostName
@@ -151,12 +155,11 @@ func (s *Service) getManagerForSandbox(sb *store.Sandbox) libvirt.Manager {
 		host := config.HostConfig{
 			Name:    hostName,
 			Address: *sb.HostAddress,
-			SSHUser: "root", // Default SSH user for remote hosts
-			SSHPort: 22,     // Default SSH port
+			SSHUser: "root",
+			SSHPort: 22,
 		}
-		return libvirt.NewRemoteVirshManager(host, s.virshCfg, s.logger)
+		return s.remoteManagerFactory(host)
 	}
-	// Local sandbox - use the default manager
 	return s.mgr
 }
 
@@ -164,16 +167,16 @@ func (s *Service) getManagerForSandbox(sb *store.Sandbox) libvirt.Manager {
 // If NeedsApproval is true, the caller should request human approval before proceeding.
 type ResourceValidationResult struct {
 	Valid         bool
-	NeedsApproval bool // True if resources are insufficient but creation can proceed with approval
+	NeedsApproval bool
 	SourceVMValid bool
 	VMErrors      []string
 	VMWarnings    []string
-	ResourceCheck *libvirt.ResourceCheckResult
+	ResourceCheck *provider.ResourceCheckResult
 }
 
 // CheckResourcesForSandbox validates resources without failing.
 // Returns a ResourceValidationResult that indicates whether approval is needed.
-func (s *Service) CheckResourcesForSandbox(ctx context.Context, mgr libvirt.Manager, sourceVMName string, cpu, memoryMB int) *ResourceValidationResult {
+func (s *Service) CheckResourcesForSandbox(ctx context.Context, mgr provider.Manager, sourceVMName string, cpu, memoryMB int) *ResourceValidationResult {
 	result := &ResourceValidationResult{
 		Valid:         true,
 		NeedsApproval: false,
@@ -209,7 +212,7 @@ func (s *Service) CheckResourcesForSandbox(ctx context.Context, mgr libvirt.Mana
 	if err != nil {
 		s.logger.Warn("host resource check failed", "error", err)
 		// Resource check failed, but this shouldn't block - set needsApproval
-		result.ResourceCheck = &libvirt.ResourceCheckResult{
+		result.ResourceCheck = &provider.ResourceCheckResult{
 			Valid:            false,
 			RequiredMemoryMB: memoryMB,
 			RequiredCPUs:     cpu,
@@ -228,17 +231,17 @@ func (s *Service) CheckResourcesForSandbox(ctx context.Context, mgr libvirt.Mana
 	return result
 }
 
-// GetManager returns the default libvirt manager
-func (s *Service) GetManager() libvirt.Manager {
+// GetManager returns the default manager.
+func (s *Service) GetManager() provider.Manager {
 	return s.mgr
 }
 
-// GetRemoteManager returns a libvirt manager for a specific remote host
-func (s *Service) GetRemoteManager(host *config.HostConfig) libvirt.Manager {
-	if host == nil {
+// GetRemoteManager returns a manager for a specific remote host.
+func (s *Service) GetRemoteManager(host *config.HostConfig) provider.Manager {
+	if host == nil || s.remoteManagerFactory == nil {
 		return s.mgr
 	}
-	return libvirt.NewRemoteVirshManager(*host, s.virshCfg, s.logger)
+	return s.remoteManagerFactory(*host)
 }
 
 // GetDefaultMemory returns the default memory in MB
@@ -583,7 +586,10 @@ func (s *Service) CreateSandboxOnHost(ctx context.Context, host *config.HostConf
 	}
 
 	// Create a remote manager for this host
-	remoteMgr := libvirt.NewRemoteVirshManager(*host, s.virshCfg, s.logger)
+	if s.remoteManagerFactory == nil {
+		return nil, "", fmt.Errorf("remote manager factory not configured")
+	}
+	remoteMgr := s.remoteManagerFactory(*host)
 
 	s.logger.Info("creating sandbox on remote host",
 		"host_name", host.Name,
@@ -1695,8 +1701,8 @@ func (s *Service) RunSourceVMCommandWithCallback(ctx context.Context, sourceVMNa
 
 	// Discover VM IP using remote manager if VM is on a remote host.
 	ipMgr := s.mgr
-	if remoteHost != nil {
-		ipMgr = libvirt.NewRemoteVirshManager(*remoteHost, s.virshCfg, s.logger)
+	if remoteHost != nil && s.remoteManagerFactory != nil {
+		ipMgr = s.remoteManagerFactory(*remoteHost)
 	}
 	ip, _, err := ipMgr.GetIPAddress(ctx, sourceVMName, s.cfg.IPDiscoveryTimeout)
 	if err != nil {
