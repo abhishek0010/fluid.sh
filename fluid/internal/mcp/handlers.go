@@ -65,7 +65,7 @@ func (s *Server) findHostForSourceVM(ctx context.Context, sourceVM, hostName str
 
 	host, err := s.multiHostMgr.FindHostForVM(ctx, sourceVM)
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("find host for VM %s: %w", sourceVM, err)
 	}
 	return host, nil
 }
@@ -513,19 +513,19 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 
 	user := s.cfg.SSH.DefaultUser
 
-	if err := checkFileSize(int64(len(newStr))); err != nil {
+	escapedPath, err := shellEscape(path)
+	if err != nil {
 		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
-		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("file too large: %s", err)})
+		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
 	}
 
 	if oldStr == "" {
 		// Create/overwrite file
-		encoded := base64.StdEncoding.EncodeToString([]byte(newStr))
-		escapedPath, err := shellEscape(path)
-		if err != nil {
+		if err := checkFileSize(int64(len(newStr))); err != nil {
 			s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
-			return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
+			return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("file too large: %s", err)})
 		}
+		encoded := base64.StdEncoding.EncodeToString([]byte(newStr))
 		cmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, escapedPath)
 		result, err := s.vmService.RunCommand(ctx, sandboxID, user, "", cmd, 0, nil)
 		if err != nil {
@@ -553,11 +553,6 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 	}
 
 	// Read existing file
-	escapedPath, err := shellEscape(path)
-	if err != nil {
-		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
-		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
-	}
 	readResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", fmt.Sprintf("base64 %s", escapedPath), 0, nil)
 	if err != nil {
 		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
@@ -593,13 +588,12 @@ func (s *Server) handleEditFile(ctx context.Context, request mcp.CallToolRequest
 	}
 
 	edited := strings.Replace(original, oldStr, newStr, 1)
-	encoded := base64.StdEncoding.EncodeToString([]byte(edited))
-	escapedPathW, err := shellEscape(path)
-	if err != nil {
+	if err := checkFileSize(int64(len(edited))); err != nil {
 		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
-		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("invalid path: %s", err)})
+		return errorResult(map[string]any{"sandbox_id": sandboxID, "path": path, "error": fmt.Sprintf("edited file too large: %s", err)})
 	}
-	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, escapedPathW)
+	encoded := base64.StdEncoding.EncodeToString([]byte(edited))
+	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, escapedPath)
 	writeResult, err := s.vmService.RunCommand(ctx, sandboxID, user, "", writeCmd, 0, nil)
 	if err != nil {
 		s.logger.Error("edit_file failed", "error", err, "sandbox_id", sandboxID, "path", path)
