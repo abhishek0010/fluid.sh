@@ -45,6 +45,7 @@ const (
 	InfraLocal InfraChoice = iota
 	InfraRemote
 	InfraBoth
+	InfraProxmox
 )
 
 // OnboardingModel is the Bubble Tea model for onboarding
@@ -333,7 +334,7 @@ func (m OnboardingModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		switch m.step {
 		case StepInfraChoice:
-			if m.selectedOption < 2 {
+			if m.selectedOption < 3 {
 				m.selectedOption++
 			}
 		case StepSourcePrepare:
@@ -389,6 +390,13 @@ func (m OnboardingModel) handleEnter() (tea.Model, tea.Cmd) {
 
 	case StepInfraChoice:
 		m.infraChoice = InfraChoice(m.selectedOption)
+		if m.infraChoice == InfraProxmox {
+			m.cfg.Provider = "proxmox"
+			// Skip connection test for Proxmox - go to API key step
+			m.step = StepAPIKey
+			m.textInput.Focus()
+			return m, textinput.Blink
+		}
 		// If remote or both, go to add hosts step
 		if m.infraChoice == InfraRemote || m.infraChoice == InfraBoth {
 			// Check if hosts are already configured
@@ -573,6 +581,7 @@ func (m OnboardingModel) viewInfraChoice() string {
 		"Local libvirt (qemu:///system)",
 		"Remote hosts (SSH to KVM servers)",
 		"Both local and remote",
+		"Proxmox VE (API)",
 	}
 
 	for i, opt := range options {
