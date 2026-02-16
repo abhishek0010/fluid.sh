@@ -12,17 +12,24 @@ import (
 
 // Config is the root configuration for virsh-sandbox API.
 type Config struct {
-	Provider           string          `yaml:"provider"` // "libvirt" (default) or "proxmox"
-	Libvirt            LibvirtConfig   `yaml:"libvirt"`
-	Proxmox            ProxmoxConfig   `yaml:"proxmox"`
-	VM                 VMConfig        `yaml:"vm"`
-	SSH                SSHConfig       `yaml:"ssh"`
-	Ansible            AnsibleConfig   `yaml:"ansible"`
-	Logging            LoggingConfig   `yaml:"logging"`
-	Telemetry          TelemetryConfig `yaml:"telemetry"`
-	AIAgent            AIAgentConfig   `yaml:"ai_agent"`
-	Hosts              []HostConfig    `yaml:"hosts"`               // Remote hosts for multi-host VM management
-	OnboardingComplete bool            `yaml:"onboarding_complete"` // Whether onboarding wizard has been completed
+	Provider           string             `yaml:"provider"` // "libvirt" (default), "proxmox", or "control-plane"
+	Libvirt            LibvirtConfig      `yaml:"libvirt"`
+	Proxmox            ProxmoxConfig      `yaml:"proxmox"`
+	ControlPlane       ControlPlaneConfig `yaml:"control_plane"`
+	VM                 VMConfig           `yaml:"vm"`
+	SSH                SSHConfig          `yaml:"ssh"`
+	Ansible            AnsibleConfig      `yaml:"ansible"`
+	Logging            LoggingConfig      `yaml:"logging"`
+	Telemetry          TelemetryConfig    `yaml:"telemetry"`
+	AIAgent            AIAgentConfig      `yaml:"ai_agent"`
+	Hosts              []HostConfig       `yaml:"hosts"`               // Remote hosts for multi-host VM management
+	OnboardingComplete bool               `yaml:"onboarding_complete"` // Whether onboarding wizard has been completed
+}
+
+// ControlPlaneConfig configures the connection to the hosted control plane.
+type ControlPlaneConfig struct {
+	// Address is the control plane REST API endpoint (e.g., "http://localhost:8080").
+	Address string `yaml:"address"`
 }
 
 // ProxmoxConfig holds Proxmox VE API settings.
