@@ -6,14 +6,19 @@ procs:
     stop: "SIGTERM"
 
   api:
-    cwd: "./fluid"
+    cwd: "./api"
     autostart: false
-    shell: 'go build --tags libvirt -ldflags="-s -w" -o bin/fluid ./cmd/fluid && bin/fluid'
+    shell: "make build && bin/api"
 
   frontend:
     cwd: "./web"
     autostart: false
     shell: "bun dev"
+
+  stripe-webhooks:
+    cwd: "."
+    autostart: false
+    shell: "stripe listen --forward-to localhost:8080/v1/webhooks/stripe"
 
   list-sandboxes:
     cwd: "."
