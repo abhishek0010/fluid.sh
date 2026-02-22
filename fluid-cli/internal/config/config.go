@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/aspectrr/fluid.sh/fluid/internal/paths"
 )
 
 // Config is the root configuration for virsh-sandbox API.
@@ -133,10 +135,20 @@ type HostConfig struct {
 	QueryTimeout time.Duration `yaml:"query_timeout"` // Per-host query timeout (default: 30s)
 }
 
+// mustConfigDir returns the config directory, falling back to a best-effort default.
+func mustConfigDir() string {
+	dir, err := paths.ConfigDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not determine config dir: %v\n", err)
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, ".config", "fluid")
+	}
+	return dir
+}
+
 // DefaultConfig returns config with sensible defaults.
 func DefaultConfig() *Config {
-	home, _ := os.UserHomeDir()
-	configDir := filepath.Join(home, ".fluid")
+	configDir := mustConfigDir()
 
 	return &Config{
 		Provider: "libvirt",
