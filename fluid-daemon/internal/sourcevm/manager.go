@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/aspectrr/fluid.sh/fluid-daemon/internal/readonly"
+	"github.com/aspectrr/fluid.sh/fluid-daemon/internal/shellutil"
 	"github.com/aspectrr/fluid.sh/fluid-daemon/internal/sshkeys"
 )
 
@@ -50,16 +51,18 @@ type PrepareResult struct {
 
 // Manager handles source VM operations.
 type Manager struct {
-	libvirtURI string
-	network    string
-	keyMgr     sshkeys.KeyProvider
-	sshUser    string
-	proxyJump  string
-	logger     *slog.Logger
+	libvirtURI   string
+	network      string
+	keyMgr       sshkeys.KeyProvider
+	sshUser      string
+	proxyJump    string
+	identityFile string
+	caPubKey     string
+	logger       *slog.Logger
 }
 
 // NewManager creates a source VM manager.
-func NewManager(libvirtURI, network string, keyMgr sshkeys.KeyProvider, sshUser, proxyJump string, logger *slog.Logger) *Manager {
+func NewManager(libvirtURI, network string, keyMgr sshkeys.KeyProvider, sshUser, proxyJump, identityFile, caPubKey string, logger *slog.Logger) *Manager {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -67,12 +70,14 @@ func NewManager(libvirtURI, network string, keyMgr sshkeys.KeyProvider, sshUser,
 		sshUser = "sandbox"
 	}
 	return &Manager{
-		libvirtURI: libvirtURI,
-		network:    network,
-		keyMgr:     keyMgr,
-		sshUser:    sshUser,
-		proxyJump:  proxyJump,
-		logger:     logger.With("component", "sourcevm"),
+		libvirtURI:   libvirtURI,
+		network:      network,
+		keyMgr:       keyMgr,
+		sshUser:      sshUser,
+		proxyJump:    proxyJump,
+		identityFile: identityFile,
+		caPubKey:     caPubKey,
+		logger:       logger.With("component", "sourcevm"),
 	}
 }
 
@@ -181,20 +186,11 @@ func (m *Manager) PrepareSourceVM(ctx context.Context, vmName, sshUser, sshKeyPa
 		return m.sshCmdWithKey(ctx, ip, sshUser, sshKeyPath, command, 60*time.Second)
 	}
 
-	// Get CA public key
-	var caPubKey string
-	if m.keyMgr != nil {
-		// The key manager's CA should have the public key
-		// For now, we'll read it from the sshca package via the key path config
-		// This will be wired properly through the CA instance
-		caPubKey = "" // Will be set by caller
-	}
-
-	if caPubKey == "" {
+	if m.caPubKey == "" {
 		return nil, fmt.Errorf("CA public key is required for source VM preparation")
 	}
 
-	result, err := readonly.Prepare(ctx, sshRun, caPubKey, nil, m.logger)
+	result, err := readonly.Prepare(ctx, sshRun, m.caPubKey, nil, m.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +273,7 @@ func (m *Manager) RunSourceCommand(ctx context.Context, vmName, command string, 
 // ReadSourceFile reads a file from a source VM via base64-encoded transfer.
 func (m *Manager) ReadSourceFile(ctx context.Context, vmName, path string) (string, error) {
 	// Use base64 encoding for safe binary transfer
-	command := fmt.Sprintf("base64 %s", path)
+	command := fmt.Sprintf("base64 -- %s", shellutil.Quote(path))
 
 	stdout, stderr, exitCode, err := m.RunSourceCommand(ctx, vmName, command, 30*time.Second)
 	if err != nil {
@@ -357,12 +353,15 @@ func (m *Manager) sshCmd(ctx context.Context, ip, user string, creds *sshkeys.Cr
 	args := []string{
 		"-i", creds.PrivateKeyPath,
 		"-o", "CertificateFile=" + creds.CertificatePath,
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "StrictHostKeyChecking=accept-new",
 		"-o", fmt.Sprintf("ConnectTimeout=%d", int(timeout.Seconds())),
 	}
 
-	if m.proxyJump != "" {
+	if m.proxyJump != "" && m.identityFile != "" {
+		args = append(args, "-o", fmt.Sprintf(
+			"ProxyCommand=ssh -i %s -o StrictHostKeyChecking=accept-new -W %%h:%%p %s",
+			shellutil.Quote(m.identityFile), shellutil.Quote(m.proxyJump)))
+	} else if m.proxyJump != "" {
 		args = append(args, "-J", m.proxyJump)
 	}
 
@@ -392,12 +391,15 @@ func (m *Manager) sshCmdWithKey(ctx context.Context, ip, user, keyPath, command 
 
 	args := []string{
 		"-i", keyPath,
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "StrictHostKeyChecking=accept-new",
 		"-o", fmt.Sprintf("ConnectTimeout=%d", int(timeout.Seconds())),
 	}
 
-	if m.proxyJump != "" {
+	if m.proxyJump != "" && m.identityFile != "" {
+		args = append(args, "-o", fmt.Sprintf(
+			"ProxyCommand=ssh -i %s -o StrictHostKeyChecking=accept-new -W %%h:%%p %s",
+			shellutil.Quote(m.identityFile), shellutil.Quote(m.proxyJump)))
+	} else if m.proxyJump != "" {
 		args = append(args, "-J", m.proxyJump)
 	}
 

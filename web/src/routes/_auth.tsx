@@ -24,9 +24,11 @@ function AuthLayout() {
     <div className="flex min-h-screen items-center justify-center bg-black">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="font-logo text-3xl font-extrabold text-white">fluid.sh</h1>
+          <h1 className="font-logo text-3xl tracking-tight">
+            <span className="text-blue-400">$</span> fluid.sh
+          </h1>
           <p className="text-muted-foreground mt-2 text-xs">
-            Autonomous AI agents for infrastructure
+            Claude Code for Working on Linux Servers
           </p>
         </div>
         <div className="border-border bg-card border p-6">
