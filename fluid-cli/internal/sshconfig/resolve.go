@@ -4,8 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -74,4 +77,48 @@ func Resolve(hostAlias string) (*ResolvedHost, error) {
 	}
 
 	return result, nil
+}
+
+// ListHosts parses ~/.ssh/config and returns Host aliases, filtering out wildcards.
+// TODO: this does not follow Include directives in ~/.ssh/config. Resolve() uses
+// `ssh -G` which handles includes, so host resolution is unaffected.
+func ListHosts() []string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil
+	}
+	f, err := os.Open(filepath.Join(home, ".ssh", "config"))
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = f.Close() }()
+
+	return ListHostsFromReader(f)
+}
+
+// ListHostsFromReader scans an SSH config from r and returns Host aliases,
+// filtering out wildcard patterns.
+func ListHostsFromReader(r io.Reader) []string {
+	var hosts []string
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		// Skip comments and empty lines
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) < 2 {
+			continue
+		}
+		if strings.EqualFold(parts[0], "Host") {
+			// A Host line can have multiple patterns
+			for _, h := range parts[1:] {
+				if !strings.Contains(h, "*") && !strings.Contains(h, "?") {
+					hosts = append(hosts, h)
+				}
+			}
+		}
+	}
+	return hosts
 }

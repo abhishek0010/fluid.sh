@@ -1,22 +1,26 @@
 // Package telemetry provides anonymous usage telemetry via PostHog.
 //
 // Anonymity design:
-//   - Each session generates a random UUID (not persisted across sessions)
+//   - A persistent UUID is stored in ~/.config/fluid/telemetry_id for cross-session correlation
 //   - $ip is explicitly set to "0.0.0.0" to prevent PostHog from capturing client IP
 //   - Only non-PII properties are tracked: OS, architecture, Go version
 package telemetry
 
 import (
+	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 
-	"github.com/aspectrr/fluid.sh/fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid-cli/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid-cli/internal/paths"
 
 	"github.com/google/uuid"
 	"github.com/posthog/posthog-go"
 )
 
 // posthogAPIKey is the PostHog API key. Empty by default - must be injected at build time.
-// Override at build time with: -ldflags "-X github.com/aspectrr/fluid.sh/fluid/internal/telemetry.posthogAPIKey=YOUR_KEY"
+// Override at build time with: -ldflags "-X github.com/aspectrr/fluid.sh/fluid-cli/internal/telemetry.posthogAPIKey=YOUR_KEY"
 var posthogAPIKey = ""
 
 // Service defines the interface for telemetry operations.
@@ -45,8 +49,8 @@ type posthogService struct {
 }
 
 // NewService creates a new telemetry service based on configuration.
-// When enabled, telemetry is fully anonymous: a random UUID per session,
-// $ip set to 0.0.0.0, and only OS/arch/go_version tracked.
+// When enabled, telemetry is fully anonymous: a persistent UUID stored in
+// ~/.config/fluid/telemetry_id, $ip set to 0.0.0.0, and only OS/arch/go_version tracked.
 func NewService(cfg config.TelemetryConfig) (Service, error) {
 	if !cfg.EnableAnonymousUsage || posthogAPIKey == "" {
 		return &NoopService{}, nil
@@ -57,14 +61,40 @@ func NewService(cfg config.TelemetryConfig) (Service, error) {
 		return nil, err
 	}
 
-	// Generate a unique ID for this session.
-	// In a real application, you might want to persist this ID.
-	distinctID := uuid.New().String()
+	distinctID := getOrCreateDistinctID()
 
 	return &posthogService{
 		client:     client,
 		distinctID: distinctID,
 	}, nil
+}
+
+// getOrCreateDistinctID reads a persistent telemetry ID from the config directory.
+// If the file does not exist, it generates a new UUID and writes it.
+func getOrCreateDistinctID() string {
+	dir, err := paths.ConfigDir()
+	if err != nil {
+		return uuid.New().String()
+	}
+	return getOrCreateDistinctIDInDir(dir)
+}
+
+// getOrCreateDistinctIDInDir reads or creates a telemetry ID in the given directory.
+// Extracted for testability.
+func getOrCreateDistinctIDInDir(dir string) string {
+	idPath := filepath.Join(dir, "telemetry_id")
+
+	data, err := os.ReadFile(idPath)
+	if err == nil {
+		if id := strings.TrimSpace(string(data)); id != "" {
+			return id
+		}
+	}
+
+	id := uuid.New().String()
+	_ = os.MkdirAll(dir, 0o755)
+	_ = os.WriteFile(idPath, []byte(id), 0o600)
+	return id
 }
 
 // buildTrackProperties adds common anonymous properties to a track event.

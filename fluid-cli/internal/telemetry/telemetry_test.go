@@ -1,10 +1,12 @@
 package telemetry
 
 import (
+	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
-	"github.com/aspectrr/fluid.sh/fluid/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid-cli/internal/config"
 )
 
 func TestNewNoopService(t *testing.T) {
@@ -98,5 +100,32 @@ func TestBuildTrackProperties_PreservesExisting(t *testing.T) {
 	}
 	if props["$ip"] != "0.0.0.0" {
 		t.Errorf("expected $ip=0.0.0.0, got %v", props["$ip"])
+	}
+}
+
+func TestGetOrCreateDistinctID_Persistence(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// First call creates a new UUID
+	id1 := getOrCreateDistinctIDInDir(tmpDir)
+	if id1 == "" {
+		t.Fatal("expected non-empty distinct ID")
+	}
+
+	// Second call returns the same ID (reads from persisted file)
+	id2 := getOrCreateDistinctIDInDir(tmpDir)
+	if id1 != id2 {
+		t.Errorf("expected persistent ID %q, got %q", id1, id2)
+	}
+
+	// Write a known ID and verify it's read back
+	knownID := "test-known-id-12345"
+	idPath := filepath.Join(tmpDir, "telemetry_id")
+	if err := os.WriteFile(idPath, []byte(knownID), 0o600); err != nil {
+		t.Fatalf("write test ID: %v", err)
+	}
+	id3 := getOrCreateDistinctIDInDir(tmpDir)
+	if id3 != knownID {
+		t.Errorf("expected %q, got %q", knownID, id3)
 	}
 }

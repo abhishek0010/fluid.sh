@@ -171,6 +171,42 @@ func (r *Redactor) Stats() RedactionStats {
 	return s
 }
 
+// RedactMap recursively redacts all string values in a map.
+func (r *Redactor) RedactMap(m map[string]any) map[string]any {
+	if m == nil {
+		return nil
+	}
+	out := make(map[string]any, len(m))
+	for k, v := range m {
+		out[k] = r.RedactAny(v)
+	}
+	return out
+}
+
+// RedactAny redacts the value if it is a string, map, or slice.
+// Other types are passed through unchanged.
+func (r *Redactor) RedactAny(v any) any {
+	return r.redactValue(v)
+}
+
+// redactValue recursively dispatches redaction by type.
+func (r *Redactor) redactValue(v any) any {
+	switch val := v.(type) {
+	case string:
+		return r.Redact(val)
+	case map[string]any:
+		return r.RedactMap(val)
+	case []any:
+		out := make([]any, len(val))
+		for i, elem := range val {
+			out[i] = r.redactValue(elem)
+		}
+		return out
+	default:
+		return v
+	}
+}
+
 // tokenFor returns the token for a value, creating a new one if needed.
 // Must be called with r.mu held.
 func (r *Redactor) tokenFor(value, category string) string {

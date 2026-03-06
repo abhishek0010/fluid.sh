@@ -54,7 +54,8 @@ func (d *docsProgressStore) cleanup() {
 }
 
 type docsRegisterRequest struct {
-	StorageKey string `json:"storage_key"`
+	StorageKey  string `json:"storage_key"`
+	SessionCode string `json:"session_code"`
 }
 
 type docsRegisterResponse struct {
@@ -70,9 +71,18 @@ func (s *Server) handleDocsProgressRegister(w http.ResponseWriter, r *http.Reque
 
 	docsProgress.cleanup()
 
-	code := generateSessionCode()
+	code := req.SessionCode
+	if code == "" {
+		code = generateSessionCode()
+	}
 
 	docsProgress.mu.Lock()
+	// Idempotency: if client-supplied session code already exists, return it as-is
+	if _, ok := docsProgress.sessions[code]; ok && req.SessionCode != "" {
+		docsProgress.mu.Unlock()
+		_ = serverJSON.RespondJSON(w, http.StatusOK, docsRegisterResponse{SessionCode: code})
+		return
+	}
 	if len(docsProgress.sessions) >= 10000 {
 		docsProgress.mu.Unlock()
 		serverError.RespondError(w, http.StatusServiceUnavailable, fmt.Errorf("too many active sessions"))
