@@ -39,6 +39,7 @@ make build
 | `/sandboxes` | List active sandboxes |
 | `/hosts` | List configured remote hosts |
 | `/playbooks` | List generated Ansible playbooks |
+| `/connect` | Connect to a fluid daemon |
 | `/prepare` | Prepare a source VM for sandbox cloning |
 | `/compact` | Summarize and compact conversation history |
 | `/context` | Show current context token usage |
@@ -142,6 +143,18 @@ make tidy           # Tidy and verify
 make install-tools  # Install gofumpt, golangci-lint, swag
 ```
 
+### CLI Subcommands
+
+| Command | Description |
+|---------|-------------|
+| `fluid` | Launch the interactive TUI agent (default) |
+| `fluid connect <address>` | Connect to a fluid daemon and save config |
+| `fluid mcp` | Start MCP server on stdio |
+| `fluid doctor` | Check daemon setup on a host |
+| `fluid source prepare <host>` | Prepare a host for read-only access |
+| `fluid source list` | List configured source hosts |
+| `fluid update` | Self-update to the latest release |
+
 ## Makefile Targets
 
 | Target | Description |
@@ -170,3 +183,43 @@ State is stored in SQLite at `~/.fluid/state.db`:
 The database is auto-migrated on first run.
 
 If you remove a parameter from a function, don't just pass in nil/null/empty string in a different layer, make sure to remove the extra parameter from every place.
+
+## Security: Sensitive Data Redaction
+
+All tool output (command results, file contents) is scanned for sensitive data before being sent to the LLM. Redaction is applied in two layers:
+
+### Inline redaction (agent.go)
+Applied at tool execution time via `redactContent()`. Uses the same `Redactor` from `internal/redact/` as the pre-LLM layer, ensuring TUI live output shows the same redacted tokens the LLM receives.
+
+Runs on every `readFile`, `readSourceFile`, `runCommand`, and `runSourceCommand` result.
+
+### Pattern-based redaction (redact package)
+Applied to all messages before LLM API calls. Uses the `Redactor` from `internal/redact/`.
+
+**Built-in detectors:**
+- SSH/PEM private key blocks
+- Base64-encoded PEM private keys
+- Kubernetes secret data fields (`tls.key`, `ssh-privatekey`, `private_key`, `secret_key`, `ca.key`, `server.key`, `client.key`)
+- IPv4 and IPv6 addresses
+- API keys (`sk-...`, `key-...`, Bearer tokens)
+- AWS access keys (`AKIA...`)
+- Connection strings (postgres://, mysql://, etc.)
+- Configured host names, addresses, and key paths
+
+Note: `tls.crt` is intentionally not redacted - it is a public certificate, not secret material.
+
+### Coverage
+
+| Tool | Inline | Pre-LLM | Notes |
+|------|--------|---------|-------|
+| `run_command` | stdout, stderr | all fields | |
+| `run_source_command` | stdout, stderr | all fields | |
+| `read_file` | file content | all fields | |
+| `read_source_file` | file content | all fields | |
+| Other tools | - | all fields | Pre-LLM layer covers all tool results |
+
+### Limitations
+- Base64-PEM detection requires the PEM block to be at the start of the encoded content (standard for key files)
+- Kubernetes secret detection uses a fixed list of known field names
+- Hex-encoded keys and non-standard key formats are not detected
+- Keys embedded inside nested encodings (e.g., base64 of JSON of base64) are not detected

@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,6 +29,13 @@ import (
 	"github.com/aspectrr/fluid.sh/fluid-cli/internal/store"
 	"github.com/aspectrr/fluid.sh/fluid-cli/internal/telemetry"
 )
+
+const tlsDebuggingGuidance = "\n\nWhen debugging TLS/SSL issues on source hosts:\n" +
+	"- If you get permission denied reading certificate files, don't retry - these files are intentionally restricted\n" +
+	"- Use `journalctl -u <service> --no-pager -n 100` to find SSL errors in service logs\n" +
+	"- Use `grep -i <service> /var/log/syslog` as a fallback if journalctl has no results\n" +
+	"- Use `openssl s_client -connect localhost:<port>` to inspect the live certificate chain (no file access needed)\n" +
+	"- Use `ls -la` on cert directories to check ownership and permissions as a diagnostic"
 
 // PendingApproval represents a sandbox creation waiting for memory approval
 type PendingApproval struct {
@@ -77,6 +85,19 @@ type FluidAgent struct {
 
 	// Re-prepare warning: tracks the last host warned about re-prepare
 	lastPrepareWarned string
+
+	// Timeout for SetSandboxService swap operation (default 2s, configurable for tests)
+	swapTimeout time.Duration
+
+	// Dedup tracking for sensitive content redaction messages
+	redactedSeen map[string]bool
+
+	// cancelFunc cancels the active agent Run context when ESC is pressed.
+	// mu protects cancelFunc, runID, done, currentSourceVM, autoReadOnly, and readOnly.
+	cancelFunc context.CancelFunc
+	runID      uint64
+	done       chan struct{}
+	mu         sync.Mutex
 }
 
 // PendingNetworkApproval represents a network access request waiting for approval
@@ -108,6 +129,8 @@ func NewFluidAgent(cfg *config.Config, st store.Store, svc sandbox.Service, srcS
 		auditLog:        auditLog,
 		logger:          logger,
 		history:         make([]llm.Message, 0),
+		swapTimeout:     2 * time.Second,
+		redactedSeen:    make(map[string]bool),
 	}
 }
 
@@ -118,7 +141,43 @@ func (a *FluidAgent) SetStatusCallback(callback func(tea.Msg)) {
 
 // SetReadOnly toggles read-only mode on the agent
 func (a *FluidAgent) SetReadOnly(ro bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.readOnly = ro
+}
+
+// SetSandboxService hot-swaps the sandbox service (e.g. after /connect).
+// Must be called after Cancel() to avoid race conditions with running agent.
+// Waits for the running goroutine to finish before swapping.
+func (a *FluidAgent) SetSandboxService(svc sandbox.Service) error {
+	a.mu.Lock()
+	if a.cancelFunc != nil {
+		a.mu.Unlock()
+		return fmt.Errorf("cannot swap sandbox service while agent is running; cancel first")
+	}
+	doneCh := a.done
+	a.mu.Unlock()
+
+	// Wait for any in-flight goroutine to finish (cancel was already called but
+	// the goroutine may still be mid-tool-call).
+	if doneCh != nil {
+		select {
+		case <-doneCh:
+		case <-time.After(a.swapTimeout):
+			return fmt.Errorf("timed out waiting for previous agent run to finish")
+		}
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.cancelFunc != nil {
+		return fmt.Errorf("a new agent run started while waiting; cancel first")
+	}
+	if a.service != nil {
+		_ = a.service.Close()
+	}
+	a.service = svc
+	return nil
 }
 
 // sendStatus sends a status message through the callback if set
@@ -128,10 +187,93 @@ func (a *FluidAgent) sendStatus(msg tea.Msg) {
 	}
 }
 
+// sendRedactedMsg sends a SensitiveContentRedactedMsg with dedup by host/path.
+// Only sends the message the first time per unique key per agent run.
+func (a *FluidAgent) sendRedactedMsg(host, path string) {
+	key := host
+	if path != "" {
+		key = host + ":" + path
+	}
+	if a.redactedSeen[key] {
+		return
+	}
+	a.redactedSeen[key] = true
+	a.sendStatus(SensitiveContentRedactedMsg{Host: host, Path: path})
+}
+
+// RunID returns the current run generation counter.
+func (a *FluidAgent) RunID() uint64 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.runID
+}
+
+// Cancel stops the currently running agent loop
+func (a *FluidAgent) Cancel() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.cancelFunc != nil {
+		a.cancelFunc()
+		a.cancelFunc = nil
+	}
+}
+
+// withAutoReadOnly temporarily enables read-only mode for source VM operations.
+// It sets currentSourceVM, enables auto-read-only mode, and restores the previous
+// state when the function returns.
+func (a *FluidAgent) withAutoReadOnly(sourceVM string, fn func() (any, error)) (any, error) {
+	a.mu.Lock()
+	a.currentSourceVM = sourceVM
+	wasAutoReadOnly := a.autoReadOnly
+	var enterMsg *AutoReadOnlyMsg
+	if !a.readOnly {
+		a.autoReadOnly = true
+		a.readOnly = true
+		enterMsg = &AutoReadOnlyMsg{SourceVM: sourceVM, Enabled: true}
+	}
+	a.mu.Unlock()
+	if enterMsg != nil {
+		a.sendStatus(*enterMsg)
+	}
+	defer func() {
+		a.mu.Lock()
+		a.currentSourceVM = ""
+		var exitMsg *AutoReadOnlyMsg
+		if a.autoReadOnly && !wasAutoReadOnly {
+			a.autoReadOnly = false
+			a.readOnly = false
+			exitMsg = &AutoReadOnlyMsg{Enabled: false}
+		}
+		a.mu.Unlock()
+		if exitMsg != nil {
+			a.sendStatus(*exitMsg)
+		}
+	}()
+	return fn()
+}
+
 // Run executes a command and returns the result
 func (a *FluidAgent) Run(input string) tea.Cmd {
+	// Increment runID eagerly so the caller can read it via RunID() immediately.
+	a.mu.Lock()
+	a.runID++
+	currentRunID := a.runID
+	a.mu.Unlock()
+
 	return func() tea.Msg {
-		ctx := context.Background()
+		ctx, cancel := context.WithCancel(context.Background())
+		doneCh := make(chan struct{})
+		a.mu.Lock()
+		a.cancelFunc = cancel
+		a.done = doneCh
+		a.mu.Unlock()
+		defer func() {
+			cancel()
+			a.mu.Lock()
+			a.cancelFunc = nil
+			a.mu.Unlock()
+			close(doneCh)
+		}()
 
 		// Handle slash commands
 		if strings.HasPrefix(input, "/") {
@@ -322,9 +464,17 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 
 		// LLM-driven execution loop
 		for iteration := 0; ; iteration++ {
+			if ctx.Err() != nil {
+				a.sendStatus(AgentDoneMsg{})
+				return AgentCancelledMsg{RunID: currentRunID}
+			}
 			a.logger.Debug("LLM loop iteration", "iteration", iteration, "history_len", len(a.history))
 			systemPrompt := a.cfg.AIAgent.DefaultSystem
 			tools := llm.GetTools()
+			// Snapshot readOnly under lock
+			a.mu.Lock()
+			isReadOnly := a.readOnly
+			a.mu.Unlock()
 			// Tool selection precedence:
 			// 1. No sandbox hosts AND no prepared hosts: minimal tools, nudge to /prepare
 			// 2. No sandbox hosts but has prepared hosts: source-only read access
@@ -338,10 +488,18 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 					"let them know they need to prepare a host first with `/prepare <hostname>` or `fluid prepare <hostname>` to give you read-only SSH access to their servers."
 			} else if !a.cfg.HasSandboxHosts() {
 				tools = llm.GetSourceOnlyTools()
-				systemPrompt += "\n\nYou have read-only SSH access to the user's servers. Use run_source_command and read_source_file to diagnose issues. You CANNOT modify anything on source hosts.\n\nWhen you identify a fix or change:\n1. Explain the diagnosis and proposed fix\n2. Say: \"This is a fix I could test in a sandbox and generate a playbook for. Set up a sandbox host to enable this: https://fluid.sh/docs/daemon\""
-			} else if a.readOnly {
+				systemPrompt += "\n\nYou have read-only SSH access to the user's servers. Use run_source_command and read_source_file to diagnose issues. You CANNOT modify anything on source hosts.\n\nWhen you identify a fix or change:\n1. Explain the diagnosis and proposed fix\n2. Say: \"This is a fix I could test in a sandbox and generate a playbook for. Set up a daemon host (https://fluid.sh/docs/daemon) then use /connect to link it.\"" +
+					tlsDebuggingGuidance
+			} else if isReadOnly {
 				tools = llm.GetReadOnlyTools()
 				systemPrompt += "\n\nYou are in READ-ONLY mode. You can only query and observe - you cannot create, modify, or destroy any resources."
+			}
+
+			// Add TLS debugging guidance when the agent has source host access AND sandbox hosts.
+			// This is mutually exclusive with the branch above that appends tlsDebuggingGuidance
+			// when !HasSandboxHosts (source-only mode) - so the guidance is never appended twice.
+			if len(a.cfg.PreparedHosts()) > 0 && a.cfg.HasSandboxHosts() && !isReadOnly {
+				systemPrompt += tlsDebuggingGuidance
 			}
 
 			// Build messages, applying redaction if enabled
@@ -428,6 +586,10 @@ func (a *FluidAgent) Run(input string) tea.Cmd {
 
 				// Handle tool calls
 				for _, tc := range msg.ToolCalls {
+					if ctx.Err() != nil {
+						a.sendStatus(AgentDoneMsg{})
+						return AgentCancelledMsg{RunID: currentRunID}
+					}
 					a.logger.Debug("executing tool call", "tool", tc.Function.Name, "call_id", tc.ID)
 					toolStart := time.Now()
 					result, err := a.executeTool(ctx, tc)
@@ -641,26 +803,38 @@ func (a *FluidAgent) executeTool(ctx context.Context, tc llm.ToolCall) (any, err
 			return nil, err
 		}
 		if a.sourceService != nil {
-			result, err := a.sourceService.RunCommandStreaming(ctx, args.Host, args.Command,
-				func(chunk string, isStderr bool) {
-					a.sendStatus(CommandOutputChunkMsg{
-						SandboxID: args.Host,
-						IsStderr:  isStderr,
-						Chunk:     chunk,
+			var result *source.CommandResult
+			_, cmdErr := a.withAutoReadOnly(args.Host, func() (any, error) {
+				var innerErr error
+				result, innerErr = a.sourceService.RunCommandStreaming(ctx, args.Host, args.Command,
+					func(chunk string, isStderr bool) {
+						a.sendStatus(CommandOutputChunkMsg{
+							SandboxID: args.Host,
+							IsStderr:  isStderr,
+							Chunk:     chunk,
+						})
 					})
-				})
+				return result, innerErr
+			})
+			if cmdErr != nil {
+				return nil, cmdErr
+			}
 			a.sendStatus(CommandOutputDoneMsg{SandboxID: args.Host})
-			if err != nil {
-				return nil, err
+			stdout, stdoutRedacted := a.redactContent(result.Stdout)
+			stderr, stderrRedacted := a.redactContent(result.Stderr)
+			if stdoutRedacted || stderrRedacted {
+				a.sendRedactedMsg(args.Host, "")
 			}
 			return map[string]any{
 				"host":      args.Host,
 				"exit_code": result.ExitCode,
-				"stdout":    result.Stdout,
-				"stderr":    result.Stderr,
+				"stdout":    stdout,
+				"stderr":    stderr,
 			}, nil
 		}
-		return a.runSourceCommand(ctx, args.Host, args.Command)
+		return a.withAutoReadOnly(args.Host, func() (any, error) {
+			return a.runSourceCommand(ctx, args.Host, args.Command)
+		})
 	case "read_source_file":
 		var args struct {
 			Host string `json:"host"`
@@ -670,9 +844,34 @@ func (a *FluidAgent) executeTool(ctx context.Context, tc llm.ToolCall) (any, err
 			return nil, err
 		}
 		if a.sourceService != nil {
-			return a.sourceService.ReadFile(ctx, args.Host, args.Path)
+			var content string
+			_, cmdErr := a.withAutoReadOnly(args.Host, func() (any, error) {
+				var innerErr error
+				content, innerErr = a.sourceService.ReadFile(ctx, args.Host, args.Path)
+				return content, innerErr
+			})
+			if cmdErr != nil {
+				return nil, cmdErr
+			}
+			content, wasRedacted := a.redactContent(content)
+			if wasRedacted {
+				a.sendRedactedMsg(args.Host, args.Path)
+			}
+			a.sendStatus(CommandOutputStartMsg{SandboxID: args.Host})
+			a.sendStatus(CommandOutputChunkMsg{
+				SandboxID: args.Host,
+				Chunk:     content + "\n",
+			})
+			a.sendStatus(CommandOutputDoneMsg{SandboxID: args.Host})
+			return map[string]any{
+				"source_vm": args.Host,
+				"path":      args.Path,
+				"content":   content,
+			}, nil
 		}
-		return a.readSourceFile(ctx, args.Host, args.Path)
+		return a.withAutoReadOnly(args.Host, func() (any, error) {
+			return a.readSourceFile(ctx, args.Host, args.Path)
+		})
 	case "list_hosts":
 		if a.sourceService != nil {
 			return a.sourceService.ListHosts(), nil
@@ -1214,6 +1413,16 @@ func (a *FluidAgent) editFile(ctx context.Context, sandboxID, path, oldStr, newS
 	}, nil
 }
 
+// redactContent runs the Redactor on content and returns whether any redaction occurred.
+// If the redactor is nil (redaction disabled), content passes through unchanged.
+func (a *FluidAgent) redactContent(content string) (string, bool) {
+	if a.redactor == nil {
+		return content, false
+	}
+	result := a.redactor.Redact(content)
+	return result, result != content
+}
+
 // readFile reads the contents of a file on a sandbox VM via SSH.
 // This operates on files inside the sandbox - not local files or playbooks.
 func (a *FluidAgent) readFile(ctx context.Context, sandboxID, path string) (map[string]any, error) {
@@ -1245,10 +1454,16 @@ func (a *FluidAgent) readFile(ctx context.Context, sandboxID, path string) (map[
 		return nil, fmt.Errorf("failed to decode file content: %w", err)
 	}
 
+	content := string(decoded)
+	content, wasRedacted := a.redactContent(content)
+	if wasRedacted {
+		a.sendRedactedMsg(sandboxID, path)
+	}
+
 	return map[string]any{
 		"sandbox_id": sandboxID,
 		"path":       path,
-		"content":    string(decoded),
+		"content":    content,
 	}, nil
 }
 
@@ -1699,42 +1914,36 @@ func (a *FluidAgent) runSourceCommand(ctx context.Context, sourceVM, command str
 	}
 	a.logger.Debug("run source command", "source_vm", sourceVM, "command", truncCmd)
 
-	// Auto-enable read-only mode while operating on source VM
-	a.currentSourceVM = sourceVM
-	if !a.readOnly {
-		a.autoReadOnly = true
-		a.readOnly = true
-		a.sendStatus(AutoReadOnlyMsg{SourceVM: sourceVM, Enabled: true})
-	}
-	defer func() {
-		a.currentSourceVM = ""
-		if a.autoReadOnly {
-			a.autoReadOnly = false
-			a.readOnly = false
-			a.sendStatus(AutoReadOnlyMsg{SourceVM: sourceVM, Enabled: false})
-		}
-	}()
-
 	result, err := a.service.RunSourceCommand(ctx, sourceVM, command, 0)
 	if err != nil {
 		a.logger.Error("source command failed", "source_vm", sourceVM, "error", err)
 		if result != nil {
+			stdout, stdoutRedacted := a.redactContent(result.Stdout)
+			stderr, stderrRedacted := a.redactContent(result.Stderr)
+			if stdoutRedacted || stderrRedacted {
+				a.sendRedactedMsg(sourceVM, "")
+			}
 			return map[string]any{
 				"source_vm": sourceVM,
 				"exit_code": result.ExitCode,
-				"stdout":    result.Stdout,
-				"stderr":    result.Stderr,
+				"stdout":    stdout,
+				"stderr":    stderr,
 				"error":     err.Error(),
 			}, nil
 		}
 		return nil, err
 	}
 
+	stdout, stdoutRedacted := a.redactContent(result.Stdout)
+	stderr, stderrRedacted := a.redactContent(result.Stderr)
+	if stdoutRedacted || stderrRedacted {
+		a.sendRedactedMsg(sourceVM, "")
+	}
 	return map[string]any{
 		"source_vm": sourceVM,
 		"exit_code": result.ExitCode,
-		"stdout":    result.Stdout,
-		"stderr":    result.Stderr,
+		"stdout":    stdout,
+		"stderr":    stderr,
 	}, nil
 }
 
@@ -1753,27 +1962,24 @@ func (a *FluidAgent) readSourceFile(ctx context.Context, sourceVM, path string) 
 
 	a.logger.Debug("read source file", "source_vm", sourceVM, "path", path)
 
-	// Auto-enable read-only mode while operating on source VM
-	a.currentSourceVM = sourceVM
-	if !a.readOnly {
-		a.autoReadOnly = true
-		a.readOnly = true
-		a.sendStatus(AutoReadOnlyMsg{SourceVM: sourceVM, Enabled: true})
-	}
-	defer func() {
-		a.currentSourceVM = ""
-		if a.autoReadOnly {
-			a.autoReadOnly = false
-			a.readOnly = false
-			a.sendStatus(AutoReadOnlyMsg{SourceVM: sourceVM, Enabled: false})
-		}
-	}()
-
 	content, err := a.service.ReadSourceFile(ctx, sourceVM, path)
 	if err != nil {
 		a.logger.Error("failed to read file from source VM", "source_vm", sourceVM, "path", path, "error", err)
 		return nil, fmt.Errorf("failed to read file from source VM: %w", err)
 	}
+
+	content, wasRedacted := a.redactContent(content)
+	if wasRedacted {
+		a.sendRedactedMsg(sourceVM, path)
+	}
+
+	// Show file content in live output box
+	a.sendStatus(CommandOutputStartMsg{SandboxID: sourceVM})
+	a.sendStatus(CommandOutputChunkMsg{
+		SandboxID: sourceVM,
+		Chunk:     content + "\n",
+	})
+	a.sendStatus(CommandOutputDoneMsg{SandboxID: sourceVM})
 
 	return map[string]any{
 		"source_vm": sourceVM,
@@ -1923,10 +2129,14 @@ func (a *FluidAgent) GetCurrentSandboxBaseImage() string {
 
 // GetCurrentSourceVM returns the source VM currently being operated on
 func (a *FluidAgent) GetCurrentSourceVM() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	return a.currentSourceVM
 }
 
 // ClearAutoReadOnly clears the auto read-only flag (for manual override via Shift+Tab)
 func (a *FluidAgent) ClearAutoReadOnly() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.autoReadOnly = false
 }

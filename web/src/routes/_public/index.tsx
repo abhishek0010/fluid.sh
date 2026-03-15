@@ -80,9 +80,9 @@ function SecuritySection({
 
 const faqs = [
   {
-    question: 'You want me to give an AI agent SSH access to my production VMs?',
+    question: 'What is Fluid and how does it work?',
     answer:
-      'Not unrestricted SSH access. Fluid creates a dedicated fluid-readonly user with a restricted login shell. A client-side allowlist validates every command against ~50 permitted read-only commands (cat, ls, grep, ps, journalctl, etc.) before it is even sent. Server-side, the restricted shell blocks 50+ destructive patterns - sudo, rm, mv, chmod, wget, python, bash - at the OS level. Command substitution ($(...), backticks), output redirection, and subshells are all blocked. Even if the AI constructs something creative, the shell will not execute it.',
+      'Fluid is an AI agent built for working on Linux servers. It uses tools you already know like ssh, login shells, and Ansible playbooks to investigate Linux servers. Fluid creates a dedicated fluid-readonly user with a restricted login shell. A client-side allowlist validates every command against ~50 permitted read-only commands (cat, ls, grep, ps, journalctl, etc.) before it is even sent. Server-side, the restricted shell blocks 50+ destructive patterns - sudo, rm, mv, chmod, wget, python, bash - at the OS level. Command substitution ($(...), backticks), output redirection, and subshells are all blocked. Even if the AI constructs something creative, the shell will not execute it. If a sandbox host is configured and a possible fix can be constructed, Fluid will create a sandbox of the server to test changes and updates. Finally, Fluid will create an ansible playbook that can be applied to production to fix the issue.',
   },
   {
     question: 'What data leaves my environment?',
@@ -309,11 +309,12 @@ function LandingPage() {
             </div>
           )}
           <p className="font-logo mt-2 text-lg tracking-tight text-neutral-200">
-            Claude Code for working on Linux Servers.
+            The AI Sys-Admin for Enterprise.
           </p>
           <p className="my-2 text-neutral-400">
-            Read-only shell access. PII redaction. Tamper-evident audit logs. Fluid gets just the
-            access it needs to debug and manage your servers - nothing more.
+            Read-only shell access. PII redaction. Tamper-evident audit logs. Sandboxes for edits.
+            Generate IaC for fixes. Fluid gets the minimum access it needs to debug and manage your
+            servers.
           </p>
           <div className="mt-4 flex items-center gap-3">
             <a

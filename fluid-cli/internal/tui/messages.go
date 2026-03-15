@@ -4,6 +4,9 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/aspectrr/fluid.sh/fluid-cli/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid-cli/internal/sandbox"
 )
 
 // Message types for the TUI
@@ -78,6 +81,13 @@ type ToolCompleteMsg struct {
 // This unblocks the status listener
 type AgentDoneMsg struct{}
 
+// AgentCancelledMsg is sent when the user cancels the agent via ESC.
+// RunID identifies which agent run this cancellation belongs to, so stale
+// cancellations from a previous run don't corrupt a newly-started run.
+type AgentCancelledMsg struct {
+	RunID uint64
+}
+
 // ClearThinkingMsg is sent to clear the thinking indicator
 type ClearThinkingMsg struct{}
 
@@ -145,6 +155,11 @@ type CompactCompleteMsg struct {
 // CompactErrorMsg is sent when compaction fails
 type CompactErrorMsg struct {
 	Err error
+}
+
+// CommandOutputStartMsg signals that command output is about to begin
+type CommandOutputStartMsg struct {
+	SandboxID string
 }
 
 // CommandOutputChunkMsg is sent when streaming output arrives from a command
@@ -222,4 +237,23 @@ type AutoReadOnlyMsg struct {
 // UpdateAvailableMsg is sent when a newer version is available
 type UpdateAvailableMsg struct {
 	Version string
+}
+
+// SensitiveContentRedactedMsg is sent when private key content is detected
+// and redacted from a file before sending to the LLM.
+type SensitiveContentRedactedMsg struct {
+	Path string
+	Host string
+}
+
+// ConnectCloseMsg is sent when the connect wizard is closed
+type ConnectCloseMsg struct {
+	Saved  bool
+	Config config.SandboxHostConfig
+}
+
+// SandboxServiceSwapResultMsg is sent when SetSandboxService completes asynchronously.
+type SandboxServiceSwapResultMsg struct {
+	Svc sandbox.Service
+	Err error
 }

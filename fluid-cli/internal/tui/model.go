@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/aspectrr/fluid.sh/fluid-cli/internal/config"
+	"github.com/aspectrr/fluid.sh/fluid-cli/internal/sandbox"
 	"github.com/aspectrr/fluid.sh/fluid-cli/internal/sshconfig"
 	"github.com/aspectrr/fluid.sh/fluid-cli/internal/updater"
 )
@@ -55,6 +56,7 @@ type Model struct {
 	agentStatus     AgentStatus
 	currentToolName string
 	currentToolArgs map[string]any
+	currentRunID    uint64
 
 	// Status channel for agent updates
 	statusChan chan tea.Msg
@@ -101,6 +103,10 @@ type Model struct {
 	playbooksModel PlaybooksModel
 	inPlaybooks    bool
 
+	// Connect wizard
+	connectModel ConnectModel
+	inConnect    bool
+
 	// Autocomplete
 	suggestions     []commandSuggestion
 	suggestionIndex int
@@ -115,6 +121,7 @@ type Model struct {
 	liveOutputPending string
 	showingLiveOutput bool
 	liveOutputSandbox string
+	liveOutputCommand string
 	liveOutputIndex   int // Index in conversation where live output is displayed
 	currentRetry      *RetryAttemptMsg
 
@@ -153,6 +160,7 @@ var allCommands = []commandSuggestion{
 	{"/prepare", "Prepare a host for read-only access"},
 	{"/compact", "Summarize and compact conversation history"},
 	{"/context", "Show current context token usage"},
+	{"/connect", "Connect to a fluid daemon"},
 	{"/settings", "Open configuration settings"},
 	{"/allowlist", "Show the read-only command allowlist"},
 	{"/clear", "Clear conversation history"},
@@ -167,6 +175,12 @@ type AgentRunner interface {
 	SetStatusCallback(func(tea.Msg))
 	// SetReadOnly toggles read-only mode (only query tools available)
 	SetReadOnly(bool)
+	// Cancel stops the currently running agent loop
+	Cancel()
+	// RunID returns the current run generation counter
+	RunID() uint64
+	// SetSandboxService hot-swaps the sandbox service (for /connect)
+	SetSandboxService(sandbox.Service) error
 }
 
 // NewModel creates a new TUI model
@@ -315,6 +329,64 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Handle ConnectCloseMsg
+	if closeMsg, ok := msg.(ConnectCloseMsg); ok {
+		m.inConnect = false
+		m.state = StateIdle
+		if closeMsg.Saved {
+			// Update or append sandbox host config
+			m.cfg.SandboxHosts = config.UpsertSandboxHost(m.cfg.SandboxHosts, closeMsg.Config)
+			if err := m.cfg.Save(m.configPath); err != nil {
+				m.addSystemMessage(fmt.Sprintf("Failed to save config: %v", err))
+			} else {
+				m.addSystemMessage(fmt.Sprintf("Connected to %s (%s). Config saved.", closeMsg.Config.Name, closeMsg.Config.DaemonAddress))
+			}
+			// Hot-swap sandbox service if available (async to avoid blocking TUI)
+			if svc := m.connectModel.GetService(); svc != nil {
+				return m, func() tea.Msg {
+					err := m.agentRunner.SetSandboxService(svc)
+					return SandboxServiceSwapResultMsg{Svc: svc, Err: err}
+				}
+			}
+		} else {
+			// Close the service if not saving
+			if svc := m.connectModel.GetService(); svc != nil {
+				_ = svc.Close()
+			}
+			m.addSystemMessage("Connect cancelled.")
+		}
+		m.updateViewportContent(false)
+		m.textarea.Focus()
+		return m, nil
+	}
+
+	// Handle SandboxServiceSwapResultMsg (async result from SetSandboxService)
+	if swapMsg, ok := msg.(SandboxServiceSwapResultMsg); ok {
+		if swapMsg.Err != nil {
+			m.addSystemMessage(fmt.Sprintf("Failed to swap sandbox service: %v", swapMsg.Err))
+			_ = swapMsg.Svc.Close()
+		}
+		m.updateViewportContent(false)
+		m.textarea.Focus()
+		return m, nil
+	}
+
+	// Close any service arriving after ESC cancellation
+	if healthMsg, ok := msg.(ConnectHealthResultMsg); ok && !m.inConnect {
+		if healthMsg.Service != nil {
+			_ = healthMsg.Service.Close()
+		}
+		return m, nil
+	}
+
+	// If in connect mode, delegate to connect model
+	if m.inConnect {
+		var cmd tea.Cmd
+		connectModel, cmd := m.connectModel.Update(msg)
+		m.connectModel = connectModel.(ConnectModel)
+		return m, cmd
+	}
+
 	// If in playbooks mode, delegate to playbooks model
 	if m.inPlaybooks {
 		var cmd tea.Cmd
@@ -424,7 +496,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.MouseMsg:
-		if !m.inSettings && !m.inPlaybooks && !m.inMemoryConfirm &&
+		if !m.inSettings && !m.inPlaybooks && !m.inConnect && !m.inMemoryConfirm &&
 			!m.inNetworkConfirm && !m.inSourcePrepareConfirm && !m.inCleanup {
 			switch msg.Button {
 			case tea.MouseButtonWheelUp:
@@ -570,6 +642,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				m.currentInput = input
 
+				// Handle /connect command
+				if input == "/connect" || input == "connect" {
+					m.inConnect = true
+					m.connectModel = NewConnectModel(m.cfg.Hosts)
+					if m.width > 0 && m.height > 0 {
+						connectModel, _ := m.connectModel.Update(tea.WindowSizeMsg{
+							Width:  m.width,
+							Height: m.height,
+						})
+						m.connectModel = connectModel.(ConnectModel)
+					}
+					return m, m.connectModel.Init()
+				}
+
 				// Handle /settings command
 				if input == "/settings" || input == "settings" {
 					m.inSettings = true
@@ -625,14 +711,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				// Run agent
 				if m.agentRunner != nil {
+					cmd := m.agentRunner.Run(input)
+					m.currentRunID = m.agentRunner.RunID()
 					return m, tea.Batch(
-						m.agentRunner.Run(input),
+						cmd,
 						ThinkingCmd(),
 						m.listenForStatus(),
 					)
 				}
 			}
 		case "esc":
+			if m.state == StateThinking {
+				if m.agentRunner != nil {
+					m.agentRunner.Cancel()
+				}
+				m.state = StateIdle
+				m.thinking = false
+				m.agentStatus = StatusThinking
+				m.currentToolName = ""
+				m.currentToolArgs = nil
+				m.updateViewportContent(false)
+				m.textarea.Focus()
+				return m, nil
+			}
 			if m.state == StateSettings {
 				m.state = StateIdle
 				m.textarea.Focus()
@@ -698,6 +799,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, ThinkingCmd()
 		}
 
+	case AgentCancelledMsg:
+		if msg.RunID != m.currentRunID {
+			// Stale cancellation from a previous run - ignore it
+			return m, nil
+		}
+		if m.state != StateIdle {
+			m.addSystemMessage("Agent stopped.")
+			m.state = StateIdle
+			m.thinking = false
+			m.agentStatus = StatusThinking
+			m.currentToolName = ""
+			m.currentToolArgs = nil
+			m.updateViewportContent(false)
+			m.textarea.Focus()
+		}
+		return m, nil
+
 	case AgentDoneMsg:
 		// Agent finished, don't restart the status listener
 		return m, nil
@@ -710,6 +828,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case ToolCompleteMsg:
+		// Drop tool results if we've already returned to idle (e.g., after ESC cancel)
+		if m.state == StateIdle {
+			return m, nil
+		}
 		// Add tool result to conversation
 		tr := ToolResult{
 			Name:   msg.ToolName,
@@ -726,6 +848,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentToolName = ""
 		m.currentToolArgs = nil
 		m.updateViewportContent(false)
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
+
+	case CommandOutputStartMsg:
+		// Pre-initialize live output box before chunks arrive.
+		// If live output is already active (e.g., from a quick succession of calls),
+		// silently merge into existing output - this is intentional to avoid
+		// disrupting the current output display.
+		if !m.showingLiveOutput {
+			m.showingLiveOutput = true
+			m.liveOutputSandbox = msg.SandboxID
+			m.liveOutputLines = nil
+			m.liveOutputPending = ""
+			m.liveOutputCommand = m.extractLiveOutputCommand()
+			m.liveOutputIndex = len(m.conversation)
+			m.conversation = append(m.conversation, ConversationEntry{
+				Role:    "live_output",
+				Content: "",
+			})
+			m.updateViewportContent(false)
+		}
 		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case CommandOutputResetMsg:
@@ -746,6 +888,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case CommandOutputChunkMsg:
+		// Drop chunks if we've already returned to idle (e.g., after ESC cancel)
+		if m.state == StateIdle {
+			return m, nil
+		}
 		// Clear retry when output arrives
 		m.currentRetry = nil
 
@@ -757,11 +903,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if !m.showingLiveOutput {
-			// Add a new conversation entry for live output
 			m.showingLiveOutput = true
 			m.liveOutputSandbox = msg.SandboxID
 			m.liveOutputLines = nil
 			m.liveOutputPending = ""
+			m.liveOutputCommand = m.extractLiveOutputCommand()
 			m.liveOutputIndex = len(m.conversation)
 			m.conversation = append(m.conversation, ConversationEntry{
 				Role:    "live_output",
@@ -802,6 +948,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
 	case CommandOutputDoneMsg:
+		// Drop done signal if we've already returned to idle (e.g., after ESC cancel)
+		if m.state == StateIdle {
+			return m, nil
+		}
 		m.showingLiveOutput = false
 		m.currentRetry = nil
 		// Clear output buffer as it's no longer needed (result will be shown via ToolCompleteMsg)
@@ -843,12 +993,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.GotoBottom()
 		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
 
+	case SensitiveContentRedactedMsg:
+		if msg.Path != "" {
+			m.addSystemMessage(fmt.Sprintf("Sensitive content detected in %s - redacted before sending to LLM", msg.Path))
+		} else {
+			m.addSystemMessage(fmt.Sprintf("Sensitive content detected in command output on %s - redacted before sending to LLM", msg.Host))
+		}
+		m.updateViewportContent(false)
+		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
+
 	case AutoReadOnlyMsg:
 		m.readOnly = msg.Enabled
 		if msg.Enabled {
 			m.addSystemMessage(fmt.Sprintf("Auto read-only: accessing source VM %s", msg.SourceVM))
 		} else {
-			m.addSystemMessage("Auto read-only: restored edit mode")
+			m.addSystemMessage("Auto read-only: switched to edit mode")
 		}
 		m.updateViewportContent(false)
 		return m, tea.Batch(m.listenForStatus(), m.spinner.Tick)
@@ -882,6 +1041,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case AgentErrorMsg:
 		m.thinking = false
 		m.state = StateIdle
+		m.agentStatus = StatusThinking
+		m.currentToolName = ""
+		m.currentToolArgs = nil
 		m.addSystemMessage(fmt.Sprintf("Error: %v", msg.Err))
 		m.updateViewportContent(true)
 		m.textarea.Focus()
@@ -911,8 +1073,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.agentRunner != nil {
 				m.state = StateThinking
 				m.thinking = true
+				cmd := m.agentRunner.Run("Review approved by human. You may proceed.")
+				m.currentRunID = m.agentRunner.RunID()
 				return m, tea.Batch(
-					m.agentRunner.Run("Review approved by human. You may proceed."),
+					cmd,
 					ThinkingCmd(),
 				)
 			}
@@ -1114,6 +1278,11 @@ func (m Model) View() string {
 	// Show settings screen if in settings mode
 	if m.inSettings {
 		return m.settingsModel.View()
+	}
+
+	// Show connect wizard if in connect mode
+	if m.inConnect {
+		return m.connectModel.View()
 	}
 
 	// Show playbooks browser if in playbooks mode
@@ -1386,7 +1555,25 @@ func (m *Model) addToolResult(tr ToolResult) {
 	})
 }
 
-// formatLiveOutput formats the live output for display, truncating to last N lines
+// extractLiveOutputCommand extracts a display label from the current tool args
+// (command truncated to 60 chars, or file path) for the live output header.
+func (m *Model) extractLiveOutputCommand() string {
+	if m.currentToolArgs == nil {
+		return ""
+	}
+	if cmd, ok := m.currentToolArgs["command"].(string); ok {
+		if len(cmd) > 60 {
+			cmd = cmd[:57] + "..."
+		}
+		return cmd
+	}
+	if path, ok := m.currentToolArgs["path"].(string); ok {
+		return path
+	}
+	return ""
+}
+
+// formatLiveOutput formats the live output for display, truncating to last N lines.
 func (m *Model) formatLiveOutput() string {
 	var lines []string
 	if len(m.liveOutputLines) > 0 {
@@ -1530,10 +1717,14 @@ func (m *Model) updateViewportContent(forceScroll bool) {
 				Padding(0, 1).
 				Width(boxWidth)
 
+			headerText := fmt.Sprintf("$ Live output (%s):", m.liveOutputSandbox)
+			if m.liveOutputCommand != "" {
+				headerText = fmt.Sprintf("$ Live output (%s): %s", m.liveOutputSandbox, m.liveOutputCommand)
+			}
 			header := lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#3B82F6")).
 				Bold(true).
-				Render(fmt.Sprintf("$ Live output (%s):", m.liveOutputSandbox))
+				Render(headerText)
 
 			// Content is already word-wrapped by formatLiveOutput
 			content := lipgloss.NewStyle().
@@ -1848,6 +2039,68 @@ func (m *Model) formatToolOutput(toolName string, args, result map[string]any) s
 		}
 		if name, ok := result["name"]; ok {
 			b.WriteString(m.styles.ToolDetails.Render(fmt.Sprintf("      Name: %v", name)))
+			b.WriteString("\n")
+		}
+
+	case "run_source_command":
+		if args != nil {
+			if cmd, ok := args["command"].(string); ok {
+				if len(cmd) > 80 {
+					cmd = cmd[:77] + "..."
+				}
+				b.WriteString(m.styles.ToolDetails.Render(fmt.Sprintf("      $ %s", cmd)))
+				b.WriteString("\n")
+			}
+		}
+		if exitCode, ok := result["exit_code"]; ok {
+			b.WriteString(m.styles.ToolDetails.Render(fmt.Sprintf("      exit: %v", exitCode)))
+			b.WriteString("\n")
+		}
+		if stdout, ok := result["stdout"].(string); ok && stdout != "" {
+			stdout = strings.TrimSpace(stdout)
+			lines := strings.Split(stdout, "\n")
+			if len(lines) > 5 {
+				lines = append(lines[:5], fmt.Sprintf("... (%d more lines)", len(lines)-5))
+			}
+			for _, line := range lines {
+				if len(line) > 100 {
+					line = line[:97] + "..."
+				}
+				b.WriteString(m.styles.ToolDetails.Render(fmt.Sprintf("      %s", line)))
+				b.WriteString("\n")
+			}
+		}
+		if stderr, ok := result["stderr"].(string); ok && stderr != "" {
+			stderr = strings.TrimSpace(stderr)
+			lines := strings.Split(stderr, "\n")
+			var filteredLines []string
+			for _, line := range lines {
+				if !isSSHWarningLine(line) && strings.TrimSpace(line) != "" {
+					filteredLines = append(filteredLines, line)
+				}
+			}
+			if len(filteredLines) > 3 {
+				filteredLines = append(filteredLines[:3], "...")
+			}
+			for _, line := range filteredLines {
+				if len(line) > 100 {
+					line = line[:97] + "..."
+				}
+				b.WriteString(m.styles.ToolDetailsError.Render(fmt.Sprintf("      stderr: %s", line)))
+				b.WriteString("\n")
+			}
+		}
+
+	case "read_source_file", "read_file":
+		if args != nil {
+			if path, ok := args["path"].(string); ok {
+				b.WriteString(m.styles.ToolDetails.Render(fmt.Sprintf("      path: %s", path)))
+				b.WriteString("\n")
+			}
+		}
+		if content, ok := result["content"].(string); ok {
+			lines := strings.Split(content, "\n")
+			b.WriteString(m.styles.ToolDetails.Render(fmt.Sprintf("      %d lines", len(lines))))
 			b.WriteString("\n")
 		}
 
