@@ -25,6 +25,7 @@ var allowedCommands = map[string]bool{
 	// Network
 	"ss": true, "netstat": true, "ip": true, "ifconfig": true,
 	"dig": true, "nslookup": true, "ping": true,
+	"curl": true,
 
 	// TLS/cert diagnostics
 	"openssl": true,
@@ -60,7 +61,8 @@ var allowedCommands = map[string]bool{
 // segment. For example, sed -i performs in-place editing which violates
 // read-only mode. Also catches variants like -i.bak (starts with -i).
 var blockedFlags = map[string][]string{
-	"sed": {"-i", "--in-place"},
+	"sed":  {"-i", "--in-place"},
+	"curl": {"-X", "--request", "-d", "--data", "--data-raw", "--data-binary", "--data-urlencode", "-F", "--form", "-T", "--upload-file", "-o", "--output", "-O", "--remote-name", "-K", "--config", "-x", "--proxy", "--proxy-anyauth", "--proxy-basic", "--proxy-digest", "--proxy-negotiate", "--proxy-ntlm", "--proxy-header", "--proxy-insecure", "--proxy-key", "--proxy-user", "--proxy-pass", "--proxy1.0", "--preproxy"},
 }
 
 // commandArgValidators maps commands to functions that validate their arguments
@@ -442,6 +444,15 @@ func AllowedCommandsList() []string {
 func AllowedCommandsListMap() map[string]bool {
 	result := make(map[string]bool)
 	for k, v := range allowedCommands {
+		result[k] = v
+	}
+	return result
+}
+
+// SubcommandRestrictions returns a map of commands to their allowed subcommands.
+func SubcommandRestrictions() map[string]map[string]bool {
+	result := make(map[string]map[string]bool)
+	for k, v := range subcommandRestrictions {
 		result[k] = v
 	}
 	return result

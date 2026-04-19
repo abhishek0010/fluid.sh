@@ -3,7 +3,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { type DiagramPhase, PHASE_MAP } from './diagram-phases'
 
 const ANSI = {
-  primary: '\x1b[38;2;59;130;246m',
+  primary: '\x1b[38;2;21;128;61m',
   cyan: '\x1b[38;2;6;182;212m',
   green: '\x1b[38;2;16;185;129m',
   red: '\x1b[38;2;239;68;68m',
@@ -19,218 +19,6 @@ const ANSI = {
 
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 
-// Banner logo: 8 lines x 24 chars, each [r, g, b, char] - extracted from fluid-cli/internal/tui/logo.go
-const BANNER_DATA: [number, number, number, string][][] = [
-  [
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [40, 43, 50, 's'],
-    [39, 41, 49, 'c'],
-    [40, 44, 51, 's'],
-    [47, 51, 57, '1'],
-    [51, 56, 62, 'x'],
-    [55, 60, 66, '%'],
-    [61, 66, 72, 'a'],
-    [57, 62, 68, '7'],
-    [51, 55, 62, 'x'],
-    [46, 50, 57, 'v'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-  ],
-  [
-    [41, 44, 51, 's'],
-    [39, 42, 49, 'c'],
-    [41, 44, 51, 's'],
-    [55, 60, 67, '%'],
-    [93, 103, 108, 'C'],
-    [139, 152, 155, '5'],
-    [167, 183, 185, 'O'],
-    [175, 192, 194, 'k'],
-    [178, 195, 197, 'P'],
-    [182, 199, 201, 'h'],
-    [183, 199, 201, 'h'],
-    [176, 191, 194, 'k'],
-    [119, 132, 137, 'L'],
-    [53, 58, 64, 'x'],
-    [42, 45, 52, 's'],
-    [41, 45, 52, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-  ],
-  [
-    [46, 50, 57, 'v'],
-    [87, 100, 106, 'n'],
-    [128, 145, 149, 'q'],
-    [170, 187, 189, 'V'],
-    [200, 218, 219, 'A'],
-    [185, 205, 211, 'm'],
-    [158, 181, 195, 'F'],
-    [119, 154, 183, 'L'],
-    [125, 161, 190, 'p'],
-    [113, 153, 190, '6'],
-    [128, 160, 183, 'q'],
-    [170, 187, 191, 'V'],
-    [157, 171, 174, 'F'],
-    [127, 137, 141, 'p'],
-    [92, 102, 107, 'u'],
-    [49, 54, 61, '1'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-  ],
-  [
-    [65, 72, 79, 'e'],
-    [168, 192, 197, 'V'],
-    [191, 214, 218, 'w'],
-    [198, 217, 221, '8'],
-    [198, 217, 221, '8'],
-    [193, 213, 218, '4'],
-    [158, 182, 198, 'F'],
-    [138, 168, 195, '2'],
-    [108, 144, 188, '*'],
-    [70, 118, 184, 'j'],
-    [46, 67, 93, 'v'],
-    [53, 57, 63, 'x'],
-    [62, 67, 74, 'a'],
-    [60, 65, 72, '7'],
-    [53, 57, 64, 'x'],
-    [42, 45, 52, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [41, 44, 51, 's'],
-    [40, 43, 50, 's'],
-    [39, 42, 49, 'c'],
-    [40, 43, 50, 's'],
-  ],
-  [
-    [55, 63, 73, '%'],
-    [127, 150, 167, 'p'],
-    [92, 122, 154, 'u'],
-    [75, 105, 141, 'r'],
-    [84, 117, 154, 'f'],
-    [95, 128, 163, 'C'],
-    [73, 110, 157, 'o'],
-    [101, 132, 172, 'T'],
-    [154, 177, 204, 'g'],
-    [142, 167, 207, '5'],
-    [98, 120, 154, 'J'],
-    [62, 70, 84, 'a'],
-    [46, 49, 57, 'v'],
-    [40, 43, 50, 's'],
-    [38, 41, 48, 'c'],
-    [39, 41, 48, 'c'],
-    [39, 41, 48, 'c'],
-    [39, 42, 48, 'c'],
-    [39, 42, 49, 'c'],
-    [41, 43, 50, 's'],
-    [45, 48, 55, 'v'],
-    [54, 59, 66, '%'],
-    [73, 83, 92, 'o'],
-    [69, 79, 91, 'j'],
-  ],
-  [
-    [60, 68, 77, '7'],
-    [145, 168, 181, 'S'],
-    [124, 148, 172, 'Y'],
-    [96, 121, 153, 'J'],
-    [113, 138, 166, '6'],
-    [149, 172, 192, 'b'],
-    [171, 191, 205, 'X'],
-    [195, 212, 217, '4'],
-    [208, 225, 225, 'D'],
-    [188, 211, 215, 'm'],
-    [168, 193, 205, 'V'],
-    [171, 192, 203, 'X'],
-    [155, 172, 179, 'g'],
-    [134, 148, 153, 'y'],
-    [119, 130, 136, 'L'],
-    [104, 116, 122, '3'],
-    [95, 107, 115, 'C'],
-    [97, 109, 116, 'J'],
-    [101, 114, 122, 'T'],
-    [97, 115, 129, 'J'],
-    [102, 127, 147, 'T'],
-    [103, 137, 168, 'T'],
-    [103, 146, 189, 'T'],
-    [71, 99, 135, 'j'],
-  ],
-  [
-    [57, 66, 79, '7'],
-    [102, 135, 179, 'T'],
-    [104, 142, 188, '3'],
-    [130, 164, 192, 'q'],
-    [147, 177, 196, 'b'],
-    [179, 204, 211, 'P'],
-    [169, 195, 205, 'V'],
-    [180, 204, 211, 'P'],
-    [172, 196, 205, 'X'],
-    [154, 180, 193, 'g'],
-    [121, 151, 179, 'Y'],
-    [109, 140, 172, '*'],
-    [104, 136, 169, '3'],
-    [108, 141, 173, '*'],
-    [117, 151, 179, '9'],
-    [110, 147, 176, '*'],
-    [99, 136, 170, 'J'],
-    [100, 134, 169, 'T'],
-    [104, 138, 171, '3'],
-    [107, 142, 175, '*'],
-    [110, 146, 177, '*'],
-    [109, 146, 178, '*'],
-    [113, 153, 185, '6'],
-    [85, 110, 133, 'f'],
-  ],
-  [
-    [41, 49, 65, 's'],
-    [38, 63, 114, 'c'],
-    [42, 77, 130, 's'],
-    [43, 76, 121, 'v'],
-    [52, 82, 120, 'x'],
-    [79, 100, 124, 'z'],
-    [72, 96, 122, 'o'],
-    [122, 142, 154, 'Y'],
-    [138, 155, 163, '2'],
-    [97, 115, 133, 'J'],
-    [92, 109, 130, 'u'],
-    [89, 106, 128, 'u'],
-    [84, 102, 126, 'f'],
-    [87, 107, 132, 'n'],
-    [84, 108, 134, 'f'],
-    [78, 104, 133, 'r'],
-    [81, 107, 135, 'z'],
-    [89, 111, 135, 'u'],
-    [96, 119, 140, 'J'],
-    [115, 136, 152, '9'],
-    [120, 142, 157, 'L'],
-    [110, 136, 154, '*'],
-    [107, 133, 152, '*'],
-    [77, 94, 109, 'r'],
-  ],
-]
-
 type ScriptAction =
   | { type: 'type'; text: string }
   | { type: 'think'; ms: number }
@@ -239,106 +27,125 @@ type ScriptAction =
   | { type: 'pause'; ms: number }
 
 const SCRIPT: ScriptAction[] = [
-  { type: 'type', text: 'nginx is returning 502 on web-prod-01' },
+  { type: 'type', text: 'no data in Kibana from kafka-logs topic since 10am' },
   { type: 'think', ms: 3000 },
   {
     type: 'message',
     content:
-      "I'll investigate the nginx issue on web-prod-01. Let me start by checking the service status and recent logs.",
+      "I'll investigate the Kafka-to-Elasticsearch pipeline. Let me check Logstash status and consumer lag.",
   },
   {
     type: 'tool',
     name: 'run_source_command',
-    args: 'vm=web-prod-01, cmd=systemctl status nginx',
-    result: 'active (running) since Mon 2026-02-16 09:12:03 UTC',
+    args: 'vm=logstash-prod-01, cmd=systemctl status logstash',
+    result: 'active (running) since Mon 2026-02-16 08:00:03 UTC',
   },
   {
     type: 'tool',
     name: 'run_source_command',
-    args: 'vm=web-prod-01, cmd=journalctl -u nginx --since "5 min ago"',
-    result: 'connect() failed (111: Connection refused) while connecting to upstream',
-  },
-  {
-    type: 'tool',
-    name: 'read_source_file',
-    args: 'vm=web-prod-01, path=/etc/nginx/conf.d/app.conf',
-    result: 'upstream backend { server 127.0.0.1:3000; }',
+    args: 'vm=logstash-prod-01, cmd=curl -s localhost:9600/_node/stats/pipelines',
+    result: 'pipeline.events.in: 0, events.out: 0, events.filtered: 0',
   },
   {
     type: 'tool',
     name: 'run_source_command',
-    args: 'vm=web-prod-01, cmd=ss -tlnp | grep 3000',
-    result: '(empty - nothing listening)',
+    args: 'vm=kafka-prod-01, cmd=/opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group logstash',
+    result:
+      'GROUP      TOPIC       PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG\nlogstash   kafka-logs  0          1247891         8923451         7675560',
   },
   { type: 'think', ms: 2000 },
   {
     type: 'message',
     content:
-      'Found it. Nginx is proxying to port 3000 but nothing is listening there. The app service likely crashed. Let me create a sandbox to test the fix.',
+      'Logstash is running but not consuming. Consumer group shows 7.6M message lag - the consumer is stuck. Checking Logstash logs for errors.',
+  },
+  {
+    type: 'tool',
+    name: 'run_source_command',
+    args: 'vm=logstash-prod-01, cmd=journalctl -u logstash --since "10 min ago" | grep -i error',
+    result: 'Kafka::Consumer::RebalanceInProgressError: revoked partitions during rebalance loop',
+  },
+  {
+    type: 'tool',
+    name: 'read_source_file',
+    args: 'vm=logstash-prod-01, path=/etc/logstash/pipelines/kafka.conf',
+    result: 'input { kafka { topics => ["kafka-logs"] consumer_threads => 1 } }',
+  },
+  { type: 'think', ms: 2000 },
+  {
+    type: 'message',
+    content:
+      'Found it. Single consumer thread cannot keep up with the partition count. Frequent rebalances cause the consumer to stall. I will increase consumer_threads to match partition count and test in a sandbox.',
   },
   {
     type: 'tool',
     name: 'create_sandbox',
-    args: 'source=web-prod-01',
-    result: 'sandbox sbx-a1b2c3 created (192.168.122.45)',
+    args: 'source=logstash-prod-01',
+    result: 'sandbox sbx-elastic1 created (192.168.122.45)',
+  },
+  {
+    type: 'tool',
+    name: 'read_source_file',
+    args: 'sandbox=sbx-elastic1, path=/etc/logstash/pipelines/kafka.conf',
+    result: 'input { kafka { topics => ["kafka-logs"] consumer_threads =>1 } }',
+  },
+  {
+    type: 'tool',
+    name: 'write_file',
+    args: 'sandbox=sbx-elastic1, path=/etc/logstash/pipelines/kafka.conf, content=input { kafka { topics => ["kafka-logs"] consumer_threads => 3 } }',
+    result: 'file written',
   },
   {
     type: 'tool',
     name: 'run_command',
-    args: 'sandbox=sbx-a1b2c3, cmd=systemctl restart app',
+    args: 'sandbox=sbx-elastic1, cmd=systemctl restart logstash',
     result: '(started)',
   },
   {
     type: 'tool',
     name: 'run_command',
-    args: 'sandbox=sbx-a1b2c3, cmd=curl -s localhost:3000/health',
-    result: '{"status":"ok"}',
-  },
-  {
-    type: 'tool',
-    name: 'run_command',
-    args: 'sandbox=sbx-a1b2c3, cmd=curl -s localhost/health',
-    result: '{"status":"ok"}',
+    args: 'sandbox=sbx-elastic1, cmd=sleep 5 && curl -s localhost:9600/_node/stats/pipelines | jq .pipelines.main.events',
+    result: '{"in":1523,"out":1523,"filtered":1523}',
   },
   { type: 'think', ms: 2000 },
   {
     type: 'message',
     content:
-      'Fix confirmed in sandbox. The app service had crashed. Let me generate an Ansible playbook for production.',
+      'Fix confirmed. Events now flowing through Logstash. Let me generate an Ansible playbook for production.',
   },
   {
     type: 'tool',
     name: 'create_playbook',
-    args: 'name=fix-nginx-502',
+    args: 'name=fix-logstash-consumer',
     result: 'playbook created',
   },
   {
     type: 'tool',
     name: 'add_playbook_task',
-    args: 'playbook=fix-nginx-502, task=restart app service',
+    args: 'playbook=fix-logstash-consumer, task=set consumer_threads to match partition count',
     result: 'task added',
   },
   {
     type: 'tool',
     name: 'add_playbook_task',
-    args: 'playbook=fix-nginx-502, task=verify nginx upstream',
+    args: 'playbook=fix-logstash-consumer, task=restart logstash service',
     result: 'task added',
   },
   {
     type: 'message',
     content:
-      'Playbook ready for review. Applied fix: restart the app service and verify nginx upstream connectivity.',
+      'Playbook ready for review. Fix: increase kafka input consumer_threads from 1 to 3 to match partition count.',
   },
   {
     type: 'tool',
     name: 'destroy_sandbox',
-    args: 'sandbox=sbx-a1b2c3',
+    args: 'sandbox=sbx-elastic1',
     result: 'sandbox destroyed',
   },
   {
     type: 'message',
     content:
-      "Sandbox cleaned up. The playbook `fix-nginx-502` is ready to apply to production when you're ready.",
+      "Sandbox cleaned up. The playbook `fix-logstash-consumer` is ready to apply to production when you're ready.",
   },
   { type: 'pause', ms: 8000 },
 ]
@@ -349,6 +156,7 @@ export class ScriptedDemoEngine {
   private thinkingInterval: ReturnType<typeof setInterval> | null = null
   private destroyed = false
   private timers: ReturnType<typeof setTimeout>[] = []
+  private resizeObserver: ResizeObserver | null = null
   private contentRow = 1
   private mode: 'edit' | 'read-only' = 'edit'
   private sandboxId: string | null = null
@@ -386,11 +194,11 @@ export class ScriptedDemoEngine {
     this.term.open(container)
     this.fitAddon.fit()
 
-    const resizeObserver = new ResizeObserver(() => {
+    this.resizeObserver = new ResizeObserver(() => {
       this.fitAddon.fit()
       this.setupLayout()
     })
-    resizeObserver.observe(container)
+    this.resizeObserver.observe(container)
 
     this.run()
   }
@@ -484,32 +292,14 @@ export class ScriptedDemoEngine {
   }
 
   private writeWelcome() {
-    const gap = '  '
-    const infoOffset = 2
-    const infoLines = [
-      `${ANSI.primary}${ANSI.bold}Fluid.sh${ANSI.reset} ${ANSI.muted}vdev${ANSI.reset}`,
-      `${ANSI.text}anthropic/claude-opus-4.6${ANSI.reset}`,
-      `${ANSI.muted}host-1${ANSI.reset}`,
-    ]
-
-    for (let i = 0; i < BANNER_DATA.length; i++) {
-      let line = ''
-      for (const [r, g, b, ch] of BANNER_DATA[i]) {
-        line += `\x1b[38;2;${r};${g};${b}m${ch}`
-      }
-      line += ANSI.reset
-
-      const infoIdx = i - infoOffset
-      if (infoIdx >= 0 && infoIdx < infoLines.length) {
-        line += gap + infoLines[infoIdx]
-      }
-
-      this.writeLn(line)
-    }
-
     this.writeLn('')
     this.writeLn(
-      `  ${ANSI.muted}${ANSI.italic}Welcome to Fluid! Type '/help' for commands.${ANSI.reset}`
+      `  ${ANSI.primary}${ANSI.bold}🦌 deer.sh${ANSI.reset}  ${ANSI.muted}vdev${ANSI.reset}`
+    )
+    this.writeLn(`  ${ANSI.text}anthropic/claude-opus-4.6${ANSI.reset}`)
+    this.writeLn('')
+    this.writeLn(
+      `  ${ANSI.muted}${ANSI.italic}Welcome to deer.sh! Type '/help' for commands.${ANSI.reset}`
     )
     this.writeLn('')
   }
@@ -603,7 +393,7 @@ export class ScriptedDemoEngine {
   }
 
   private writeToolComplete(name: string, result?: string) {
-    this.writeLn(`${ANSI.cyan}    v ${ANSI.bold}${name}${ANSI.reset}`)
+    this.writeLn(`${ANSI.olive}    ✓ ${ANSI.bold}${name}${ANSI.reset}`)
     if (result != null) {
       const maxLen = 200
       const display = result.length > maxLen ? result.slice(0, maxLen) + '...' : result
@@ -674,6 +464,10 @@ export class ScriptedDemoEngine {
       clearTimeout(id)
     }
     this.timers = []
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect()
+      this.resizeObserver = null
+    }
     this.term.dispose()
   }
 }

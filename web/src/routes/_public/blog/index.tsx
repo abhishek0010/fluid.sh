@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Menu, X } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { useInView } from 'react-intersection-observer'
 import { getSeriesSlugs, blogSeries } from '~/lib/blog-series'
-import { useAuth } from '~/lib/auth'
-import { useReturningVisitor } from '~/lib/use-returning-visitor'
 
 interface BlogFrontmatter {
   title: string
@@ -18,7 +18,9 @@ interface BlogModule {
   default: React.ComponentType
 }
 
-const modules = import.meta.glob<BlogModule>('/src/content/blog/*.{md,mdx}', { eager: true })
+const modules = import.meta.glob<BlogModule>('/src/content/blog/consulting/*.{md,mdx}', {
+  eager: true,
+})
 
 function getSlug(path: string) {
   const filename = path.split('/').pop() || ''
@@ -62,7 +64,6 @@ function getFeed(): FeedEntry[] {
     }))
     .filter((post) => new Date(post.pubDate) <= now && !seriesSlugs.has(post.slug))
 
-  // Build series cards
   const seriesCards: FeedEntry[] = blogSeries
     .map((s) => {
       const publishedDates: Date[] = []
@@ -96,232 +97,219 @@ function getFeed(): FeedEntry[] {
   )
 }
 
+function FadeIn({ children, className }: { children: React.ReactNode; className?: string }) {
+  const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 })
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.5 }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
 export const Route = createFileRoute('/_public/blog/')({
-  component: BlogIndex,
+  component: ConsultingBlogIndex,
 })
 
-function BlogIndex() {
-  const { isAuthenticated } = useAuth()
-  const isReturning = useReturningVisitor()
+function ConsultingBlogIndex() {
   const feed = getFeed()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <>
-      <header className="px-4 pt-24 pb-12 sm:px-6">
+    <div className="font-inter min-h-screen bg-stone-50">
+      {/* Nav */}
+      <header className="px-4 pt-8 pb-0 sm:px-6">
         <div className="mx-auto max-w-2xl">
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-0 flex items-center justify-between">
             <Link
               to="/"
-              className="font-logo text-2xl tracking-tight text-white no-underline hover:no-underline md:text-3xl"
+              className="font-logo text-2xl tracking-tight text-stone-900 no-underline hover:no-underline md:text-3xl"
             >
-              <span className="text-blue-400">$</span> fluid.sh
+              🦌 <span className="text-green-700">deer.sh</span>
             </Link>
-            <div className="hidden items-center gap-6 font-mono text-sm text-neutral-400 md:flex">
-              <Link to="/docs/quickstart" className="transition-colors hover:text-neutral-200">
-                Docs
+            <div className="hidden items-center gap-6 text-sm text-stone-500 md:flex">
+              <Link to="/" className="transition-colors hover:text-stone-800">
+                Home
               </Link>
-              <Link to="/blog" className="text-neutral-200">
-                Blog
-              </Link>
-              <Link to="/pricing" className="transition-colors hover:text-neutral-200">
-                Pricing
-              </Link>
-              <a
-                href="https://github.com/aspectrr/fluid.sh"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="transition-colors hover:text-neutral-200"
-              >
-                GitHub
+              <a href="/#services" className="transition-colors hover:text-stone-800">
+                Services
               </a>
+              <Link to="/product" className="transition-colors hover:text-stone-800">
+                Product
+              </Link>
+              <span className="font-medium text-stone-800">Blog</span>
               <a
-                href="https://discord.gg/4WGGXJWm8J"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="transition-colors hover:text-neutral-200"
+                href="/#contact"
+                className="inline-flex items-center gap-1 rounded-full border border-green-900/40 bg-green-900/10 px-4 py-1.5 text-green-700 transition-colors hover:border-green-900/60 hover:bg-green-900/20"
               >
-                Discord
+                Get in Touch
               </a>
-              {isAuthenticated ? (
-                <Link
-                  to="/dashboard"
-                  className="rounded border border-neutral-700 px-3 py-1 text-neutral-300 transition-colors hover:border-neutral-500 hover:text-neutral-100"
-                >
-                  Dashboard
-                </Link>
-              ) : isReturning ? (
-                <Link
-                  to="/login"
-                  className="rounded border border-neutral-700 px-3 py-1 text-neutral-300 transition-colors hover:border-neutral-500 hover:text-neutral-100"
-                >
-                  Login
-                </Link>
-              ) : (
-                <Link
-                  to="/register"
-                  className="rounded border border-neutral-700 px-3 py-1 text-neutral-300 transition-colors hover:border-neutral-500 hover:text-neutral-100"
-                >
-                  Sign Up
-                </Link>
-              )}
             </div>
             <button
-              className="text-neutral-400 hover:text-white md:hidden"
+              className="text-stone-500 hover:text-stone-800 md:hidden"
               onClick={() => setMobileOpen(!mobileOpen)}
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
 
-          {/* Mobile nav overlay */}
           {mobileOpen && (
             <div
-              className="fixed inset-0 z-30 bg-black md:hidden"
+              className="fixed inset-0 z-30 bg-stone-900 md:hidden"
               onClick={() => setMobileOpen(false)}
             >
               <nav
-                className="flex flex-col gap-6 p-8 pt-20 font-mono text-lg text-neutral-300"
+                className="flex flex-col gap-6 p-8 pt-20 text-lg text-stone-300"
                 onClick={(e) => e.stopPropagation()}
               >
                 <Link
-                  to="/docs/quickstart"
+                  to="/"
                   onClick={() => setMobileOpen(false)}
                   className="transition-colors hover:text-white"
                 >
-                  Docs
-                </Link>
-                <Link
-                  to="/blog"
-                  onClick={() => setMobileOpen(false)}
-                  className="transition-colors hover:text-white"
-                >
-                  Blog
-                </Link>
-                <Link
-                  to="/pricing"
-                  onClick={() => setMobileOpen(false)}
-                  className="transition-colors hover:text-white"
-                >
-                  Pricing
+                  Home
                 </Link>
                 <a
-                  href="https://github.com/aspectrr/fluid.sh"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="transition-colors hover:text-white"
+                  href="/#services"
                   onClick={() => setMobileOpen(false)}
-                >
-                  GitHub
-                </a>
-                <a
-                  href="https://discord.gg/4WGGXJWm8J"
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="transition-colors hover:text-white"
-                  onClick={() => setMobileOpen(false)}
                 >
-                  Discord
+                  Services
                 </a>
                 <Link
-                  to={isAuthenticated ? '/dashboard' : isReturning ? '/login' : '/register'}
+                  to="/product"
                   onClick={() => setMobileOpen(false)}
                   className="transition-colors hover:text-white"
                 >
-                  {isAuthenticated ? 'Dashboard' : isReturning ? 'Login' : 'Sign Up'}
+                  Product
                 </Link>
+                <a
+                  href="/#contact"
+                  onClick={() => setMobileOpen(false)}
+                  className="transition-colors hover:text-white"
+                >
+                  Get in Touch
+                </a>
               </nav>
             </div>
           )}
         </div>
       </header>
 
+      {/* Header */}
+      <section className="px-4 pt-16 pb-8 sm:px-6">
+        <div className="mx-auto max-w-2xl">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h1 className="font-logo text-3xl font-bold tracking-tight text-stone-900 md:text-4xl">
+              Blog
+            </h1>
+            <p className="mt-4 leading-relaxed text-stone-700">
+              Technical deep dives, engineering notes, and ELK stack insights from our consulting
+              practice.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Feed */}
       <main className="px-4 pb-24 sm:px-6">
         <div className="mx-auto max-w-2xl space-y-3">
           {feed.map((entry) =>
             entry.kind === 'series' ? (
-              <Link
-                key={`series-${entry.id}`}
-                to="/blog/series/hypervisor"
-                className="group block rounded-lg border border-blue-500/20 bg-neutral-900/50 p-4 no-underline transition-all duration-300 hover:border-blue-500/40 hover:no-underline"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] tracking-wider text-blue-400 uppercase">
-                      Technical Deep Dive
-                    </span>
-                    <span className="rounded bg-blue-500/10 px-1.5 py-0.5 font-mono text-[10px] text-blue-400">
-                      {entry.publishedCount}/{entry.totalCount} parts
-                    </span>
+              <FadeIn key={`series-${entry.id}`}>
+                <Link
+                  to="/blog/series/$seriesId"
+                  params={{ seriesId: entry.id }}
+                  className="group block rounded-2xl border border-green-900/20 bg-white p-5 no-underline transition-all duration-200 hover:-translate-y-0.5 hover:border-green-900/40 hover:no-underline"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium tracking-wide text-green-700 uppercase">
+                        Technical Deep Dive
+                      </span>
+                      <span className="rounded-full bg-green-900/10 px-2 py-0.5 text-xs text-green-700">
+                        {entry.publishedCount}/{entry.totalCount} parts
+                      </span>
+                    </div>
+                    <time
+                      dateTime={new Date(entry.latestPubDate).toISOString()}
+                      className="text-xs text-stone-400"
+                    >
+                      {new Date(entry.latestPubDate).toLocaleDateString('en-us', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </time>
                   </div>
-                  <time
-                    dateTime={new Date(entry.latestPubDate).toISOString()}
-                    className="font-mono text-xs whitespace-nowrap text-neutral-600"
-                  >
-                    {new Date(entry.latestPubDate).toLocaleDateString('en-us', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </time>
-                </div>
-                <h2 className="mt-2 font-mono text-sm text-neutral-200 transition-colors group-hover:text-blue-400">
-                  {entry.title}
-                </h2>
-                <p className="mt-1 text-sm text-neutral-500">{entry.subtitle}</p>
-                <div className="mt-3 flex items-center gap-2">
-                  <img
-                    src={entry.authorImage}
-                    alt={entry.author}
-                    className="h-5 w-5 rounded-full border border-neutral-700"
-                  />
-                  <span className="font-mono text-xs text-neutral-600">{entry.author}</span>
-                </div>
-              </Link>
-            ) : (
-              <Link
-                key={entry.slug}
-                to="/blog/$slug"
-                params={{ slug: entry.slug }}
-                className="group block rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 no-underline transition-all duration-300 hover:border-blue-500/30 hover:no-underline"
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <h2 className="font-mono text-sm text-neutral-200 transition-colors group-hover:text-blue-400">
+                  <h2 className="mt-2 text-sm font-semibold text-stone-900 transition-colors group-hover:text-green-700">
                     {entry.title}
                   </h2>
-                  <time
-                    dateTime={new Date(entry.pubDate).toISOString()}
-                    className="font-mono text-xs whitespace-nowrap text-neutral-600"
-                  >
-                    {new Date(entry.pubDate).toLocaleDateString('en-us', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </time>
-                </div>
-                <p className="mt-2 line-clamp-2 text-sm text-neutral-500">{entry.description}</p>
-                {entry.author && (
+                  <p className="mt-1 text-sm text-stone-500">{entry.subtitle}</p>
                   <div className="mt-3 flex items-center gap-2">
-                    {entry.authorImage ? (
-                      <img
-                        src={entry.authorImage}
-                        alt={entry.author}
-                        className="h-5 w-5 rounded-full border border-neutral-700"
-                      />
-                    ) : (
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full border border-neutral-700 bg-neutral-800 font-mono text-[10px] text-blue-400">
-                        {entry.author.charAt(0)}
-                      </div>
-                    )}
-                    <span className="font-mono text-xs text-neutral-600">{entry.author}</span>
+                    <img
+                      src={entry.authorImage}
+                      alt={entry.author}
+                      className="h-5 w-5 rounded-full border border-stone-200"
+                    />
+                    <span className="text-xs text-stone-400">{entry.author}</span>
                   </div>
-                )}
-              </Link>
+                </Link>
+              </FadeIn>
+            ) : (
+              <FadeIn key={entry.slug}>
+                <Link
+                  to="/blog/$slug"
+                  params={{ slug: entry.slug }}
+                  className="group block rounded-2xl border border-stone-200 bg-white p-5 no-underline transition-all duration-200 hover:-translate-y-0.5 hover:border-green-900/30 hover:no-underline"
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <h2 className="text-sm font-semibold text-stone-900 transition-colors group-hover:text-green-700">
+                      {entry.title}
+                    </h2>
+                    <time
+                      dateTime={new Date(entry.pubDate).toISOString()}
+                      className="text-xs whitespace-nowrap text-stone-400"
+                    >
+                      {new Date(entry.pubDate).toLocaleDateString('en-us', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </time>
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-sm text-stone-500">{entry.description}</p>
+                  {entry.author && (
+                    <div className="mt-3 flex items-center gap-2">
+                      {entry.authorImage ? (
+                        <img
+                          src={entry.authorImage}
+                          alt={entry.author}
+                          className="h-5 w-5 rounded-full border border-stone-200"
+                        />
+                      ) : (
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full border border-stone-200 bg-stone-100 text-xs text-green-700">
+                          {entry.author.charAt(0)}
+                        </div>
+                      )}
+                      <span className="text-xs text-stone-400">{entry.author}</span>
+                    </div>
+                  )}
+                </Link>
+              </FadeIn>
             )
           )}
         </div>
       </main>
-    </>
+    </div>
   )
 }

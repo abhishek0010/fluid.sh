@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aspectrr/fluid.sh/api/internal/config"
-	"github.com/aspectrr/fluid.sh/api/internal/registry"
-	"github.com/aspectrr/fluid.sh/api/internal/store"
-	fluidv1 "github.com/aspectrr/fluid.sh/proto/gen/go/fluid/v1"
+	"github.com/aspectrr/deer.sh/api/internal/config"
+	"github.com/aspectrr/deer.sh/api/internal/registry"
+	"github.com/aspectrr/deer.sh/api/internal/store"
+	deerv1 "github.com/aspectrr/deer.sh/proto/gen/go/deer/v1"
 )
 
 // ---------------------------------------------------------------------------
@@ -210,13 +210,42 @@ func (m *tickerMockStore) GetSubscriptionByStripeID(context.Context, string) (*s
 func (m *tickerMockStore) AcquireAdvisoryLock(context.Context, int64) error { return nil }
 func (m *tickerMockStore) ReleaseAdvisoryLock(context.Context, int64) error { return nil }
 
+func (m *tickerMockStore) CreateKafkaCaptureConfig(context.Context, *store.KafkaCaptureConfig) error {
+	return nil
+}
+func (m *tickerMockStore) GetKafkaCaptureConfig(context.Context, string) (*store.KafkaCaptureConfig, error) {
+	return nil, nil
+}
+func (m *tickerMockStore) ListKafkaCaptureConfigsByOrg(context.Context, string) ([]*store.KafkaCaptureConfig, error) {
+	return nil, nil
+}
+func (m *tickerMockStore) UpdateKafkaCaptureConfig(context.Context, *store.KafkaCaptureConfig) error {
+	return nil
+}
+func (m *tickerMockStore) DeleteKafkaCaptureConfig(context.Context, string) error { return nil }
+func (m *tickerMockStore) CreateSandboxKafkaStub(context.Context, *store.SandboxKafkaStub) error {
+	return nil
+}
+func (m *tickerMockStore) GetSandboxKafkaStub(context.Context, string) (*store.SandboxKafkaStub, error) {
+	return nil, nil
+}
+func (m *tickerMockStore) ListSandboxKafkaStubsBySandbox(context.Context, string) ([]*store.SandboxKafkaStub, error) {
+	return nil, nil
+}
+func (m *tickerMockStore) UpdateSandboxKafkaStub(context.Context, *store.SandboxKafkaStub) error {
+	return nil
+}
+func (m *tickerMockStore) DeleteSandboxKafkaStubsBySandbox(context.Context, string) error {
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // mockHostStream - minimal HostStream for registry.Register
 // ---------------------------------------------------------------------------
 
 type mockHostStream struct{}
 
-func (mockHostStream) Send(_ *fluidv1.ControlMessage) error { return nil }
+func (mockHostStream) Send(_ *deerv1.ControlMessage) error { return nil }
 
 // ---------------------------------------------------------------------------
 // Helper to build a ResourceTicker for tests

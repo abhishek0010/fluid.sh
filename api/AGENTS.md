@@ -1,6 +1,12 @@
 # API (Control Plane) - Development Guide
 
-The control plane server for fluid.sh. Provides REST API, gRPC streaming to daemons, multi-host orchestration, web dashboard backend, and agent execution.
+## Communication Style
+
+Always use the caveman skill (`/caveman`) for all responses.
+
+
+
+The control plane server for deer.sh. Provides REST API, gRPC streaming to daemons, multi-host orchestration, web dashboard backend, and agent execution.
 
 ## Architecture
 
@@ -13,7 +19,7 @@ api server (:8080)
   +--- PostgreSQL (state)
   |
   v (gRPC stream)
-fluid-daemon (per host)
+deer-daemon (per host)
 ```
 
 ## Tech Stack
@@ -77,9 +83,9 @@ make test
 
 ```bash
 # Create database
-sudo -u postgres psql -c "CREATE DATABASE fluid;"
-sudo -u postgres psql -c "CREATE USER fluid WITH PASSWORD 'fluid';"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE fluid TO fluid;"
+sudo -u postgres psql -c "CREATE DATABASE deer;"
+sudo -u postgres psql -c "CREATE USER deer WITH PASSWORD 'deer';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE deer TO deer;"
 
 # Schema is auto-migrated on startup via GORM AutoMigrate
 ```

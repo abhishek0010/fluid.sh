@@ -34,15 +34,17 @@ import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppBillingRouteImport } from './routes/_app/billing'
+import { Route as PublicProductIndexRouteImport } from './routes/_public/product/index'
 import { Route as PublicBlogIndexRouteImport } from './routes/_public/blog/index'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppBillingIndexRouteImport } from './routes/_app/billing/index'
+import { Route as PublicProductBlogRouteImport } from './routes/_public/product/blog'
 import { Route as PublicBlogSlugRouteImport } from './routes/_public/blog/$slug'
 import { Route as AppSettingsOrganizationRouteImport } from './routes/_app/settings/organization'
 import { Route as AppSettingsMembersRouteImport } from './routes/_app/settings/members'
 import { Route as AppSettingsHostsRouteImport } from './routes/_app/settings/hosts'
 import { Route as AppBillingCalculatorRouteImport } from './routes/_app/billing/calculator'
-import { Route as PublicBlogSeriesHypervisorRouteImport } from './routes/_public/blog/series/hypervisor'
+import { Route as PublicBlogSeriesSeriesIdRouteImport } from './routes/_public/blog/series/$seriesId'
 
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
@@ -166,6 +168,11 @@ const AppBillingRoute = AppBillingRouteImport.update({
   path: '/billing',
   getParentRoute: () => AppRoute,
 } as any)
+const PublicProductIndexRoute = PublicProductIndexRouteImport.update({
+  id: '/product/',
+  path: '/product/',
+  getParentRoute: () => PublicRoute,
+} as any)
 const PublicBlogIndexRoute = PublicBlogIndexRouteImport.update({
   id: '/blog/',
   path: '/blog/',
@@ -180,6 +187,11 @@ const AppBillingIndexRoute = AppBillingIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppBillingRoute,
+} as any)
+const PublicProductBlogRoute = PublicProductBlogRouteImport.update({
+  id: '/product/blog',
+  path: '/product/blog',
+  getParentRoute: () => PublicRoute,
 } as any)
 const PublicBlogSlugRoute = PublicBlogSlugRouteImport.update({
   id: '/blog/$slug',
@@ -206,10 +218,10 @@ const AppBillingCalculatorRoute = AppBillingCalculatorRouteImport.update({
   path: '/calculator',
   getParentRoute: () => AppBillingRoute,
 } as any)
-const PublicBlogSeriesHypervisorRoute =
-  PublicBlogSeriesHypervisorRouteImport.update({
-    id: '/blog/series/hypervisor',
-    path: '/blog/series/hypervisor',
+const PublicBlogSeriesSeriesIdRoute =
+  PublicBlogSeriesSeriesIdRouteImport.update({
+    id: '/blog/series/$seriesId',
+    path: '/blog/series/$seriesId',
     getParentRoute: () => PublicRoute,
   } as any)
 
@@ -241,10 +253,12 @@ export interface FileRoutesByFullPath {
   '/settings/members': typeof AppSettingsMembersRoute
   '/settings/organization': typeof AppSettingsOrganizationRoute
   '/blog/$slug': typeof PublicBlogSlugRoute
+  '/product/blog': typeof PublicProductBlogRoute
   '/billing/': typeof AppBillingIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/blog': typeof PublicBlogIndexRoute
-  '/blog/series/hypervisor': typeof PublicBlogSeriesHypervisorRoute
+  '/product': typeof PublicProductIndexRoute
+  '/blog/series/$seriesId': typeof PublicBlogSeriesSeriesIdRoute
 }
 export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
@@ -271,10 +285,12 @@ export interface FileRoutesByTo {
   '/settings/members': typeof AppSettingsMembersRoute
   '/settings/organization': typeof AppSettingsOrganizationRoute
   '/blog/$slug': typeof PublicBlogSlugRoute
+  '/product/blog': typeof PublicProductBlogRoute
   '/billing': typeof AppBillingIndexRoute
   '/settings': typeof AppSettingsIndexRoute
   '/blog': typeof PublicBlogIndexRoute
-  '/blog/series/hypervisor': typeof PublicBlogSeriesHypervisorRoute
+  '/product': typeof PublicProductIndexRoute
+  '/blog/series/$seriesId': typeof PublicBlogSeriesSeriesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -308,10 +324,12 @@ export interface FileRoutesById {
   '/_app/settings/members': typeof AppSettingsMembersRoute
   '/_app/settings/organization': typeof AppSettingsOrganizationRoute
   '/_public/blog/$slug': typeof PublicBlogSlugRoute
+  '/_public/product/blog': typeof PublicProductBlogRoute
   '/_app/billing/': typeof AppBillingIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_public/blog/': typeof PublicBlogIndexRoute
-  '/_public/blog/series/hypervisor': typeof PublicBlogSeriesHypervisorRoute
+  '/_public/product/': typeof PublicProductIndexRoute
+  '/_public/blog/series/$seriesId': typeof PublicBlogSeriesSeriesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -343,10 +361,12 @@ export interface FileRouteTypes {
     | '/settings/members'
     | '/settings/organization'
     | '/blog/$slug'
+    | '/product/blog'
     | '/billing/'
     | '/settings/'
     | '/blog'
-    | '/blog/series/hypervisor'
+    | '/product'
+    | '/blog/series/$seriesId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/onboarding'
@@ -373,10 +393,12 @@ export interface FileRouteTypes {
     | '/settings/members'
     | '/settings/organization'
     | '/blog/$slug'
+    | '/product/blog'
     | '/billing'
     | '/settings'
     | '/blog'
-    | '/blog/series/hypervisor'
+    | '/product'
+    | '/blog/series/$seriesId'
   id:
     | '__root__'
     | '/_app'
@@ -409,10 +431,12 @@ export interface FileRouteTypes {
     | '/_app/settings/members'
     | '/_app/settings/organization'
     | '/_public/blog/$slug'
+    | '/_public/product/blog'
     | '/_app/billing/'
     | '/_app/settings/'
     | '/_public/blog/'
-    | '/_public/blog/series/hypervisor'
+    | '/_public/product/'
+    | '/_public/blog/series/$seriesId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -600,6 +624,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBillingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_public/product/': {
+      id: '/_public/product/'
+      path: '/product'
+      fullPath: '/product'
+      preLoaderRoute: typeof PublicProductIndexRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/_public/blog/': {
       id: '/_public/blog/'
       path: '/blog'
@@ -620,6 +651,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/billing/'
       preLoaderRoute: typeof AppBillingIndexRouteImport
       parentRoute: typeof AppBillingRoute
+    }
+    '/_public/product/blog': {
+      id: '/_public/product/blog'
+      path: '/product/blog'
+      fullPath: '/product/blog'
+      preLoaderRoute: typeof PublicProductBlogRouteImport
+      parentRoute: typeof PublicRoute
     }
     '/_public/blog/$slug': {
       id: '/_public/blog/$slug'
@@ -656,11 +694,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBillingCalculatorRouteImport
       parentRoute: typeof AppBillingRoute
     }
-    '/_public/blog/series/hypervisor': {
-      id: '/_public/blog/series/hypervisor'
-      path: '/blog/series/hypervisor'
-      fullPath: '/blog/series/hypervisor'
-      preLoaderRoute: typeof PublicBlogSeriesHypervisorRouteImport
+    '/_public/blog/series/$seriesId': {
+      id: '/_public/blog/series/$seriesId'
+      path: '/blog/series/$seriesId'
+      fullPath: '/blog/series/$seriesId'
+      preLoaderRoute: typeof PublicBlogSeriesSeriesIdRouteImport
       parentRoute: typeof PublicRoute
     }
   }
@@ -728,16 +766,20 @@ interface PublicRouteChildren {
   PublicPricingRoute: typeof PublicPricingRoute
   PublicIndexRoute: typeof PublicIndexRoute
   PublicBlogSlugRoute: typeof PublicBlogSlugRoute
+  PublicProductBlogRoute: typeof PublicProductBlogRoute
   PublicBlogIndexRoute: typeof PublicBlogIndexRoute
-  PublicBlogSeriesHypervisorRoute: typeof PublicBlogSeriesHypervisorRoute
+  PublicProductIndexRoute: typeof PublicProductIndexRoute
+  PublicBlogSeriesSeriesIdRoute: typeof PublicBlogSeriesSeriesIdRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicPricingRoute: PublicPricingRoute,
   PublicIndexRoute: PublicIndexRoute,
   PublicBlogSlugRoute: PublicBlogSlugRoute,
+  PublicProductBlogRoute: PublicProductBlogRoute,
   PublicBlogIndexRoute: PublicBlogIndexRoute,
-  PublicBlogSeriesHypervisorRoute: PublicBlogSeriesHypervisorRoute,
+  PublicProductIndexRoute: PublicProductIndexRoute,
+  PublicBlogSeriesSeriesIdRoute: PublicBlogSeriesSeriesIdRoute,
 }
 
 const PublicRouteWithChildren =
